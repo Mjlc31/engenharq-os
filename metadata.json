@@ -1,0 +1,6 @@
+{
+  "name": "EngenharQ OS",
+  "description": "Sistema web de gestão de Equipamentos de Proteção Individual (EPIs) para construtoras, com rastreamento em mapa e controle de conformidade NR-6.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

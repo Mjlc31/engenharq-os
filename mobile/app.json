@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "EngenharQ OS",
+    "slug": "engenharq-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "engenharq",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
