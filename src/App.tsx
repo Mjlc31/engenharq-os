@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthProvider';
-import { ToastProvider } from './components/ui/Toast';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -12,6 +11,7 @@ import { Scanner } from './pages/Scanner';
 import { PrintTags } from './pages/PrintTags';
 import { Audit } from './pages/Audit';
 import { Sites } from './pages/Sites';
+import { WorkerProfile } from './pages/WorkerProfile';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -25,25 +25,24 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
-              <Route path="scanner" element={<Scanner />} />
-              <Route path="assets" element={<Assets />} />
-              <Route path="workers" element={<Workers />} />
-              <Route path="sites" element={<Sites />} />
-              <Route path="map" element={<MapTracking />} />
-              <Route path="tags" element={<PrintTags />} />
-              <Route path="audit" element={<Audit />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </ToastProvider>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="scanner" element={<Scanner />} />
+            <Route path="assets" element={<Assets />} />
+            <Route path="workers" element={<Workers />} />
+            <Route path="workers/:id" element={<WorkerProfile />} />
+            <Route path="sites" element={<Sites />} />
+            <Route path="map" element={<MapTracking />} />
+            <Route path="tags" element={<PrintTags />} />
+            <Route path="audit" element={<Audit />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

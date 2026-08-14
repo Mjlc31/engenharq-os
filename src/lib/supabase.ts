@@ -5,7 +5,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('⚠️ Supabase credentials not found in environment variables. Please check your .env or .env.local file.');
+  throw new Error(
+    'Supabase credentials not found. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env or .env.local file.'
+  );
 }
 
 // Inicializa o cliente do Supabase com tipagem forte gerada a partir do schema

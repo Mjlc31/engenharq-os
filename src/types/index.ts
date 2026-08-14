@@ -12,8 +12,23 @@ export interface User {
 export interface ConstructionSite {
   id: string;
   name: string;
+  cnpj?: string | null;
+  cno?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  address?: string | null;
+  image_url?: string | null;
+  status?: string | null;
   latitude: number;
   longitude: number;
+  created_at: string;
+}
+
+export interface WorkerRole {
+  id: string;
+  worker_id: string;
+  role_name: string;
+  start_date: string;
   created_at: string;
 }
 
@@ -22,23 +37,51 @@ export interface Worker {
   full_name: string;
   cpf: string;
   registration_number: string;
+  initial_role?: string | null;
+  admission_date?: string | null;
+  birth_date?: string | null;
+  work_sector?: string | null;
+  uniform_size?: string | null;
+  boot_size?: string | null;
+  apt_for_height_and_confined_space?: boolean | null;
+  phone_contact?: string | null;
   current_site_id: string | null;
   reference_photo_url?: string | null;
-  facial_descriptor?: any | null;
+  facial_descriptor?: any;
+  status?: string;
   created_at: string;
   site?: ConstructionSite;
+  roles?: WorkerRole[];
+}
+
+export interface EpiCatalog {
+  id: string;
+  name: string;
+  category: string;
+  description?: string | null;
+  brand?: string | null;
+  ca_number?: string | null;
+  ca_validity?: string | null;
+  lifespan_days?: number | null;
+  minimum_stock?: number | null;
+  current_stock?: number | null;
+  image_url?: string | null;
+  observations?: string | null;
+  created_at: string;
 }
 
 export interface EpiInventory {
   id: string;
-  category: string;
+  epi_catalog_id?: string | null;
+  category?: string | null;
   tracking_code: string;
   status: EpiStatus;
   ca_number: string;
-  size: string;
+  size: string | null;
   ca_expiration_date: string | null;
-  recommended_lifespan_days: number;
+  recommended_lifespan_days: number | null;
   created_at: string;
+  catalog?: EpiCatalog;
 }
 
 export interface EpiAssignment {

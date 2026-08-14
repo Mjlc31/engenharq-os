@@ -1,41 +1,76 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Search, MapPin, AlertCircle, Building2, Upload, Download } from 'lucide-react';
+import { Plus, Search, AlertCircle, Upload, Download, Edit2, Trash2, ChevronLeft, ChevronRight, MapPin, Users, Calendar, Navigation } from 'lucide-react';
 import Papa from 'papaparse';
 import { ConstructionSite } from '../types';
-import { CardSkeleton } from '../components/ui/Skeleton';
-import { useToast } from '../components/ui/Toast';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet default icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export function Sites() {
-  const [sites, setSites] = useState<ConstructionSite[]>([]);
+  const [sites, setSites] = useState<(ConstructionSite & { worker_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingSite, setEditingSite] = useState<ConstructionSite | null>(null);
   
-  const { toast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   
   // Form state
   const [name, setName] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [cnpj, setCnpj] = useState('');
+  const [cno, setCno] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [address, setAddress] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [status, setStatus] = useState('ACTIVE');
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data: sitesData, error: fetchError } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('construction_sites')
-        .select('*')
+        .select('*, workers(count)')
         .order('created_at', { ascending: false });
       
       if (fetchError) throw fetchError;
-      setSites(sitesData as ConstructionSite[] || []);
-    } catch (err: any) {
-      console.error('Erro ao buscar dados:', err);
-      setError('Falha ao carregar as obras. Tente novamente.');
-      toast({ type: 'error', title: 'Erro de Carregamento', message: 'Falha ao carregar as obras.' });
+
+      const formattedData = data.map((s: any) => ({
+        ...s,
+        worker_count: s.workers?.[0]?.count ?? 0
+      }));
+
+      setSites(formattedData || []);
+    } catch (err: unknown) {
+      console.error('Erro ao buscar obras:', err);
+      setError('Falha ao carregar dados das obras.');
     } finally {
       setLoading(false);
     }
@@ -58,17 +93,28 @@ export function Sites() {
     }
 
     try {
+      const payload = {
+        name,
+        latitude: lat,
+        longitude: lng,
+        cnpj: cnpj || null,
+        cno: cno || null,
+        start_date: startDate || null,
+        end_date: endDate || null,
+        address: address || null,
+        image_url: imageUrl || null,
+        status: status || 'ACTIVE'
+      };
+
       if (editingSite) {
         const { error: updateError } = await supabase
           .from('construction_sites')
-          .update({ name, latitude: lat, longitude: lng })
+          .update(payload)
           .eq('id', editingSite.id);
           
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await supabase.from('construction_sites').insert([
-          { name, latitude: lat, longitude: lng }
-        ]);
+        const { error: insertError } = await supabase.from('construction_sites').insert([payload]);
         if (insertError) throw insertError;
       }
 
@@ -77,20 +123,32 @@ export function Sites() {
       setName('');
       setLatitude('');
       setLongitude('');
+      setCnpj('');
+      setCno('');
+      setStartDate('');
+      setEndDate('');
+      setAddress('');
+      setImageUrl('');
+      setStatus('ACTIVE');
       loadData();
-      toast({ type: 'success', title: 'Sucesso', message: 'Obra registrada com sucesso.' });
-    } catch (err: any) {
-      console.error('Erro ao criar obra:', err);
-      setError('Falha ao registrar nova obra.');
-      toast({ type: 'error', title: 'Erro no Registro', message: 'Falha ao registrar nova obra.' });
+    } catch (err: unknown) {
+      console.error('Erro ao salvar obra:', err);
+      setError((err as any)?.message || 'Falha ao salvar obra. Verifique os dados e tente novamente.');
     }
   };
 
   const handleEditClick = (site: ConstructionSite) => {
     setEditingSite(site);
-    setName(site.name);
-    setLatitude(site.latitude.toString());
-    setLongitude(site.longitude.toString());
+    setName(site.name || '');
+    setLatitude(site.latitude?.toString() || '');
+    setLongitude(site.longitude?.toString() || '');
+    setCnpj(site.cnpj || '');
+    setCno(site.cno || '');
+    setStartDate(site.start_date || '');
+    setEndDate(site.end_date || '');
+    setAddress(site.address || '');
+    setImageUrl(site.image_url || '');
+    setStatus(site.status || 'ACTIVE');
     setIsAdding(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -112,15 +170,32 @@ export function Sites() {
       }
       
       loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao excluir obra:', err);
-      setError(err.message || 'Falha ao excluir obra.');
+      setError(err instanceof Error ? err.message : 'Falha ao excluir obra.');
     }
   };
 
-  const filteredSites = sites.filter(s => 
-    s.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const debouncedSearch = useDebounce(search, 300);
+
+  const filteredSites = useMemo(() => {
+    if (!debouncedSearch) return sites;
+    return sites.filter(s => 
+      s.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+      (s.address && s.address.toLowerCase().includes(debouncedSearch.toLowerCase()))
+    );
+  }, [sites, debouncedSearch]);
+
+  const totalPages = Math.ceil(filteredSites.length / itemsPerPage);
+
+  const paginatedSites = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredSites.slice(start, start + itemsPerPage);
+  }, [filteredSites, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
 
   const handleExportCSV = () => {
     const csvData = sites.map(s => ({
@@ -149,7 +224,7 @@ export function Sites() {
       complete: async (results) => {
         try {
           setLoading(true);
-          const newSites = results.data.map((row: any) => ({
+          const newSites = results.data.map((row: Record<string, string>) => ({
             name: row['Nome da Obra'] || row['Nome'] || row['name'],
             latitude: parseFloat(row['Latitude'] || row['latitude']?.replace(',', '.')),
             longitude: parseFloat(row['Longitude'] || row['longitude']?.replace(',', '.'))
@@ -164,12 +239,12 @@ export function Sites() {
           if (insertError) throw insertError;
           
           await loadData();
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error('Erro ao importar CSV:', err);
           setError('Falha ao importar obras. Verifique o formato dos dados.');
         } finally {
           setLoading(false);
-          event.target.value = ''; // reset input
+          event.target.value = '';
         }
       },
       error: (error) => {
@@ -183,8 +258,8 @@ export function Sites() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Obras & Locais</h1>
-          <p className="text-muted mt-1">Gerencie os canteiros de obra ativos e suas coordenadas para alocação.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Obras & Locais</h1>
+          <p className="text-muted mt-2">Gerencie os canteiros de obra ativos, mapas e efetivo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 cursor-pointer text-sm">
@@ -205,6 +280,13 @@ export function Sites() {
                  setName('');
                  setLatitude('');
                  setLongitude('');
+                 setCnpj('');
+                 setCno('');
+                 setStartDate('');
+                 setEndDate('');
+                 setAddress('');
+                 setImageUrl('');
+                 setStatus('ACTIVE');
               }
               setIsAdding(!isAdding);
             }}
@@ -223,7 +305,7 @@ export function Sites() {
       )}
 
       {isAdding && (
-        <div className="bg-surface border border-border rounded-xl p-6">
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-medium mb-4">{editingSite ? 'Editar Obra' : 'Registro de Nova Obra'}</h3>
           <form onSubmit={handleSaveSite} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             <div className="space-y-2">
@@ -233,7 +315,7 @@ export function Sites() {
                 required
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="Ex: Residencial Pajuçara"
               />
             </div>
@@ -244,7 +326,7 @@ export function Sites() {
                 required
                 value={latitude}
                 onChange={e => setLatitude(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="-9.6705"
               />
             </div>
@@ -255,11 +337,76 @@ export function Sites() {
                 required
                 value={longitude}
                 onChange={e => setLongitude(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 placeholder="-35.7143"
               />
             </div>
-            <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">CNPJ</label>
+              <input
+                type="text"
+                value={cnpj}
+                onChange={e => setCnpj(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">CNO</label>
+              <input
+                type="text"
+                value={cno}
+                onChange={e => setCno(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">Data de Início</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">Data de Término</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">Endereço</label>
+              <input
+                type="text"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">Imagem (URL)</label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted">Status</label>
+              <select
+                value={status}
+                onChange={e => setStatus(e.target.value)}
+                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="ACTIVE">Ativa</option>
+                <option value="FINISHED">Finalizada</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-4">
               <button
                 type="submit"
                 className="bg-primary hover:bg-primary-dark text-background font-medium py-2 px-6 rounded-md transition-colors"
@@ -271,71 +418,135 @@ export function Sites() {
         </div>
       )}
 
-      <div className="flex-1 bg-surface border border-border rounded flex flex-col">
-        <div className="p-3 border-b border-border flex gap-2 items-center bg-surface-hover/30">
-          <div className="relative flex-1 max-w-md">
+      <div className="flex-1 flex flex-col">
+        <div className="mb-4">
+          <div className="relative max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type="text"
-              placeholder="Buscar por Nome da Obra..."
+              placeholder="Buscar obras por nome ou endereço..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-background border border-border rounded text-[11px] font-mono focus:outline-none focus:border-primary text-foreground"
+              className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted"
             />
           </div>
         </div>
         
-        <div className="flex-1 overflow-auto p-4">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center p-12 text-muted">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+              <span className="text-sm font-medium">Carregando obras...</span>
             </div>
-          ) : filteredSites.length === 0 ? (
-            <div className="p-8 text-center text-muted">Nenhuma obra encontrada.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSites.map((site) => (
-                <div key={site.id} className="bg-surface-hover/30 border border-border/60 rounded-xl p-4 flex flex-col gap-4 hover:border-primary/30 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 border border-border flex items-center justify-center font-bold text-lg text-primary">
-                      <Building2 className="w-5 h-5" />
+          </div>
+        ) : filteredSites.length === 0 ? (
+          <div className="flex-1 p-12 text-center text-muted bg-surface/50 rounded-xl border border-border/50 flex flex-col items-center justify-center">
+             <Navigation className="w-12 h-12 opacity-20 mb-2" />
+             <p>Nenhuma obra encontrada.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {paginatedSites.map((site) => (
+              <div key={site.id} className="bg-surface border border-border rounded-xl flex flex-col overflow-hidden hover:border-border/80 hover:shadow-lg transition-all group">
+                
+                {/* Mini-map */}
+                <div className="h-40 w-full bg-zinc-800 relative z-0">
+                  {site.latitude && site.longitude ? (
+                    <MapContainer 
+                      center={[site.latitude, site.longitude]} 
+                      zoom={14} 
+                      style={{ height: '100%', width: '100%', zIndex: 1 }}
+                      zoomControl={false}
+                      attributionControl={false}
+                    >
+                      <TileLayer
+                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      />
+                      <Marker position={[site.latitude, site.longitude]}>
+                        <Popup>{site.name}</Popup>
+                      </Marker>
+                    </MapContainer>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted text-sm">
+                      Sem coordenadas
                     </div>
-                    <div>
-                      <div className="font-bold text-base text-foreground">{site.name}</div>
-                      <div className="text-xs text-zinc-500 font-mono">ID: {site.id.substring(0, 8)}</div>
-                    </div>
+                  )}
+                  <div className="absolute top-3 right-3 z-10">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-sm shadow-sm ${site.status === 'ACTIVE' ? 'bg-emerald-500/90 text-background' : 'bg-red-500/90 text-background'}`}>
+                      {site.status === 'ACTIVE' ? 'Ativa' : 'Finalizada'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Info */}
+                <div className="p-5 flex-1 flex flex-col z-10 bg-surface">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{site.name}</h3>
                   </div>
                   
-                  <div className="flex flex-col gap-2">
-                    <div className="bg-background px-3 py-2 rounded-lg border border-border flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary shrink-0" />
-                      <span className="text-sm font-medium text-zinc-300 font-mono truncate">
-                        {site.latitude}, {site.longitude}
-                      </span>
+                  <div className="space-y-2 text-sm text-muted mb-6">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-primary/70" />
+                      <span className="line-clamp-2">{site.address || 'Endereço não informado'}</span>
+                    </div>
+                    {site.start_date && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 shrink-0 text-primary/70" />
+                        <span>Início: {new Date(site.start_date).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <Users className="w-4 h-4 shrink-0 text-blue-500" />
+                      <span>{site.worker_count} trabalhador(es) alocado(s)</span>
                     </div>
                   </div>
 
-                  <div className="mt-1 flex gap-2">
+                  <div className="mt-auto grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => handleEditClick(site)}
-                      className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 uppercase tracking-widest text-xs font-bold px-4 py-2 min-h-[44px] rounded-lg transition-colors flex-1 cursor-pointer"
+                      className="py-2 px-4 rounded-md text-sm font-medium bg-surface-hover hover:bg-zinc-800 text-foreground transition-colors flex items-center justify-center gap-2"
                     >
-                      Editar
+                      <Edit2 className="w-4 h-4" /> Editar
                     </button>
                     <button 
                       onClick={() => handleDeleteSite(site.id)}
-                      className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white uppercase tracking-widest text-xs font-bold px-4 py-2 min-h-[44px] rounded-lg transition-colors flex-1 cursor-pointer"
+                      className="py-2 px-4 rounded-md text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors flex items-center justify-center gap-2"
                     >
-                      Excluir
+                      <Trash2 className="w-4 h-4" /> Excluir
                     </button>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {filteredSites.length > 0 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
+            <div>
+              Mostrando <span className="font-medium text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, filteredSites.length)}</span> de <span className="font-medium text-foreground">{filteredSites.length}</span> obras
             </div>
-          )}
-        </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-md text-muted hover:text-foreground hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-border"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="font-medium px-2 text-foreground">
+                {currentPage} / {totalPages || 1}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="p-1.5 rounded-md text-muted hover:text-foreground hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-border"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

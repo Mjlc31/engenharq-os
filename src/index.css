@@ -15,10 +15,12 @@
   --font-sans: "Inter", "Roboto", ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
+html, body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 @keyframes scan {

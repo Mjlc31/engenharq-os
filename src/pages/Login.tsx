@@ -11,6 +11,7 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
+  const [forgotMode, setForgotMode] = useState(false);
 
   if (session) {
     return <Navigate to="/" replace />;
@@ -21,13 +22,13 @@ export function Login() {
     setLoading(true);
     setError(null);
     try {
-      console.log('Login URL:', import.meta.env.VITE_SUPABASE_URL);
+
       const cleanEmail = email.trim();
       const { error, data } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
-      console.log('Login Response:', { error, data });
+
       if (error) {
         if (error.message === 'Failed to fetch') {
           setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
@@ -37,11 +38,12 @@ export function Login() {
           setError(error.message);
         }
       }
-    } catch (err: any) {
-      if (err.message === 'Failed to fetch') {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Um erro inesperado ocorreu.';
+      if (message === 'Failed to fetch') {
         setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
       } else {
-        setError(err.message || 'Um erro inesperado ocorreu.');
+        setError(message);
       }
     }
     setLoading(false);
@@ -67,12 +69,36 @@ export function Login() {
         // If auto-confirm is enabled in Supabase, this will actually log them in.
         setError('Registration successful. If email confirmation is off, you can now Sign In.');
       }
-    } catch (err: any) {
-      if (err.message === 'Failed to fetch') {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Um erro inesperado ocorreu.';
+      if (message === 'Failed to fetch') {
         setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
       } else {
-        setError(err.message || 'Um erro inesperado ocorreu.');
+        setError(message);
       }
+    }
+    setLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Por favor, preencha o campo de email primeiro.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin + '/',
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        setError('Se o email existir, um link de redefinição foi enviado. Verifique sua caixa de entrada.');
+        setForgotMode(false);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao enviar email de redefinição.');
     }
     setLoading(false);
   };
@@ -192,7 +218,7 @@ export function Login() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between ml-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Senha</label>
-                  <a href="#" className="text-xs text-primary hover:text-primary-dark transition-colors font-medium">Esqueceu?</a>
+                  <button type="button" onClick={handleForgotPassword} className="text-xs text-primary hover:text-primary-dark transition-colors font-medium cursor-pointer">Esqueceu?</button>
                 </div>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600" />

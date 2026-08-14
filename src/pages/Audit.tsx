@@ -1,27 +1,77 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Download, FileText } from 'lucide-react';
-import { format } from 'date-fns';
-import { TableRowSkeleton } from '../components/ui/Skeleton';
-import { useAudit } from '../hooks/useAudit';
+import { supabase } from '../lib/supabase';
+import { Download, FileText, Filter, Search, Fingerprint, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { format, isAfter, isBefore, parseISO, startOfDay, endOfDay } from 'date-fns';
 import Papa from 'papaparse';
+import { motion } from 'motion/react';
+
+interface AuditAssignment {
+  id: string;
+  assigned_at: string;
+  returned_at: string | null;
+  condition_on_return: string | null;
+  generated_pdf_url: string | null;
+  biometric_match_score?: number | null;
+  liveness_verified?: boolean | null;
+  epi: { tracking_code: string; category: string; ca_number: string } | { tracking_code: string; category: string; ca_number: string }[];
+  worker: { full_name: string; cpf: string; registration_number: string } | { full_name: string; cpf: string; registration_number: string }[];
+}
 
 export function Audit() {
-  const [search, setSearch] = useState('');
-  const [filterMode, setFilterMode] = useState<'ALL' | 'CRITICAL'>('ALL');
-
-  const { assignments, loading, fetchAssignments } = useAudit();
+  const [assignments, setAssignments] = useState<AuditAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+    async function loadAudit() {
+      setLoading(true);
+      const { data } = await supabase.from('epi_assignments')
+        .select(`
+          id,
+          assigned_at,
+          returned_at,
+          condition_on_return,
+          generated_pdf_url,
+          biometric_match_score,
+          liveness_verified,
+          epi:epi_inventory(tracking_code, category, ca_number),
+          worker:workers(full_name, cpf, registration_number)
+        `)
+        .order('assigned_at', { ascending: false });
+        
+      if (data) setAssignments(data);
+      setLoading(false);
+    }
+    loadAudit();
+  }, []);
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter(a => {
+      const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
       const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;
-      const matchesSearch = workerInfo?.full_name?.toLowerCase().includes(search.toLowerCase());
-      return matchesSearch;
+      
+      const matchesSearch = searchTerm === '' || 
+        workerInfo?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        epiInfo?.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        epiInfo?.tracking_code?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+      let matchesDate = true;
+      const assignmentDate = parseISO(a.assigned_at);
+      
+      if (startDate) {
+        matchesDate = matchesDate && isAfter(assignmentDate, startOfDay(parseISO(startDate)));
+      }
+      if (endDate) {
+        matchesDate = matchesDate && isBefore(assignmentDate, endOfDay(parseISO(endDate)));
+      }
+      
+      return matchesSearch && matchesDate;
     });
-  }, [assignments, search]);
+  }, [assignments, searchTerm, startDate, endDate]);
 
   const handleExportCSV = () => {
     const csvData = filteredAssignments.map(a => {
@@ -39,6 +89,8 @@ export function Audit() {
         'CA EPI': epiInfo?.ca_number,
         'Código Rastreio': epiInfo?.tracking_code,
         'Condição Devolução': a.condition_on_return || 'N/A',
+        'Score Biometria (%)': a.biometric_match_score ? (a.biometric_match_score * 100).toFixed(2) : 'N/A',
+        'Liveness (Prova de Vida)': a.liveness_verified ? 'Sim' : 'Não/N/A',
         'Link PDF NR-6': a.generated_pdf_url || 'Pendente'
       };
     });
@@ -55,44 +107,85 @@ export function Audit() {
   };
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      <div className="flex justify-between items-center bg-surface p-4 rounded-xl border border-border">
+    <motion.div 
+      className="flex flex-col h-full gap-4"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface p-4 rounded-xl border border-border shadow-sm gap-4">
         <div>
           <h1 className="text-xl font-bold">Auditoria e Compliance</h1>
-          <p className="text-muted text-sm">Relatórios gerenciais e exportação de recibos NR-6</p>
+          <p className="text-muted text-sm">Histórico NR-6 e validações biométricas</p>
         </div>
-        <button 
-          onClick={handleExportCSV}
-          className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" /> Exportar CSV
-        </button>
+        
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input 
+              type="text" 
+              placeholder="Buscar colaborador ou EPI..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-background border border-border rounded-md py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-background border border-border rounded-md py-1.5 px-3 text-sm focus:outline-none focus:border-primary text-muted-foreground"
+          />
+          <span className="text-muted text-sm">até</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="bg-background border border-border rounded-md py-1.5 px-3 text-sm focus:outline-none focus:border-primary text-muted-foreground"
+          />
+          <button 
+            onClick={handleExportCSV}
+            className="bg-primary hover:bg-primary-dark text-white px-4 py-1.5 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Download className="w-4 h-4" /> Exportar CSV
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto bg-surface border border-border rounded-xl">
-        <table className="w-full text-left text-sm text-foreground min-w-[800px]">
-          <thead className="bg-surface-hover text-muted text-xs uppercase font-bold sticky top-0 z-10 border-b border-border">
+      <div className="flex-1 overflow-auto bg-surface border border-border rounded-xl shadow-sm">
+        <table className="w-full text-left text-sm text-foreground">
+          <thead className="bg-surface-hover text-muted text-xs uppercase font-bold sticky top-0 z-10 border-b border-border shadow-sm">
             <tr>
               <th className="px-4 py-3">Data</th>
               <th className="px-4 py-3">Colaborador</th>
               <th className="px-4 py-3">EPI (CA)</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Validação (Autenticidade)</th>
               <th className="px-4 py-3">Comprovante Legal</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
             {loading ? (
-              <>
-                <TableRowSkeleton columns={5} />
-                <TableRowSkeleton columns={5} />
-                <TableRowSkeleton columns={5} />
-              </>
-            ) : assignments.map((a) => {
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Carregando registros...</td></tr>
+            ) : filteredAssignments.length === 0 ? (
+              <tr><td colSpan={6} className="text-center py-8 text-muted">Nenhum registro encontrado.</td></tr>
+            ) : filteredAssignments.map((a, i) => {
               const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
               const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;
+              
+              const bioScore = a.biometric_match_score !== null && a.biometric_match_score !== undefined 
+                ? Math.round(a.biometric_match_score * 100) 
+                : null;
+                
               return (
-                <tr key={a.id} className="hover:bg-surface-hover/30 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs">{format(new Date(a.assigned_at), 'dd/MM/yyyy')}</td>
+                <motion.tr 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: Math.min(i * 0.05, 0.5) }}
+                  key={a.id} 
+                  className="hover:bg-surface-hover/30 transition-colors"
+                >
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{format(new Date(a.assigned_at), 'dd/MM/yyyy HH:mm')}</td>
                   <td className="px-4 py-3">
                     <p className="font-bold">{workerInfo?.full_name}</p>
                     <p className="text-[10px] text-muted font-mono">{workerInfo?.registration_number}</p>
@@ -109,6 +202,33 @@ export function Audit() {
                     )}
                   </td>
                   <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      {bioScore !== null ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-500">
+                          <Fingerprint className="w-3.5 h-3.5" />
+                          <span>Match: {bioScore}%</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted">
+                          <Fingerprint className="w-3.5 h-3.5 opacity-50" />
+                          <span>Biometria N/A</span>
+                        </div>
+                      )}
+                      
+                      {a.liveness_verified ? (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-500">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Prova de vida OK</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-500">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Liveness pendente</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     {a.generated_pdf_url ? (
                       <a href={a.generated_pdf_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:text-primary-dark transition-colors font-medium text-xs">
                         <FileText className="w-4 h-4" /> Ver PDF
@@ -117,12 +237,12 @@ export function Audit() {
                       <span className="text-muted text-xs flex items-center gap-1">Pendente</span>
                     )}
                   </td>
-                </tr>
+                </motion.tr>
               );
             })}
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   );
 }

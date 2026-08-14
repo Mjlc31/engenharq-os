@@ -60,7 +60,7 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
         },
         body: JSON.stringify({
           audit_selfie: imageSrc,
-          reference_photo_url: referencePhotoUrl || 'mock_reference_path'
+          reference_photo_url: referencePhotoUrl || 'unregistered'
         })
       });
 
@@ -68,49 +68,37 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
       
       if (response.ok && result.match) {
         setStatus('SUCCESS');
-        // Play success sound here if needed
         setTimeout(() => {
           onMatchSuccess(imageSrc, result.score, result.liveness);
         }, 1500);
       } else {
         setStatus('FAILED');
         setFailCount(prev => prev + 1);
-        // Play error sound/vibration
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         
         setTimeout(() => {
           if (failCount < 2) {
             setStatus('SCANNING'); // Retry automatically
           } else {
-            onMatchFailed(); // Hand over to manual fallback
+            onMatchFailed(); // Hand over to manual fallback / rejection
           }
         }, 2500);
       }
     } catch (err) {
       console.error("Biometric validation error:", err);
-      // Fallback for demo when backend is not available
-      const isSuccess = Math.random() > 0.2 || failCount >= 2; 
+      setStatus('FAILED');
+      setFailCount(prev => prev + 1);
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       
-      if (isSuccess) {
-        setStatus('SUCCESS');
-        setTimeout(() => {
-          onMatchSuccess(imageSrc, 95.4 + Math.random() * 4, true); // Mock high score
-        }, 1500);
-      } else {
-        setStatus('FAILED');
-        setFailCount(prev => prev + 1);
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        
-        setTimeout(() => {
-          if (failCount < 2) {
-            setStatus('SCANNING');
-          } else {
-            onMatchFailed();
-          }
-        }, 2500);
-      }
+      setTimeout(() => {
+        if (failCount < 2) {
+          setStatus('SCANNING');
+        } else {
+          onMatchFailed();
+        }
+      }, 2500);
     }
-  }, [failCount, onMatchSuccess, onMatchFailed]);
+  }, [failCount, referencePhotoUrl, onMatchSuccess, onMatchFailed]);
 
   const getBorderColor = () => {
     switch (status) {

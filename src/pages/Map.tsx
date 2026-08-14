@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker as LeafletMarker, Popup } from 'react-leaflet';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker as LeafletMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { supabase } from '../lib/supabase';
-import { HardHat, MapPin, Plus, X } from 'lucide-react';
+import { HardHat, MapPin, Plus, X, AlertCircle, Users, Package, Activity, Navigation2, Filter } from 'lucide-react';
 import { ConstructionSite, EpiAssignment, EpiInventory, Worker } from '../types';
+
 // Fix for default marker icons in leaflet with bundlers
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)['_getIconUrl'];
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
@@ -23,23 +25,53 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+const CustomMarkerIcon = (count: number) => {
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `
+      <div style="background-color: #ef4444; border: 2px solid white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5);">
+        ${count}
+      </div>
+    `,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+};
+
+function MapBounds({ sites }: { sites: any[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const coords = sites.filter(s => s.latitude && s.longitude).map(s => [s.latitude, s.longitude] as [number, number]);
+    if (coords.length > 0) {
+      const bounds = L.latLngBounds(coords);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [sites, map]);
+  return null;
+}
+
 export function MapTracking() {
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [assignments, setAssignments] = useState<EpiAssignment[]>([]);
   const [availableEpis, setAvailableEpis] = useState<EpiInventory[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   
+  // Panel State
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEpi, setSelectedEpi] = useState('');
   const [selectedWorker, setSelectedWorker] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    async function loadMapData() {
-      setLoading(true);
+  const loadMapData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
       // Fetch sites and active assignments, plus workers and epis for the modal
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
@@ -50,23 +82,33 @@ export function MapTracking() {
         supabase.from('workers').select('*, site:construction_sites(*)')
       ]);
 
-      if (sitesData.error) console.error(sitesData.error);
+      if (sitesData.error) throw sitesData.error;
+      if (assignmentsData.error) throw assignmentsData.error;
+      if (episData.error) throw episData.error;
+      if (workersData.error) throw workersData.error;
       
-      if (sitesData.data) setSites(sitesData.data);
-      if (assignmentsData.data) setAssignments(assignmentsData.data as any);
-      if (episData.data) setAvailableEpis(episData.data);
-      if (workersData.data) setAllWorkers(workersData.data);
+      setSites(sitesData.data as ConstructionSite[]);
+      setAssignments(assignmentsData.data as EpiAssignment[]);
+      setAvailableEpis(episData.data as EpiInventory[]);
+      setAllWorkers(workersData.data as Worker[]);
+    } catch (err: any) {
+      console.error('Error loading map data:', err);
+      setError('Falha ao carregar dados do mapa. Verifique a conexão.');
+    } finally {
       setLoading(false);
     }
-    loadMapData();
   }, []);
+
+  useEffect(() => {
+    loadMapData();
+  }, [loadMapData]);
 
   // Process data to group EPIs by site
   const siteData = useMemo(() => {
     return sites.map(site => {
-      // Find workers at this site
-      const workersAtSite = assignments.map(a => a.worker).filter(w => w?.current_site_id === site.id);
-      const workerIds = workersAtSite.map(w => w?.id);
+      // Find all workers at this site
+      const workersAtSite = allWorkers.filter(w => w.current_site_id === site.id);
+      const workerIds = workersAtSite.map(w => w.id);
       
       // Find EPIs assigned to these workers
       const episAtSite = assignments.filter(a => workerIds.includes(a.worker_id));
@@ -78,10 +120,12 @@ export function MapTracking() {
 
       return {
         ...site,
-        epis: filteredEpis
+        epis: filteredEpis,
+        totalWorkers: workersAtSite.length,
+        activeEpis: episAtSite.length
       };
     }).filter(site => site.epis.length > 0 || filterCategory === 'ALL'); // Show all sites if no filter, otherwise only sites with matching EPIs
-  }, [sites, assignments, filterCategory]);
+  }, [sites, assignments, filterCategory, allWorkers]);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -112,9 +156,7 @@ export function MapTracking() {
       setIsModalOpen(false);
       setSelectedEpi('');
       setSelectedWorker('');
-      // Simple reload by simulating unmount/mount logic
-      const btn = document.getElementById('reload-map');
-      if (btn) btn.click();
+      await loadMapData();
       
     } catch (err) {
       console.error(err);
@@ -123,94 +165,176 @@ export function MapTracking() {
     }
   };
 
+  const selectedSiteInfo = useMemo(() => {
+    return siteData.find(s => s.id === selectedSiteId);
+  }, [siteData, selectedSiteId]);
+
   return (
     <div className="flex flex-col h-full space-y-4 relative">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Live Tracking Map</h1>
-          <p className="text-muted mt-1">Geolocate active PPE allocations across construction sites.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Mapa Operacional</h1>
+          <p className="text-muted mt-1">Visão em tempo real das obras e distribuição de equipamentos.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-muted">Filter Category:</label>
-          <select 
-            value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
-            className="bg-surface border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary"
-          >
-            <option value="ALL">All Equipment</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted" />
+            <select 
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
+              className="bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="ALL">Todos os Equipamentos</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-primary hover:bg-primary-dark text-white px-4 py-1.5 rounded-md font-bold text-sm transition-colors flex items-center gap-2"
+            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm"
           >
-            <Plus className="w-4 h-4" /> Subir EPI na Obra
+            <Plus className="w-4 h-4" /> Alocar EPI
           </button>
-          <button id="reload-map" className="hidden" onClick={() => {
-            setLoading(true);
-            setTimeout(() => {
-              // Trigger reload
-              window.location.reload();
-            }, 100);
-          }}></button>
         </div>
       </div>
 
-      <div className="flex-1 min-h-[500px] border border-border rounded-xl overflow-hidden relative bg-surface">
-        {loading && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <span className="text-primary font-medium">Loading geospatial data...</span>
-          </div>
-        )}
-        {!loading && (
-          <MapContainer 
-            center={[-9.6658, -35.7351]} 
-            zoom={12} 
-            scrollWheelZoom={true}
-            style={{ height: '100%', width: '100%', zIndex: 10 }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            />
-            {siteData.map(site => (
-              site.latitude && site.longitude && (
-                <LeafletMarker 
-                  key={site.id} 
-                  position={[site.latitude, site.longitude]}
-                  icon={customIcon}
-                >
-                  <Popup className="custom-popup">
-                    <div className="p-1 min-w-[200px]">
-                      <p className="text-xs font-bold uppercase tracking-tighter text-black">{site.name}</p>
-                      <p className="text-xs text-red-600 font-mono mb-2">{site.epis.length} EPIs ativos</p>
-                      
-                      <div className="space-y-1 max-h-32 overflow-y-auto mt-2 border-t border-gray-200 pt-1">
-                        {site.epis.length === 0 ? (
-                          <p className="text-[10px] text-gray-500">Nenhum EPI filtrado.</p>
-                        ) : (
-                          site.epis.map(a => (
-                            <div key={a.id} className="flex justify-between items-center text-[10px] font-mono gap-4">
-                              <span className="text-gray-600 font-bold">{a.epi?.tracking_code}</span>
-                              <span className="text-gray-800 truncate max-w-[100px]" title={a.worker?.full_name}>{a.worker?.full_name}</span>
-                            </div>
-                          ))
-                        )}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg">
+          <AlertCircle className="shrink-0 w-5 h-5" />
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
+
+      <div className="flex flex-1 gap-4 overflow-hidden h-[calc(100vh-140px)] min-h-[500px]">
+        {/* Main Map Area */}
+        <div className="flex-1 border border-border rounded-xl overflow-hidden relative bg-surface shadow-md">
+          {loading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-primary font-medium">Carregando dados geoespaciais...</span>
+              </div>
+            </div>
+          )}
+          {!loading && (
+            <MapContainer 
+              center={[-9.6658, -35.7351]} 
+              zoom={12} 
+              scrollWheelZoom={true}
+              style={{ height: '100%', width: '100%', zIndex: 10 }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              />
+              <MapBounds sites={siteData} />
+              {siteData.map(site => (
+                site.latitude && site.longitude && (
+                  <LeafletMarker 
+                    key={site.id} 
+                    position={[site.latitude, site.longitude]}
+                    icon={CustomMarkerIcon(site.epis.length)}
+                    eventHandlers={{
+                      click: () => {
+                        setSelectedSiteId(site.id);
+                      },
+                    }}
+                  >
+                  </LeafletMarker>
+                )
+              ))}
+            </MapContainer>
+          )}
+        </div>
+
+        {/* Side Panel for Site Details */}
+        {selectedSiteId && selectedSiteInfo && (
+          <div className="w-80 lg:w-96 bg-surface border border-border rounded-xl shadow-lg flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-300">
+            <div className="p-4 border-b border-border bg-surface-hover/50 flex justify-between items-start">
+              <div className="flex gap-3 items-start">
+                <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0 mt-1">
+                  <HardHat className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-foreground leading-tight">{selectedSiteInfo.name}</h2>
+                  <p className="text-xs text-muted mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> Maceió, AL
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedSiteId(null)}
+                className="text-muted hover:text-red-500 transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-px bg-border border-b border-border">
+              <div className="bg-surface p-4 flex flex-col items-center justify-center">
+                <div className="flex items-center gap-2 text-muted mb-1">
+                  <Users className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Trabalhadores</span>
+                </div>
+                <span className="text-2xl font-bold text-foreground">{selectedSiteInfo.totalWorkers}</span>
+              </div>
+              <div className="bg-surface p-4 flex flex-col items-center justify-center">
+                <div className="flex items-center gap-2 text-primary mb-1">
+                  <Activity className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">EPIs Ativos</span>
+                </div>
+                <span className="text-2xl font-bold text-primary">{selectedSiteInfo.activeEpis}</span>
+              </div>
+            </div>
+
+            <div className="p-4 bg-surface flex-1 overflow-y-auto">
+              <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Package className="w-4 h-4" /> Equipamentos Alocados
+              </h3>
+              
+              <div className="space-y-2">
+                {selectedSiteInfo.epis.length === 0 ? (
+                  <p className="text-sm text-zinc-500 italic py-4 text-center border border-dashed border-zinc-800 rounded-lg">
+                    Nenhum equipamento correspondente aos filtros atuais nesta obra.
+                  </p>
+                ) : (
+                  selectedSiteInfo.epis.map(a => (
+                    <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-sm text-foreground">{a.epi?.category}</span>
+                        <span className="text-[10px] bg-surface-hover text-muted px-2 py-0.5 rounded font-mono border border-border">
+                          {a.epi?.tracking_code}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted">
+                        <Users className="w-3 h-3" />
+                        <span className="truncate" title={a.worker?.full_name}>{a.worker?.full_name}</span>
                       </div>
                     </div>
-                  </Popup>
-                </LeafletMarker>
-              )
-            ))}
-          </MapContainer>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-border bg-background">
+               <button 
+                 onClick={() => {
+                   setSelectedSiteId(null);
+                   setIsModalOpen(true);
+                 }}
+                 className="w-full bg-surface-hover hover:bg-border text-foreground font-medium py-2 rounded-lg text-sm transition-colors border border-border flex items-center justify-center gap-2"
+               >
+                 <Plus className="w-4 h-4" /> Adicionar EPI nesta obra
+               </button>
+            </div>
+          </div>
         )}
       </div>
 
       {/* Modal / Pop up de cadastro de EPI no Mapa */}
       {isModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
               <h3 className="font-bold text-foreground">Subir EPI no Mapa</h3>
@@ -230,7 +354,7 @@ export function MapTracking() {
                   <option value="">-- Escolha um colaborador --</option>
                   {allWorkers.map(w => (
                     <option key={w.id} value={w.id}>
-                      {w.full_name} • {(w as any).site?.name || 'Não alocado'}
+                      {w.full_name} • {w.site?.name || 'Não alocado'}
                     </option>
                   ))}
                 </select>

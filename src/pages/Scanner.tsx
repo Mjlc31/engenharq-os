@@ -1,33 +1,86 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import SignatureCanvas from 'react-signature-canvas';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
-import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
-import { uploadToStorage } from '../lib/storage';
-import { User, Package, AlertCircle, X, Check } from 'lucide-react';
+import { User, Package, CheckCircle2, AlertCircle, X, PenTool, Check, ScanFace, MapPin } from 'lucide-react';
 import { BiometricScanner } from '../components/BiometricScanner';
-import { SuccessView } from '../components/scanner/SuccessView';
-import { QRCodeScanner } from '../components/scanner/QRCodeScanner';
-import { SignaturePad } from '../components/scanner/SignaturePad';
-import { WorkerMap } from '../components/scanner/WorkerMap';
+import { Worker, EpiInventory } from '../types';
+import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icons
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)['_getIconUrl'];
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'SIGNATURE' | 'SUCCESS';
 
 export function Scanner() {
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
-  const [worker, setWorker] = useState<any>(null);
-  const [epis, setEpis] = useState<any[]>([]);
+  const [worker, setWorker] = useState<Worker | null>(null);
+  const [epis, setEpis] = useState<EpiInventory[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [biometricsData, setBiometricsData] = useState<{selfieUrl: string, score: number, liveness: boolean} | null>(null);
   
   const sigCanvas = useRef<SignatureCanvas>(null);
+  
+  const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | 'EPI' | null>(null);
+  const [manualInputValue, setManualInputValue] = useState('');
+
+  // Clean up scanner when component unmounts
+  useEffect(() => {
+    return () => {
+      const el = document.getElementById('qr-reader');
+      if (el) el.innerHTML = '';
+    };
+  }, []);
+
+  // Initialize scanner when step changes
+  useEffect(() => {
+    if ((step === 'SCAN_WORKER' || step === 'SCAN_EPI') && !manualInputOpen) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { 
+          fps: 10, 
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdgePercentage = 0.7; // 70% of the smallest edge
+            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+            const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+            return {
+                width: qrboxSize,
+                height: qrboxSize
+            };
+          },
+          videoConstraints: {
+            facingMode: "environment" // Always use back camera on mobile
+          }
+        },
+        false
+      );
+      
+      scanner.render(onScanSuccess, onScanError);
+      
+      return () => {
+        scanner.clear().catch(console.error);
+      };
+    }
+  }, [step, manualInputOpen]);
 
   const onScanSuccess = async (decodedText: string) => {
     setError('');
     setLoading(true);
+    setManualInputOpen(null);
+    setManualInputValue('');
     
     if (step === 'SCAN_WORKER') {
+      // Find worker by CPF or Registration (simulated scan output: "CPF:12345678900" or just ID)
       const searchTerm = decodedText.replace('CPF:', '').replace('MAT:', '').trim();
       let { data, error } = await supabase
         .from('workers')
@@ -42,12 +95,13 @@ export function Scanner() {
       }
         
       if (data) {
-        setWorker(data);
+        setWorker(data as any);
         setStep('SCAN_EPI');
       } else {
         setError('Colaborador não encontrado.');
       }
     } else if (step === 'SCAN_EPI') {
+      // Find EPI by tracking code
       const searchTerm = decodedText.trim();
       let { data, error } = await supabase
         .from('epi_inventory')
@@ -68,6 +122,7 @@ export function Scanner() {
           setError('EPI já escaneado nesta ficha.');
         } else {
           setEpis(prev => [...prev, data]);
+          // Não avança o step automaticamente, permitindo escanear mais
         }
       } else {
         setError('EPI não encontrado.');
@@ -77,8 +132,109 @@ export function Scanner() {
     setLoading(false);
   };
 
+  const onScanError = (_err: string) => {
+    // Ignore errors as they happen constantly during scanning until a QR code is matched
+  };
+
+  const handleManualWorker = async () => {
+    setManualInputOpen('WORKER');
+  };
+
+  const handleManualEpi = async () => {
+    setManualInputOpen('EPI');
+  };
+
+  const submitManualInput = () => {
+    if (manualInputValue.trim()) {
+      onScanSuccess(manualInputValue.trim());
+    }
+  };
+
   const clearSignature = () => {
     sigCanvas.current?.clear();
+  };
+
+  const generatePDF = async (signatureDataUrl: string) => {
+    if (!worker) throw new Error('Worker not loaded');
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(229, 46, 45); // Red primary
+    doc.text('EngenharQ OS', 20, 20);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Ficha de Entrega de Equipamento de Proteção Individual (EPI)', 20, 30);
+    
+    // Worker Info
+    doc.setFontSize(11);
+    doc.text(`Colaborador: ${worker.full_name}`, 20, 45);
+    doc.text(`CPF: ${worker.cpf}`, 20, 52);
+    doc.text(`Matrícula: ${worker.registration_number}`, 20, 59);
+    doc.text(`Obra Alocada: ${worker.site?.name || 'Não alocado'}`, 20, 66);
+    
+    // EPI Info
+    doc.text('Equipamentos Entregues:', 20, 80);
+    
+    let y = 87;
+    epis.forEach((item, idx) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(`${idx + 1}. ${item.category} (CA: ${item.ca_number}) - Cód: ${item.tracking_code}`, 20, y);
+      y += 7;
+    });
+    
+    const today = new Date();
+    doc.text(`Data de Entrega: ${today.toLocaleDateString()}`, 20, y + 10);
+    
+    // Legal term
+    const termText = `Declaro ter recebido os EPIs acima descritos, comprometendo-me a usá-los exclusivamente para a finalidade a que se destinam e zelar pela sua conservação, sob pena de responder por danos causados aos equipamentos, além de me submeter às normas de segurança da empresa.`;
+    const splitTerm = doc.splitTextToSize(termText, 170);
+    doc.text(splitTerm, 20, y + 25);
+    
+    // Signature
+    doc.addImage(signatureDataUrl, 'PNG', 60, y + 55, 90, 30);
+    doc.line(60, y + 85, 150, y + 85);
+    doc.text('Assinatura do Colaborador', 80, y + 90);
+    
+    // Return base64 string
+    return doc.output('datauristring');
+  };
+
+  const dataUrlToBlob = (dataUrl: string) => {
+    const arr = dataUrl.split(',');
+    const match = arr[0].match(/:(.*?);/);
+    if (!match) throw new Error("Invalid Data URL");
+    const mime = match[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
+    try {
+      const blob = dataUrlToBlob(dataUrl);
+      const { data, error } = await supabase.storage.from(bucket).upload(path, blob, {
+        contentType: blob.type,
+        upsert: true
+      });
+      if (error) {
+         if (error.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
+         throw error;
+      }
+      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
+      return publicUrlData.publicUrl;
+    } catch (e) {
+      console.warn(`Storage upload failed for ${path}`, e);
+      throw e;
+    }
   };
 
   const handleConfirmSignature = async () => {
@@ -86,20 +242,26 @@ export function Scanner() {
       setError('Por favor, colete a assinatura do colaborador.');
       return;
     }
+    if (!worker) {
+      setError('Dados do colaborador não encontrados.');
+      return;
+    }
     
     setLoading(true);
     try {
       const signatureDataUrl = sigCanvas.current!.getTrimmedCanvas().toDataURL('image/png');
-      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, signatureDataUrl);
+      const pdfBase64 = await generatePDF(signatureDataUrl);
       
       const timestamp = new Date().getTime();
       
+      // Upload files to storage (parallel)
       const [signatureUrl, pdfUrl, selfieUrl] = await Promise.all([
         uploadToStorage(signatureDataUrl, 'epi-receipts', `signatures/${worker.id}_${timestamp}.png`),
         uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`),
         biometricsData?.selfieUrl ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
       ]);
       
+      // Save assignment for multiple EPIs
       const assignments = epis.map(item => {
         const expectedReturn = new Date();
         expectedReturn.setDate(expectedReturn.getDate() + (item.recommended_lifespan_days || 180));
@@ -109,7 +271,6 @@ export function Scanner() {
           worker_id: worker.id,
           expected_return_date: expectedReturn.toISOString(),
           digital_signature_url: signatureUrl,
-          generated_pdf_url: pdfUrl,
           audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,
           biometric_match_score: biometricsData?.score,
           liveness_verified: biometricsData?.liveness
@@ -118,16 +279,19 @@ export function Scanner() {
 
       let { error: assignError } = await supabase.from('epi_assignments').insert(assignments);
       
+
+      
       if (assignError) throw assignError;
       
+      // Update EPI status in bulk
       const epiIds = epis.map(e => e.id);
       const { error: updateError } = await supabase.from('epi_inventory')
         .update({ status: 'IN_USE' })
         .in('id', epiIds);
       
       setStep('SUCCESS');
-    } catch (err: any) {
-      setError(`Erro ao confirmar: ${err.message}`);
+    } catch (err: unknown) {
+      setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
     }
     setLoading(false);
   };
@@ -141,7 +305,7 @@ export function Scanner() {
   };
 
   return (
-    <div className="w-[95%] sm:w-full max-w-lg mx-auto space-y-6 pb-8">
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Almoxarifado</h1>
@@ -198,13 +362,66 @@ export function Scanner() {
       <div className="bg-surface border border-border rounded-xl overflow-hidden p-6">
         {(step === 'SCAN_WORKER' || step === 'SCAN_EPI') && (
           <div className="space-y-6">
-            <QRCodeScanner
-              key={step} // ensures a fresh scanner instance per step
-              onScanSuccess={onScanSuccess}
-              title={step === 'SCAN_WORKER' ? 'Escaneie o Crachá do Colaborador' : 'Escaneie o QR Code do EPI'}
-              subtitle="Aponte a câmera para o QR code ou código de barras."
-              manualInputLabel={step === 'SCAN_WORKER' ? 'Digite o CPF ou ID (Ex: MAT123)' : 'Digite o Tracking Code (Ex: CAP01)'}
-            />
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
+                <ScanFace className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">
+                {step === 'SCAN_WORKER' ? 'Identificação do Trabalhador' : 'Registro de Equipamento'}
+              </h2>
+              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">
+                {step === 'SCAN_WORKER' 
+                  ? 'Aponte a câmera para o QR Code no crachá do colaborador.' 
+                  : 'Aponte a câmera para o QR Code fixado no EPI.'}
+              </p>
+            </div>
+            
+            {manualInputOpen ? (
+              <div className="mx-auto w-full max-w-sm p-5 bg-background rounded-xl border border-border shadow-lg animate-in fade-in zoom-in-95 duration-200">
+                <label className="block text-xs font-bold uppercase tracking-wider mb-3 text-muted">
+                  {manualInputOpen === 'WORKER' ? 'Entrada Manual - Trabalhador' : 'Entrada Manual - Equipamento'}
+                </label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={manualInputValue}
+                    onChange={(e) => setManualInputValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
+                    className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                    placeholder={manualInputOpen === 'WORKER' ? 'CPF ou Matrícula...' : 'Código de Rastreio...'}
+                    autoFocus
+                  />
+                  <button 
+                    onClick={submitManualInput}
+                    className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                  >
+                    OK
+                  </button>
+                  <button 
+                    onClick={() => { setManualInputOpen(null); setManualInputValue(''); }}
+                    className="bg-surface-hover hover:bg-border text-muted hover:text-foreground px-4 py-3 rounded-lg text-sm transition-colors border border-border"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto w-full max-w-sm rounded-xl overflow-hidden border-[3px] border-primary/50 relative shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+                <div className="absolute inset-0 border-2 border-primary/20 pointer-events-none z-10 rounded-xl m-4 border-dashed animate-pulse"></div>
+                <div id="qr-reader" className="w-full bg-black/50 backdrop-blur-sm min-h-[250px]"></div>
+              </div>
+            )}
+            
+            {!manualInputOpen && (
+              <div className="text-center">
+                <button 
+                  onClick={step === 'SCAN_WORKER' ? handleManualWorker : handleManualEpi}
+                  className="text-primary hover:text-primary-dark text-sm font-medium underline underline-offset-4"
+                >
+                  Entrada Manual (Simulação)
+                </button>
+              </div>
+            )}
 
             {step === 'SCAN_EPI' && epis.length > 0 && (
               <div className="mt-6 border-t border-border pt-6">
@@ -250,9 +467,8 @@ export function Scanner() {
               setStep('SIGNATURE');
             }}
             onMatchFailed={() => {
-              // Auto-fallback for demo
-              setBiometricsData({ selfieUrl: 'FALLBACK_MANUAL', score: 0, liveness: false });
-              setStep('SIGNATURE');
+              setError(`Validação biométrica REJEITADA para o colaborador ${worker.full_name}. Rosto não cadastrado ou sem correspondência facial.`);
+              setStep('SCAN_WORKER');
             }}
           />
         )}
@@ -284,14 +500,50 @@ export function Scanner() {
             </div>
 
             {worker.site && worker.site.latitude && worker.site.longitude && (
-              <WorkerMap 
-                siteName={worker.site.name}
-                latitude={worker.site.latitude}
-                longitude={worker.site.longitude}
-              />
+              <div className="border border-border rounded-lg bg-background overflow-hidden relative">
+                <div className="p-3 border-b border-border flex items-center gap-2 bg-surface-hover">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold text-muted uppercase tracking-wider">Local de Alocação: {worker.site.name}</span>
+                </div>
+                <div className="h-40 w-full bg-surface">
+                  <MapContainer 
+                    center={[worker.site.latitude, worker.site.longitude]} 
+                    zoom={15} 
+                    scrollWheelZoom={false}
+                    zoomControl={false}
+                    dragging={false}
+                    style={{ height: '100%', width: '100%', zIndex: 1 }}
+                  >
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    />
+                    <LeafletMarker position={[worker.site.latitude, worker.site.longitude]} />
+                  </MapContainer>
+                </div>
+              </div>
             )}
             
-            <SignaturePad ref={sigCanvas} onClear={clearSignature} />
+            <div className="border border-border rounded-lg bg-background overflow-hidden relative">
+              <div className="p-3 border-b border-border flex justify-between items-center bg-surface-hover">
+                <div className="flex items-center gap-2">
+                  <PenTool className="w-4 h-4 text-muted" />
+                  <span className="text-xs font-bold text-muted uppercase tracking-wider">Ficha de EPI • Assinatura Legal</span>
+                </div>
+                <button onClick={clearSignature} className="text-xs text-primary hover:underline">Limpar</button>
+              </div>
+              
+              <SignatureCanvas 
+                ref={sigCanvas} 
+                canvasProps={{
+                  className: 'w-full h-48 cursor-crosshair touch-none',
+                }}
+                penColor="#f4f4f5"
+                backgroundColor="#121212"
+              />
+              <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
+                <span className="text-zinc-600 font-medium text-xs select-none">Assine aqui</span>
+              </div>
+            </div>
 
             <div className="text-[10px] text-muted leading-relaxed">
               Ao assinar, o colaborador declara ter recebido o EPI acima descrito, comprometendo-se a usá-lo exclusivamente para a finalidade a que se destina e zelar pela sua conservação. Uma cópia em PDF (NR-6) será gerada automaticamente.
@@ -307,7 +559,25 @@ export function Scanner() {
           </div>
         )}
 
-        {step === 'SUCCESS' && <SuccessView onNext={resetFlow} />}
+        {step === 'SUCCESS' && (
+          <div className="text-center py-12 space-y-6">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground">Entrega Registrada</h2>
+            <p className="text-muted max-w-sm mx-auto">
+              A Ficha de EPI foi gerada digitalmente com a assinatura do colaborador e vinculada ao banco de dados em conformidade com a NR-6.
+            </p>
+            <div className="pt-8">
+              <button
+                onClick={resetFlow}
+                className="bg-surface-hover border border-border hover:bg-border text-foreground font-medium py-3 px-8 rounded-lg transition-colors"
+              >
+                Próximo Atendimento
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

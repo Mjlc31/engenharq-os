@@ -16,7 +16,7 @@ export function Layout() {
     { name: 'Mapa de Ativos', href: '/map', icon: MapPin },
     { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat },
     { name: 'Colaboradores', href: '/workers', icon: Users },
-    { name: 'Obras & Locais', href: '/sites', icon: Building2 },
+    { name: 'Empresa / Obras', href: '/sites', icon: Building2 },
     { name: 'Imprimir QR Codes', href: '/tags', icon: Printer },
     { name: 'Auditoria NR-6', href: '/audit', icon: FileBarChart },
   ];
@@ -24,16 +24,16 @@ export function Layout() {
   return (
     <div className="flex h-screen w-full flex-col bg-background font-sans text-foreground overflow-hidden">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-8">
-        <div className="flex items-center gap-3">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 md:px-8 relative z-20">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-background font-black">
             EQ
           </div>
           <h1 className="text-lg font-bold tracking-tight uppercase">
-            Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden sm:inline-block">v2.4.0</span>
+            Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden lg:inline-block">v2.4.0</span>
           </h1>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
           <div className="hidden md:flex items-center gap-2">
             <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></div>
             <span className="text-xs text-muted uppercase tracking-widest font-medium">Systems Operational</span>
@@ -57,10 +57,18 @@ export function Layout() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Backdrop */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+          />
+        )}
+
         {/* Sidebar */}
         <aside className={cn(
-          "flex w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-40 h-full transition-transform duration-300 ease-in-out",
+          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-40 h-full transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}>
           <nav className="flex flex-col gap-1">
@@ -95,7 +103,7 @@ export function Layout() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex flex-1 flex-col p-6 overflow-auto gap-4">
+        <main className="flex flex-1 flex-col p-4 md:p-6 overflow-auto gap-4 relative z-10">
           <Outlet />
         </main>
       </div>
