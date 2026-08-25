@@ -1,18 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Worker, ConstructionSite } from '../types';
 import Papa from 'papaparse';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useWorkers() {
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [sites, setSites] = useState<ConstructionSite[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isLoading: queryLoading } = useQuery({
+    queryKey: ['workers-sites'],
+    queryFn: async () => {
       const [workersData, sitesData] = await Promise.all([
         supabase.from('workers').select('*, site:construction_sites(*)').order('created_at', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name')
@@ -21,30 +20,31 @@ export function useWorkers() {
       if (workersData.error) throw workersData.error;
       if (sitesData.error) throw sitesData.error;
 
-      setWorkers((workersData.data as Worker[]) || []);
-      setSites((sitesData.data as ConstructionSite[]) || []);
-    } catch (err: unknown) {
-      console.error('Erro ao buscar dados:', err);
-      setError('Falha ao carregar dados dos trabalhadores.');
-    } finally {
-      setLoading(false);
+      return {
+        workers: (workersData.data as Worker[]) || [],
+        sites: (sitesData.data as ConstructionSite[]) || []
+      };
     }
-  }, []);
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const workers = data?.workers || [];
+  const sites = data?.sites || [];
 
-  const addWorker = async (workerData: Partial<Worker>) => {
-    setError(null);
-    try {
+  const addWorkerMutation = useMutation({
+    mutationFn: async (workerData: Partial<Worker>) => {
       const { error: insertError } = await supabase.from('workers').insert([workerData as any]);
       if (insertError) throw insertError;
-      await loadData();
-    } catch (err: unknown) {
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workers-sites'] }),
+    onError: (err: any) => {
       console.error('Erro ao criar trabalhador:', err);
       throw new Error('Falha ao registrar trabalhador. Verifique os dados e tente novamente.');
     }
+  });
+
+  const addWorker = async (workerData: Partial<Worker>) => {
+    setError(null);
+    return addWorkerMutation.mutateAsync(workerData);
   };
 
   const importCSV = (file: File) => {
@@ -54,7 +54,7 @@ export function useWorkers() {
         skipEmptyLines: true,
         complete: async (results) => {
           try {
-            setLoading(true);
+            setIsImporting(true);
             const newWorkers = results.data
               .map((row: Record<string, string>) => ({
                 full_name: row['Nome Completo'] || row['Nome'] || row['full_name'],
@@ -70,7 +70,7 @@ export function useWorkers() {
             const { error: insertError } = await supabase.from('workers').insert(newWorkers);
             if (insertError) throw insertError;
             
-            await loadData();
+            await queryClient.invalidateQueries({ queryKey: ['workers-sites'] });
             resolve();
           } catch (err: unknown) {
             console.error('Erro ao importar CSV:', err);
@@ -78,7 +78,7 @@ export function useWorkers() {
             setError(msg);
             reject(err);
           } finally {
-            setLoading(false);
+            setIsImporting(false);
           }
         },
         error: (err) => {
@@ -108,22 +108,27 @@ export function useWorkers() {
     document.body.removeChild(link);
   };
 
-  const deleteWorker = async (id: string) => {
-    setError(null);
-    try {
+  const deleteWorkerMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error: deleteError } = await supabase.from('workers').delete().eq('id', id);
       if (deleteError) throw deleteError;
-      await loadData();
-    } catch (err: unknown) {
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workers-sites'] }),
+    onError: (err: any) => {
       console.error('Erro ao deletar trabalhador:', err);
       throw new Error('Falha ao remover trabalhador. Verifique dependências.');
     }
+  });
+
+  const deleteWorker = async (id: string) => {
+    setError(null);
+    return deleteWorkerMutation.mutateAsync(id);
   };
 
   return {
     workers,
     sites,
-    loading,
+    loading: queryLoading || isImporting,
     error,
     setError,
     addWorker,

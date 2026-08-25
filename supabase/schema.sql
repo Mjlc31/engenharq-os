@@ -149,7 +149,7 @@ CREATE INDEX idx_epi_inventory_catalog_id ON public.epi_inventory(epi_catalog_id
 CREATE INDEX idx_epi_inventory_status ON public.epi_inventory(status);
 CREATE INDEX idx_epi_assignments_worker_id ON public.epi_assignments(worker_id);
 CREATE INDEX idx_epi_assignments_epi_id ON public.epi_assignments(epi_id);
-CREATE INDEX idx_epi_assignments_returned_at ON public.epi_assignments(returned_at);
+CREATE INDEX idx_epi_assignments_active ON public.epi_assignments(epi_id) WHERE returned_at IS NULL;
 CREATE INDEX idx_inventory_transactions_epi_id ON public.inventory_transactions(epi_id);
 
 -- 6. Enable Row Level Security (RLS)
@@ -164,48 +164,50 @@ ALTER TABLE public.inventory_transactions ENABLE ROW LEVEL SECURITY;
 
 -- 7. Create Fast RLS Policies using JWT Metadata (Avoid N+1)
 -- Users
-CREATE POLICY "Users can view all users" ON public.users FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can view all users" ON public.users FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 -- Sites
-CREATE POLICY "Authenticated users can view sites" ON public.construction_sites FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can insert sites" ON public.construction_sites FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can update sites" ON public.construction_sites FOR UPDATE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can delete sites" ON public.construction_sites FOR DELETE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view sites" ON public.construction_sites FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can insert sites" ON public.construction_sites FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update sites" ON public.construction_sites FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete sites" ON public.construction_sites FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Workers
-CREATE POLICY "Authenticated users can view workers" ON public.workers FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can insert workers" ON public.workers FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can update workers" ON public.workers FOR UPDATE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can delete workers" ON public.workers FOR DELETE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view workers" ON public.workers FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can insert workers" ON public.workers FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update workers" ON public.workers FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete workers" ON public.workers FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Worker Roles
-CREATE POLICY "Authenticated users can view worker roles" ON public.worker_roles FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can manage worker roles" ON public.worker_roles FOR ALL USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view worker roles" ON public.worker_roles FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can manage worker roles" ON public.worker_roles FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Catalog
-CREATE POLICY "Authenticated users can view EPI catalog" ON public.epi_catalog FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can manage EPI catalog" ON public.epi_catalog FOR ALL USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view EPI catalog" ON public.epi_catalog FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can manage EPI catalog" ON public.epi_catalog FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Inventory
-CREATE POLICY "Authenticated users can view EPIs" ON public.epi_inventory FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can insert EPIs" ON public.epi_inventory FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can update EPIs" ON public.epi_inventory FOR UPDATE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can delete EPIs" ON public.epi_inventory FOR DELETE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view EPIs" ON public.epi_inventory FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can insert EPIs" ON public.epi_inventory FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update EPIs" ON public.epi_inventory FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete EPIs" ON public.epi_inventory FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Assignments
-CREATE POLICY "Authenticated users can view assignments" ON public.epi_assignments FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can insert assignments" ON public.epi_assignments FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can update assignments" ON public.epi_assignments FOR UPDATE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can delete assignments" ON public.epi_assignments FOR DELETE USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view assignments" ON public.epi_assignments FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can insert assignments" ON public.epi_assignments FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update assignments" ON public.epi_assignments FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete assignments" ON public.epi_assignments FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Inventory Transactions
-CREATE POLICY "Authenticated users can view inventory transactions" ON public.inventory_transactions FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Admins and Engineers can insert inventory transactions" ON public.inventory_transactions FOR INSERT WITH CHECK (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
-CREATE POLICY "Admins and Engineers can update/delete inventory transactions" ON public.inventory_transactions FOR ALL USING (auth.jwt() -> 'user_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER'));
+CREATE POLICY "Authenticated users can view inventory transactions" ON public.inventory_transactions FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins and Engineers can insert inventory transactions" ON public.inventory_transactions FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update/delete inventory transactions" ON public.inventory_transactions FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- 8. Create a trigger to automatically create a user record when auth.users is created
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+CREATE SCHEMA IF NOT EXISTS private;
+
+CREATE OR REPLACE FUNCTION private.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.users (id, email, full_name, role)
@@ -213,7 +215,7 @@ BEGIN
     new.id, 
     new.email, 
     COALESCE(new.raw_user_meta_data->>'full_name', 'Usuário ' || split_part(new.email, '@', 1)), 
-    COALESCE((new.raw_user_meta_data->>'role')::user_role, 'SITE_MANAGER')
+    'SITE_MANAGER'
   );
   RETURN new;
 END;
@@ -222,7 +224,75 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+  FOR EACH ROW EXECUTE PROCEDURE private.handle_new_user();
 
 -- 9. Insert initial mock Construction Sites
 -- (Can be handled externally or omitted for production)
+
+-- 10. Dashboard Alerts RPC
+CREATE OR REPLACE FUNCTION public.get_dashboard_alerts()
+RETURNS TABLE (
+  assignment_id UUID,
+  epi_id UUID,
+  worker_id UUID,
+  worker_name TEXT,
+  epi_name TEXT,
+  ca_number TEXT,
+  alert_type TEXT,
+  days_remaining INTEGER
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ea.id AS assignment_id,
+    ea.epi_id,
+    ea.worker_id,
+    w.full_name AS worker_name,
+    ec.name AS epi_name,
+    ei.ca_number,
+    'CA_EXPIRATION' AS alert_type,
+    (ei.ca_expiration_date - CURRENT_DATE)::INTEGER AS days_remaining
+  FROM public.epi_assignments ea
+  JOIN public.epi_inventory ei ON ea.epi_id = ei.id
+  JOIN public.epi_catalog ec ON ei.epi_catalog_id = ec.id
+  JOIN public.workers w ON ea.worker_id = w.id
+  WHERE ea.returned_at IS NULL 
+    AND ei.ca_expiration_date IS NOT NULL 
+    AND (ei.ca_expiration_date - CURRENT_DATE) <= 30
+
+  UNION ALL
+
+  SELECT 
+    ea.id AS assignment_id,
+    ea.epi_id,
+    ea.worker_id,
+    w.full_name AS worker_name,
+    ec.name AS epi_name,
+    ei.ca_number,
+    'LIFESPAN_EXPIRATION' AS alert_type,
+    ((ea.assigned_at::DATE + ei.recommended_lifespan_days) - CURRENT_DATE)::INTEGER AS days_remaining
+  FROM public.epi_assignments ea
+  JOIN public.epi_inventory ei ON ea.epi_id = ei.id
+  JOIN public.epi_catalog ec ON ei.epi_catalog_id = ec.id
+  JOIN public.workers w ON ea.worker_id = w.id
+  WHERE ea.returned_at IS NULL 
+    AND ei.recommended_lifespan_days IS NOT NULL 
+    AND ((ea.assigned_at::DATE + ei.recommended_lifespan_days) - CURRENT_DATE) <= 5;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 11. Trigger to log inventory transactions automatically
+CREATE OR REPLACE FUNCTION public.log_inventory_transaction()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status) THEN
+    INSERT INTO public.inventory_transactions (epi_id, transaction_type, previous_status, new_status, created_by)
+    VALUES (NEW.id, 'STATUS_CHANGE', OLD.status, NEW.status, auth.uid());
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_epi_status_change
+  AFTER UPDATE ON public.epi_inventory
+  FOR EACH ROW EXECUTE PROCEDURE public.log_inventory_transaction();

@@ -2,16 +2,16 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Assets } from './pages/Assets';
-import { Workers } from './pages/Workers';
-import { MapTracking } from './pages/Map';
-import { Scanner } from './pages/Scanner';
-import { PrintTags } from './pages/PrintTags';
-import { Audit } from './pages/Audit';
-import { Sites } from './pages/Sites';
-import { WorkerProfile } from './pages/WorkerProfile';
+const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Assets = React.lazy(() => import('./pages/Assets').then(m => ({ default: m.Assets })));
+const Workers = React.lazy(() => import('./pages/Workers').then(m => ({ default: m.Workers })));
+const MapTracking = React.lazy(() => import('./pages/Map').then(m => ({ default: m.MapTracking })));
+const Scanner = React.lazy(() => import('./pages/Scanner').then(m => ({ default: m.Scanner })));
+const PrintTags = React.lazy(() => import('./pages/PrintTags').then(m => ({ default: m.PrintTags })));
+const Audit = React.lazy(() => import('./pages/Audit').then(m => ({ default: m.Audit })));
+const Sites = React.lazy(() => import('./pages/Sites').then(m => ({ default: m.Sites })));
+const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m => ({ default: m.WorkerProfile })));
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -27,21 +27,23 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="scanner" element={<Scanner />} />
-            <Route path="assets" element={<Assets />} />
-            <Route path="workers" element={<Workers />} />
-            <Route path="workers/:id" element={<WorkerProfile />} />
-            <Route path="sites" element={<Sites />} />
-            <Route path="map" element={<MapTracking />} />
-            <Route path="tags" element={<PrintTags />} />
-            <Route path="audit" element={<Audit />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary font-medium">Carregando...</div>}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="scanner" element={<Scanner />} />
+              <Route path="assets" element={<Assets />} />
+              <Route path="workers" element={<Workers />} />
+              <Route path="workers/:id" element={<WorkerProfile />} />
+              <Route path="sites" element={<Sites />} />
+              <Route path="map" element={<MapTracking />} />
+              <Route path="tags" element={<PrintTags />} />
+              <Route path="audit" element={<Audit />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </React.Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

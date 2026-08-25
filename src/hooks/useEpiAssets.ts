@@ -1,19 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { EpiInventory, EpiCatalog, Worker } from '../types';
 import Papa from 'papaparse';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useEpiAssets() {
-  const [epis, setEpis] = useState<EpiInventory[]>([]);
-  const [workers, setWorkers] = useState<Worker[]>([]);
-  const [catalogs, setCatalogs] = useState<EpiCatalog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const { data, isLoading: queryLoading } = useQuery({
+    queryKey: ['epi-assets'],
+    queryFn: async () => {
       const [episData, workersData, catalogsData] = await Promise.all([
         supabase.from('epi_inventory').select('*').order('created_at', { ascending: false }),
         supabase.from('workers').select('*').order('full_name', { ascending: true }),
@@ -24,20 +22,17 @@ export function useEpiAssets() {
       if (workersData.error) throw workersData.error;
       if (catalogsData.error) throw catalogsData.error;
 
-      setEpis((episData.data as EpiInventory[]) || []);
-      setWorkers((workersData.data as Worker[]) || []);
-      setCatalogs((catalogsData.data as EpiCatalog[]) || []);
-    } catch (err: unknown) {
-      console.error('Erro ao buscar dados:', err);
-      setError('Falha ao carregar dados. Tente novamente.');
-    } finally {
-      setLoading(false);
+      return {
+        epis: (episData.data as EpiInventory[]) || [],
+        workers: (workersData.data as Worker[]) || [],
+        catalogs: (catalogsData.data as EpiCatalog[]) || []
+      };
     }
-  }, []);
+  });
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const epis = data?.epis || [];
+  const workers = data?.workers || [];
+  const catalogs = data?.catalogs || [];
 
   const addEpi = async (category: string, caNumber: string) => {
     setError(null);
@@ -55,7 +50,7 @@ export function useEpiAssets() {
         { category, tracking_code, ca_number: caNumber, status: 'AVAILABLE' }
       ]);
       if (insertError) throw insertError;
-      await loadData();
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao criar EPI:', err);
       throw new Error('Falha ao registrar novo equipamento.');
@@ -73,7 +68,7 @@ export function useEpiAssets() {
       const { error: updateError } = await supabase.from('epi_inventory').update({ status: 'IN_USE' }).eq('id', epiId);
       if (updateError) throw updateError;
 
-      await loadData();
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao designar EPI:', err);
       throw new Error('Falha ao designar equipamento ao trabalhador.');
@@ -105,7 +100,7 @@ export function useEpiAssets() {
       
       if (updateEpiError) throw updateEpiError;
         
-      await loadData();
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao devolver EPI:', err);
       throw new Error('Falha ao registrar a devolução do equipamento.');
@@ -122,7 +117,7 @@ export function useEpiAssets() {
         const { error: insertError } = await supabase.from('epi_catalog').insert([payload as any]);
         if (insertError) throw insertError;
       }
-      await loadData();
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao salvar catálogo:', err);
       throw new Error('Falha ao salvar o modelo de EPI no catálogo.');
@@ -134,7 +129,7 @@ export function useEpiAssets() {
     try {
       const { error: deleteError } = await supabase.from('epi_catalog').delete().eq('id', id);
       if (deleteError) throw deleteError;
-      await loadData();
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao excluir catálogo:', err);
       throw new Error('Falha ao excluir o modelo. Pode estar em uso.');
@@ -148,7 +143,7 @@ export function useEpiAssets() {
         skipEmptyLines: true,
         complete: async (results) => {
           try {
-            setLoading(true);
+            setIsImporting(true);
             const newEpis = results.data
               .map((row: Record<string, string>) => ({
                 category: row['Categoria'] || row['category'],
@@ -168,7 +163,7 @@ export function useEpiAssets() {
             const { error: insertError } = await supabase.from('epi_inventory').insert(newEpis);
             if (insertError) throw insertError;
             
-            await loadData();
+            await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
             resolve();
           } catch (err: unknown) {
             console.error('Erro ao importar CSV:', err);
@@ -176,7 +171,7 @@ export function useEpiAssets() {
             setError(msg);
             reject(err);
           } finally {
-            setLoading(false);
+            setIsImporting(false);
           }
         },
         error: (err) => {
@@ -213,7 +208,7 @@ export function useEpiAssets() {
     epis,
     workers,
     catalogs,
-    loading,
+    loading: queryLoading || isImporting,
     error,
     setError,
     addEpi,

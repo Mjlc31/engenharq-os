@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { supabase } from '../lib/supabase';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 import { HardHat, AlertTriangle, Users, Clock, ShieldAlert, CheckCircle2, Package } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { motion } from 'motion/react';
@@ -36,116 +37,70 @@ const itemVariants = {
 };
 
 export function Dashboard() {
-  const [stats, setStats] = useState({
-    totalEPIs: 0,
-    inUse: 0,
-    maintenance: 0,
-    workers: 0,
-  });
-  const [recentMovements, setRecentMovements] = useState<DashboardMovement[]>([]);
-  const [lifespanAlerts, setLifespanAlerts] = useState<DashboardAlert[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: async () => {
+      const [
+        epiCountReq,
+        inUseReq,
+        maintenanceReq,
+        workersReq,
+        movementsReq,
+        alertsReq
+      ] = await Promise.all([
+        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).neq('status', 'DISCARDED'),
+        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'IN_USE'),
+        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
+        supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
+        supabase.from('epi_assignments')
+          .select(`
+            id,
+            assigned_at,
+            returned_at,
+            epi:epi_inventory(tracking_code, category),
+            worker:workers(full_name)
+          `)
+          .order('assigned_at', { ascending: false })
+          .limit(5),
+        supabase.from('epi_inventory')
+          .select('id, tracking_code, category, ca_expiration_date')
+          .not('ca_expiration_date', 'is', null)
+          .neq('status', 'DISCARDED')
+          .order('ca_expiration_date', { ascending: true })
+          .limit(10)
+      ]);
 
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
-        let [
-          epiCountReq,
-          inUseReq,
-          maintenanceReq,
-          workersReq,
-          movementsReq,
-          activeAssignmentsReq
-        ] = await Promise.all([
-          supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).neq('status', 'DISCARDED'),
-          supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'IN_USE'),
-          supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
-          supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
-          supabase.from('epi_assignments')
-            .select(`
-              id,
-              assigned_at,
-              returned_at,
-              epi:epi_inventory(tracking_code, category),
-              worker:workers(full_name)
-            `)
-            .order('assigned_at', { ascending: false })
-            .limit(5),
-          supabase.from('epi_assignments')
-            .select(`
-              id,
-              assigned_at,
-              expected_return_date,
-              epi:epi_inventory(tracking_code, category, ca_expiration_date),
-              worker:workers(full_name)
-            `)
-            .is('returned_at', null)
-        ]);
-
-        if (epiCountReq.error) console.error("Error fetching EPI count", epiCountReq.error);
-        
-        setStats({
+      return {
+        stats: {
           totalEPIs: epiCountReq.count || 0,
           inUse: inUseReq.count || 0,
           maintenance: maintenanceReq.count || 0,
           workers: workersReq.count || 0,
-        });
-        setRecentMovements(movementsReq.data || []);
-
-        const alerts: DashboardAlert[] = [];
-        const today = new Date();
-        const activeAssignments = activeAssignmentsReq.data;
-        
-        if (activeAssignments) {
-          for (const assignment of activeAssignments) {
-            const epiInfo = Array.isArray(assignment.epi) ? assignment.epi[0] : assignment.epi;
-            const workerInfo = Array.isArray(assignment.worker) ? assignment.worker[0] : assignment.worker;
-            
-            // Check CA Expiration
-            if (epiInfo?.ca_expiration_date) {
-              const daysToCaExp = differenceInDays(new Date(epiInfo.ca_expiration_date), today);
-              if (daysToCaExp <= 30) {
-                alerts.push({
-                  id: `ca-${assignment.id}`,
-                  type: 'CA_EXPIRATION',
-                  severity: daysToCaExp < 0 ? 'CRITICAL' : 'WARNING',
-                  message: `CA vencendo em ${daysToCaExp} dias`,
-                  epi: epiInfo,
-                  worker: workerInfo
-                });
-                continue;
-              }
-            }
-            
-            // Check Lifespan
-            if (assignment.expected_return_date) {
-              const daysToReturn = differenceInDays(new Date(assignment.expected_return_date), today);
-              if (daysToReturn <= 5) {
-                alerts.push({
-                  id: `life-${assignment.id}`,
-                  type: 'LIFESPAN',
-                  severity: daysToReturn < 0 ? 'CRITICAL' : 'WARNING',
-                  message: daysToReturn < 0 ? `Vida útil extrapolada (${Math.abs(daysToReturn)} dias)` : `Troca recomendada em ${daysToReturn} dias`,
-                  epi: epiInfo,
-                  worker: workerInfo
-                });
-              }
-            }
-          }
-        }
-        
-        alerts.sort((a, b) => (a.severity === 'CRITICAL' ? -1 : 1));
-        setLifespanAlerts(alerts);
-        
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
+        },
+        recentMovements: (movementsReq.data as DashboardMovement[]) || [],
+        lifespanAlerts: (alertsReq.data || []).map((item: any) => {
+          const expDate = new Date(item.ca_expiration_date);
+          const now = new Date();
+          const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const workerInfo = Array.isArray(item.assigned_worker) ? item.assigned_worker[0] : item.assigned_worker;
+          return {
+            id: item.id,
+            type: 'CA_EXPIRATION' as const,
+            severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
+            message: daysUntilExpiry <= 0 
+              ? `CA VENCIDO há ${Math.abs(daysUntilExpiry)} dias` 
+              : `CA vence em ${daysUntilExpiry} dias`,
+            epi: { tracking_code: item.tracking_code, category: item.category, ca_expiration_date: item.ca_expiration_date },
+            worker: workerInfo || undefined,
+          };
+        })
+      };
     }
+  });
 
-    loadDashboard();
-  }, []);
+  const stats = data?.stats || { totalEPIs: 0, inUse: 0, maintenance: 0, workers: 0 };
+  const recentMovements = data?.recentMovements || [];
+  const lifespanAlerts = data?.lifespanAlerts || [];
 
   const cards = [
     {

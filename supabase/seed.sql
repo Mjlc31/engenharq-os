@@ -31,5 +31,21 @@ VALUES
 
 -- 3. Storage buckets (If not created via dashboard)
 -- Note: You might need to create these buckets manually in the Storage section if the SQL below doesn't work depending on your Supabase permissions.
-INSERT INTO storage.buckets (id, name, public) VALUES ('epi-receipts', 'epi-receipts', true) ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public) VALUES ('epi-receipts', 'epi-receipts', false) ON CONFLICT (id) DO UPDATE SET public = false;
 INSERT INTO storage.buckets (id, name, public) VALUES ('worker-photos', 'worker-photos', true) ON CONFLICT DO NOTHING;
+
+-- RLS for epi-receipts
+CREATE POLICY "Admins and Engineers can manage epi-receipts" ON storage.objects
+FOR ALL USING (
+  bucket_id = 'epi-receipts' 
+  AND auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER')
+) WITH CHECK (
+  bucket_id = 'epi-receipts' 
+  AND auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER')
+);
+
+CREATE POLICY "Authenticated users can view epi-receipts" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'epi-receipts' 
+  AND auth.role() = 'authenticated'
+);

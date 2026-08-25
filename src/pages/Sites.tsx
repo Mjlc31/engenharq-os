@@ -50,6 +50,8 @@ export function Sites() {
   const [address, setAddress] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [status, setStatus] = useState('ACTIVE');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -154,8 +156,6 @@ export function Sites() {
   };
 
   const handleDeleteSite = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta obra?')) return;
-    
     try {
       const { error: deleteError } = await supabase
         .from('construction_sites')
@@ -509,7 +509,7 @@ export function Sites() {
                       <Edit2 className="w-4 h-4" /> Editar
                     </button>
                     <button 
-                      onClick={() => handleDeleteSite(site.id)}
+                      onClick={() => setDeleteConfirmId(site.id)}
                       className="py-2 px-4 rounded-md text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors flex items-center justify-center gap-2"
                     >
                       <Trash2 className="w-4 h-4" /> Excluir
@@ -548,6 +548,36 @@ export function Sites() {
           </div>
         )}
       </div>
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-foreground mb-2">Confirmar Exclusão</h3>
+            <p className="text-sm text-muted mb-6">Tem certeza que deseja excluir esta obra? Essa ação não pode ser desfeita.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground border border-border rounded-lg transition-colors"
+                disabled={isDeleting}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  setIsDeleting(true);
+                  await handleDeleteSite(deleteConfirmId);
+                  setIsDeleting(false);
+                  setDeleteConfirmId(null);
+                }}
+                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

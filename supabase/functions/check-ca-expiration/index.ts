@@ -11,9 +11,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   try {
-    // 1. Segurança: Verificar header de autorização (ex: validar Service Key)
+    // 1. Segurança: Verificar webhook secret
+    const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
     const authHeader = req.headers.get("Authorization");
-    if (authHeader !== `Bearer ${supabaseServiceKey}`) {
+    if (authHeader !== `Bearer ${webhookSecret}`) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { 
         status: 401,
         headers: { "Content-Type": "application/json" }

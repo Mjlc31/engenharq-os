@@ -47,7 +47,7 @@ export interface Worker {
   phone_contact?: string | null;
   current_site_id: string | null;
   reference_photo_url?: string | null;
-  facial_descriptor?: any;
+  facial_descriptor?: number[];
   status?: string;
   created_at: string;
   site?: ConstructionSite;

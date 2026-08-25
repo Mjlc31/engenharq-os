@@ -7,6 +7,11 @@ trigger: always_on
 
 Este repositório contém diretrizes para a criação e invocação de subagentes. Ao trabalhar neste projeto, você pode invocar (usando `invoke_subagent`) agentes especializados para dividir o trabalho.
 
+## 🧠 Diretriz Global: Obsidian Second Brain
+**REGRA ABSOLUTA**: Toda nova funcionalidade, alteração de código, correção de bug ou decisão arquitetural desenvolvida neste projeto DEVE ser obrigatoriamente documentada no cofre Obsidian do usuário.
+**Caminho do Cofre**: `/Users/arthurdemoraespd/Documents/obsidian/second brain/EngenharQ OS`
+**Ação**: Sempre que uma tarefa significativa for concluída, o agente deve automaticamente criar ou atualizar as notas correspondentes no cofre, mantendo o padrão visual, tags, wiki-links e paleta de cores.
+
 ## engenharq-frontend-dev
 **Role**: Especialista Frontend em React, Vite e Tailwind CSS.
 **Objetivo**: Responsável por criar ou editar componentes `.tsx`, focando em interfaces limpas, rápidas e responsivas para o sistema EngenharQ.

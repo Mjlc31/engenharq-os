@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Camera, ScanFace, CheckCircle2, AlertTriangle, Fingerprint } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 interface BiometricScannerProps {
   workerName: string;
@@ -51,22 +52,18 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
       return;
     }
 
-    // API Call to /api/biometrics/match
+    // API Call to Supabase Edge Function
     try {
-      const response = await fetch('/api/biometrics/match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const { data: result, error } = await supabase.functions.invoke('biometrics-match', {
+        body: {
           audit_selfie: imageSrc,
           reference_photo_url: referencePhotoUrl || 'unregistered'
-        })
+        }
       });
 
-      const result = await response.json();
+      if (error) throw error;
       
-      if (response.ok && result.match) {
+      if (result && result.match) {
         setStatus('SUCCESS');
         setTimeout(() => {
           onMatchSuccess(imageSrc, result.score, result.liveness);

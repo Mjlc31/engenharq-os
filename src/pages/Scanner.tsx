@@ -10,13 +10,15 @@ import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default marker icons
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)['_getIconUrl'];
-L.Icon.Default.mergeOptions({
+const defaultIcon = new L.Icon({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41]
 });
 
 type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'SIGNATURE' | 'SUCCESS';
@@ -85,7 +87,7 @@ export function Scanner() {
       let { data, error } = await supabase
         .from('workers')
         .select('*, site:construction_sites(name, latitude, longitude)')
-        .or(`cpf.eq.${searchTerm},registration_number.eq.${searchTerm},id.eq.${searchTerm}`)
+        .or(`cpf.eq.${searchTerm},registration_number.eq.${searchTerm}`)
         .single();
         
       if (error && error.message === 'Failed to fetch') {
@@ -95,7 +97,7 @@ export function Scanner() {
       }
         
       if (data) {
-        setWorker(data as any);
+        setWorker(data as Worker);
         setStep('SCAN_EPI');
       } else {
         setError('Colaborador não encontrado.');
@@ -145,9 +147,11 @@ export function Scanner() {
   };
 
   const submitManualInput = () => {
-    if (manualInputValue.trim()) {
-      onScanSuccess(manualInputValue.trim());
+    if (!manualInputValue.trim()) {
+      setError('Digite a matrícula ou CPF do colaborador.');
+      return;
     }
+    onScanSuccess(manualInputValue.trim());
   };
 
   const clearSignature = () => {
@@ -517,7 +521,7 @@ export function Scanner() {
                     <TileLayer
                       url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                     />
-                    <LeafletMarker position={[worker.site.latitude, worker.site.longitude]} />
+                    <LeafletMarker position={[worker.site.latitude, worker.site.longitude]} icon={defaultIcon} />
                   </MapContainer>
                 </div>
               </div>
