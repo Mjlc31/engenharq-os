@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import SignatureCanvas from 'react-signature-canvas';
 import { supabase } from '../lib/supabase';
-import { jsPDF } from 'jspdf';
+import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
 import { User, Package, CheckCircle2, AlertCircle, X, PenTool, Check, ScanFace, MapPin } from 'lucide-react';
 import { BiometricScanner } from '../components/BiometricScanner';
 import { Worker, EpiInventory } from '../types';
@@ -134,8 +134,12 @@ export function Scanner() {
     setLoading(false);
   };
 
-  const onScanError = (_err: string) => {
-    // Ignore errors as they happen constantly during scanning until a QR code is matched
+  const onScanError = (err: string | any) => {
+    // Exibe erro apenas se for problema de permissão
+    const errorMsg = String(err).toLowerCase();
+    if (errorMsg.includes('notallowed') || errorMsg.includes('permission') || errorMsg.includes('not requested')) {
+      setError('Permissão de câmera negada. Por favor, libere o acesso e tente novamente.');
+    }
   };
 
   const handleManualWorker = async () => {
@@ -156,56 +160,6 @@ export function Scanner() {
 
   const clearSignature = () => {
     sigCanvas.current?.clear();
-  };
-
-  const generatePDF = async (signatureDataUrl: string) => {
-    if (!worker) throw new Error('Worker not loaded');
-    const doc = new jsPDF();
-    
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(229, 46, 45); // Red primary
-    doc.text('EngenharQ OS', 20, 20);
-    
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Ficha de Entrega de Equipamento de Proteção Individual (EPI)', 20, 30);
-    
-    // Worker Info
-    doc.setFontSize(11);
-    doc.text(`Colaborador: ${worker.full_name}`, 20, 45);
-    doc.text(`CPF: ${worker.cpf}`, 20, 52);
-    doc.text(`Matrícula: ${worker.registration_number}`, 20, 59);
-    doc.text(`Obra Alocada: ${worker.site?.name || 'Não alocado'}`, 20, 66);
-    
-    // EPI Info
-    doc.text('Equipamentos Entregues:', 20, 80);
-    
-    let y = 87;
-    epis.forEach((item, idx) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      doc.text(`${idx + 1}. ${item.category} (CA: ${item.ca_number}) - Cód: ${item.tracking_code}`, 20, y);
-      y += 7;
-    });
-    
-    const today = new Date();
-    doc.text(`Data de Entrega: ${today.toLocaleDateString()}`, 20, y + 10);
-    
-    // Legal term
-    const termText = `Declaro ter recebido os EPIs acima descritos, comprometendo-me a usá-los exclusivamente para a finalidade a que se destinam e zelar pela sua conservação, sob pena de responder por danos causados aos equipamentos, além de me submeter às normas de segurança da empresa.`;
-    const splitTerm = doc.splitTextToSize(termText, 170);
-    doc.text(splitTerm, 20, y + 25);
-    
-    // Signature
-    doc.addImage(signatureDataUrl, 'PNG', 60, y + 55, 90, 30);
-    doc.line(60, y + 85, 150, y + 85);
-    doc.text('Assinatura do Colaborador', 80, y + 90);
-    
-    // Return base64 string
-    return doc.output('datauristring');
   };
 
   const dataUrlToBlob = (dataUrl: string) => {
@@ -254,7 +208,7 @@ export function Scanner() {
     setLoading(true);
     try {
       const signatureDataUrl = sigCanvas.current!.getTrimmedCanvas().toDataURL('image/png');
-      const pdfBase64 = await generatePDF(signatureDataUrl);
+      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, signatureDataUrl);
       
       const timestamp = new Date().getTime();
       
@@ -309,7 +263,7 @@ export function Scanner() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div data-testid="scanner-container" className="max-w-2xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Almoxarifado</h1>

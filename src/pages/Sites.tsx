@@ -255,7 +255,7 @@ export function Sites() {
   };
 
   return (
-    <div className="space-y-6">
+    <div data-testid="sites-container" className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Obras & Locais</h1>
@@ -452,20 +452,10 @@ export function Sites() {
                 {/* Mini-map */}
                 <div className="h-40 w-full bg-zinc-800 relative z-0">
                   {site.latitude && site.longitude ? (
-                    <MapContainer 
-                      center={[site.latitude, site.longitude]} 
-                      zoom={14} 
-                      style={{ height: '100%', width: '100%', zIndex: 1 }}
-                      zoomControl={false}
-                      attributionControl={false}
-                    >
-                      <TileLayer
-                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                      />
-                      <Marker position={[site.latitude, site.longitude]}>
-                        <Popup>{site.name}</Popup>
-                      </Marker>
-                    </MapContainer>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-800 text-muted">
+                      <MapPin className="w-8 h-8 mb-2 opacity-50 text-emerald-500" />
+                      <span className="text-xs font-mono">{site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}</span>
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted text-sm">
                       Sem coordenadas

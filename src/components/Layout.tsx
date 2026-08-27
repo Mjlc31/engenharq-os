@@ -104,7 +104,9 @@ export function Layout() {
 
         {/* Main Content */}
         <main className="flex flex-1 flex-col p-4 md:p-6 overflow-auto gap-4 relative z-10">
-          <Outlet />
+          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center text-primary/50 text-sm">Carregando módulo...</div>}>
+            <Outlet />
+          </React.Suspense>
         </main>
       </div>
 

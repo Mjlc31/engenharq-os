@@ -47,7 +47,7 @@ export function Dashboard() {
         workersReq,
         movementsReq,
         alertsReq
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).neq('status', 'DISCARDED'),
         supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'IN_USE'),
         supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
@@ -70,15 +70,26 @@ export function Dashboard() {
           .limit(10)
       ]);
 
+      const getCount = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.count || 0 : 0;
+      const getData = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.data || [] : [];
+
+      interface AlertItem {
+        id: string;
+        tracking_code: string;
+        category: string;
+        ca_expiration_date: string;
+        assigned_worker?: any;
+      }
+
       return {
         stats: {
-          totalEPIs: epiCountReq.count || 0,
-          inUse: inUseReq.count || 0,
-          maintenance: maintenanceReq.count || 0,
-          workers: workersReq.count || 0,
+          totalEPIs: getCount(epiCountReq),
+          inUse: getCount(inUseReq),
+          maintenance: getCount(maintenanceReq),
+          workers: getCount(workersReq),
         },
-        recentMovements: (movementsReq.data as DashboardMovement[]) || [],
-        lifespanAlerts: (alertsReq.data || []).map((item: any) => {
+        recentMovements: getData(movementsReq) as DashboardMovement[],
+        lifespanAlerts: getData(alertsReq).map((item: AlertItem) => {
           const expDate = new Date(item.ca_expiration_date);
           const now = new Date();
           const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -141,6 +152,7 @@ export function Dashboard() {
 
   return (
     <motion.div 
+      data-testid="dashboard-container"
       className="flex flex-col gap-4"
       variants={containerVariants}
       initial="hidden"
