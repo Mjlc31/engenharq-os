@@ -258,7 +258,7 @@ export function Sites() {
     <div data-testid="sites-container" className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Obras & Locais</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Empresa / Obras</h1>
           <p className="text-muted mt-2">Gerencie os canteiros de obra ativos, mapas e efetivo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

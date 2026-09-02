@@ -5,7 +5,7 @@ import { EpiCatalog } from '../../../types';
 interface CatalogTabProps {
   catalogs: EpiCatalog[];
   loading: boolean;
-  saveCatalog: (payload: Partial<EpiCatalog>, id?: string) => Promise<void>;
+  saveCatalog: (payload: Partial<EpiCatalog>, id?: string, initialStock?: number) => Promise<void>;
   deleteCatalog: (id: string) => Promise<void>;
 }
 
@@ -31,6 +31,7 @@ export function CatalogTab({
   const [catCaValidity, setCatCaValidity] = useState('');
   const [catLifespanDays, setCatLifespanDays] = useState<number | ''>('');
   const [catMinStock, setCatMinStock] = useState<number | ''>('');
+  const [catInitialStock, setCatInitialStock] = useState<number | ''>('');
   const [catImageUrl, setCatImageUrl] = useState('');
   const [catObservations, setCatObservations] = useState('');
 
@@ -62,6 +63,7 @@ export function CatalogTab({
     setCatCaValidity('');
     setCatLifespanDays('');
     setCatMinStock('');
+    setCatInitialStock('');
     setCatImageUrl('');
     setCatObservations('');
     setEditingCatalog(null);
@@ -99,7 +101,7 @@ export function CatalogTab({
       observations: catObservations || null,
     };
 
-    await saveCatalog(payload, editingCatalog?.id);
+    await saveCatalog(payload, editingCatalog?.id, catInitialStock ? Number(catInitialStock) : undefined);
     resetCatalogForm();
   };
 
@@ -201,6 +203,18 @@ export function CatalogTab({
                   placeholder="10"
                 />
               </div>
+              {!editingCatalog && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted">Estoque Inicial (Itens Físicos)</label>
+                  <input
+                    type="number"
+                    value={catInitialStock}
+                    onChange={e => setCatInitialStock(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-4 py-2 bg-background text-foreground border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                    placeholder="0"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted">URL da Imagem</label>
                 <input

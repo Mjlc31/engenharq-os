@@ -107,15 +107,38 @@ export function useEpiAssets() {
     }
   };
 
-  const saveCatalog = async (payload: Partial<EpiCatalog>, id?: string) => {
+  const saveCatalog = async (payload: Partial<EpiCatalog>, id?: string, initialStock?: number) => {
     setError(null);
     try {
       if (id) {
         const { error: updateError } = await supabase.from('epi_catalog').update(payload as any).eq('id', id);
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await supabase.from('epi_catalog').insert([payload as any]);
+        const { data, error: insertError } = await supabase.from('epi_catalog').insert([payload as any]).select().single();
         if (insertError) throw insertError;
+        
+        if (initialStock && initialStock > 0 && data) {
+          const prefix = payload.category!.substring(0, 3).toUpperCase();
+          const existingSamePrefix = epis.filter(e => e.tracking_code.startsWith(prefix));
+          let nextNum = 1;
+          if (existingSamePrefix.length > 0) {
+            const nums = existingSamePrefix.map(e => parseInt(e.tracking_code.replace(prefix, '') || '0'));
+            nextNum = Math.max(...nums) + 1;
+          }
+          
+          const newItems = Array.from({ length: initialStock }).map((_, i) => ({
+            epi_catalog_id: data.id,
+            category: payload.category,
+            tracking_code: `${prefix}${String(nextNum + i).padStart(3, '0')}`,
+            ca_number: payload.ca_number || 'N/A',
+            ca_expiration_date: payload.ca_validity || null,
+            recommended_lifespan_days: payload.lifespan_days || 180,
+            status: 'AVAILABLE'
+          }));
+          
+          const { error: stockError } = await supabase.from('epi_inventory').insert(newItems);
+          if (stockError) throw stockError;
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
