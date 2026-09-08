@@ -17,10 +17,10 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.setLineWidth(0.5);
   doc.rect(10, 10, 190, 20);
   
-  // Logo placeholder text (or image)
+  // Logo
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(230, 81, 0); // Orange-ish for logo
+  doc.setTextColor(230, 81, 0); // Orange
   doc.text('EngenharQ', 15, 23);
 
   // Title
@@ -33,11 +33,11 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.rect(10, 32, 190, 15);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Nome: ${worker.full_name}`, 12, 38);
-  doc.text(`Nº MATRÍCULA: ${worker.registration_number}`, 120, 38);
+  doc.text(`Nome: ${worker.full_name || ''}`, 12, 38);
+  doc.text(`Nº MATRÍCULA: ${worker.registration_number || ''}`, 120, 38);
   
   const formattedAdmission = worker.admission_date ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '___/___/______';
-  doc.text(`Função: ${worker.initial_role || ''}`, 12, 44);
+  doc.text(`Função: ${worker.current_role || worker.initial_role || ''}`, 12, 44);
   doc.text(`Data de Admissão: ${formattedAdmission}`, 120, 44);
 
   // Declaration Section
@@ -67,7 +67,6 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   const startY = 126;
   doc.rect(10, startY, 190, 14);
   
-  // Outer Table columns logic
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.text('RECEBIMENTO DO EPI', 45, startY + 5);
@@ -77,30 +76,33 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.line(125, startY, 125, startY + 14); // vertical middle split
 
   // Sub headers
-  doc.setFontSize(8);
-  doc.text('QT.', 12, startY + 12);
-  doc.text('UNIFORME/EPI', 35, startY + 12);
-  doc.text('C.A.', 72, startY + 12);
-  doc.text('DATA', 88, startY + 12);
-  doc.text('ASSINATURA', 105, startY + 11);
-  doc.text('EMPREGADO', 105, startY + 13);
+  doc.setFontSize(7);
+  doc.text('QT.', 12, startY + 11);
+  doc.text('UNIFORME/EPI', 25, startY + 11);
+  doc.text('C.A.', 68, startY + 11);
+  doc.text('DATA', 83, startY + 11);
   
-  doc.text('DATA', 128, startY + 12);
-  doc.text('ASSINATURA', 148, startY + 11);
-  doc.text('EMPREGADO', 148, startY + 13);
-  doc.text('ASSINATURA', 178, startY + 11);
-  doc.text('RECEBEDOR', 178, startY + 13);
+  doc.text('ASSINATURA DO', 101, startY + 10);
+  doc.text('EMPREGADO', 103, startY + 13);
+  
+  doc.text('DATA', 130, startY + 11);
+  
+  doc.text('ASSINATURA DO', 147, startY + 10);
+  doc.text('EMPREGADO', 149, startY + 13);
+  
+  doc.text('ASSINATURA DO', 174, startY + 10);
+  doc.text('RECEBEDOR', 176, startY + 13);
   
   // Vertical lines for columns
-  const cols = [18, 70, 85, 103, 125, 145, 175];
+  const cols = [18, 66, 81, 99, 125, 145, 172];
   cols.forEach(x => {
     doc.line(x, startY + 7, x, startY + 14);
   });
 
   // Table rows
   let currentY = startY + 14;
-  const rowHeight = 8;
-  const maxRows = 20;
+  const rowHeight = 7;
+  const maxRows = 22;
   
   doc.setFont('helvetica', 'normal');
   
@@ -110,53 +112,48 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
       doc.line(x, currentY, x, currentY + rowHeight);
     });
     
-    // Fill data if available
     if (epiAssignments && epiAssignments[i]) {
       const assignment = epiAssignments[i];
       const catalog = assignment.epi?.catalog;
       
       doc.text('1', 13, currentY + 5);
       
-      // Name
       if (catalog?.name) {
-        let text = catalog.name;
-        if (text.length > 30) text = text.substring(0, 27) + '...';
-        doc.text(text, 20, currentY + 5);
+        const prefix = catalog.category?.toLowerCase().includes('uniforme') ? '[UNIF]' : '[EPI]';
+        const itemName = `${prefix} ${catalog.name} (Cód: ${assignment.epi?.tracking_code || '-'})`;
+        let text = itemName;
+        if (text.length > 32) text = text.substring(0, 30) + '...';
+        doc.text(text, 19, currentY + 4.5);
       }
       
-      // CA
       if (catalog?.ca_number) {
-        doc.text(catalog.ca_number, 72, currentY + 5);
+        doc.text(catalog.ca_number, 67, currentY + 4.5);
       }
       
-      // Date assigned
       if (assignment.assigned_at) {
-        doc.text(format(new Date(assignment.assigned_at), 'dd/MM/yy'), 86, currentY + 5);
+        doc.text(format(new Date(assignment.assigned_at), 'dd/MM/yy'), 82, currentY + 4.5);
       }
       
-      // Digital signature image
       if (assignment.digital_signature_url) {
         try {
-          doc.addImage(assignment.digital_signature_url, 'PNG', 104, currentY + 1, 20, 6);
+          doc.addImage(assignment.digital_signature_url, 'PNG', 101, currentY + 0.5, 22, 6);
         } catch (e) {
           doc.setFont('Courier', 'italic');
           doc.setFontSize(6);
-          doc.text('Assinado', 106, currentY + 5);
+          doc.text('Assinado', 105, currentY + 4.5);
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(7);
         }
       }
 
-      // Return date
       if (assignment.returned_at) {
-        doc.text(format(new Date(assignment.returned_at), 'dd/MM/yy'), 127, currentY + 5);
+        doc.text(format(new Date(assignment.returned_at), 'dd/MM/yy'), 127, currentY + 4.5);
       }
     }
     
     currentY += rowHeight;
   }
 
-  // Save the PDF
   doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
 }
 
@@ -189,7 +186,7 @@ export const generateEpiReceiptPDF = async (
       doc.addPage();
       y = 20;
     }
-    doc.text(`${idx + 1}. ${item.category} (CA: ${item.ca_number}) - Cód: ${item.tracking_code}`, 20, y);
+    doc.text(`${idx + 1}. [EPI/UNIF] ${item.category} (CA: ${item.ca_number || '-'}) - Cód: ${item.tracking_code}`, 20, y);
     y += 7;
   });
   

@@ -153,7 +153,7 @@ export function Audit() {
       </div>
 
       <div className="flex-1 overflow-auto bg-surface border border-border rounded-xl shadow-sm">
-        <table className="w-full text-left text-sm text-foreground">
+        <table className="w-full text-left text-sm text-foreground whitespace-nowrap">
           <thead className="bg-surface-hover text-muted text-xs uppercase font-bold sticky top-0 z-10 border-b border-border shadow-sm">
             <tr>
               <th className="px-4 py-3">Data</th>

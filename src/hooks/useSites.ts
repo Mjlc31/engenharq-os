@@ -33,7 +33,7 @@ export function useSites() {
 
   const addSite = async (siteData: Partial<ConstructionSite>) => {
     try {
-      const { error: insertError } = await supabase.from('construction_sites').insert([siteData]);
+      const { error: insertError } = await supabase.from('construction_sites').insert([siteData as any]);
       if (insertError) throw insertError;
       toast({ type: 'success', title: 'Sucesso', message: 'Obra registrada com sucesso.' });
       await fetchSites();

@@ -1,27 +1,10 @@
 import React from 'react';
-import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
 import { HardHat, AlertTriangle, Users, Clock, ShieldAlert, CheckCircle2, Package } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { motion } from 'motion/react';
-
-interface DashboardMovement {
-  id: string;
-  assigned_at: string;
-  returned_at: string | null;
-  epi: { tracking_code: string; category: string } | { tracking_code: string; category: string }[];
-  worker: { full_name: string } | { full_name: string }[];
-}
-
-interface DashboardAlert {
-  id: string;
-  type: 'CA_EXPIRATION' | 'LIFESPAN';
-  severity: 'CRITICAL' | 'WARNING';
-  message: string;
-  epi: { tracking_code: string; category: string; ca_expiration_date?: string } | undefined;
-  worker: { full_name: string } | undefined;
-}
+import { Skeleton } from '../components/ui/Skeleton';
+import { useDashboard } from '../hooks/useDashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -37,77 +20,7 @@ const itemVariants = {
 };
 
 export function Dashboard() {
-  const { data, isLoading: loading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: async () => {
-      const [
-        epiCountReq,
-        inUseReq,
-        maintenanceReq,
-        workersReq,
-        movementsReq,
-        alertsReq
-      ] = await Promise.allSettled([
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).neq('status', 'DISCARDED'),
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'IN_USE'),
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
-        supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
-        supabase.from('epi_assignments')
-          .select(`
-            id,
-            assigned_at,
-            returned_at,
-            epi:epi_inventory(tracking_code, category),
-            worker:workers(full_name)
-          `)
-          .order('assigned_at', { ascending: false })
-          .limit(5),
-        supabase.from('epi_inventory')
-          .select('id, tracking_code, category, ca_expiration_date')
-          .not('ca_expiration_date', 'is', null)
-          .neq('status', 'DISCARDED')
-          .order('ca_expiration_date', { ascending: true })
-          .limit(10)
-      ]);
-
-      const getCount = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.count || 0 : 0;
-      const getData = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.data || [] : [];
-
-      interface AlertItem {
-        id: string;
-        tracking_code: string;
-        category: string;
-        ca_expiration_date: string;
-        assigned_worker?: any;
-      }
-
-      return {
-        stats: {
-          totalEPIs: getCount(epiCountReq),
-          inUse: getCount(inUseReq),
-          maintenance: getCount(maintenanceReq),
-          workers: getCount(workersReq),
-        },
-        recentMovements: getData(movementsReq) as DashboardMovement[],
-        lifespanAlerts: getData(alertsReq).map((item: AlertItem) => {
-          const expDate = new Date(item.ca_expiration_date);
-          const now = new Date();
-          const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          const workerInfo = Array.isArray(item.assigned_worker) ? item.assigned_worker[0] : item.assigned_worker;
-          return {
-            id: item.id,
-            type: 'CA_EXPIRATION' as const,
-            severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
-            message: daysUntilExpiry <= 0 
-              ? `CA VENCIDO há ${Math.abs(daysUntilExpiry)} dias` 
-              : `CA vence em ${daysUntilExpiry} dias`,
-            epi: { tracking_code: item.tracking_code, category: item.category, ca_expiration_date: item.ca_expiration_date },
-            worker: workerInfo || undefined,
-          };
-        })
-      };
-    }
-  });
+  const { data, isLoading: loading } = useDashboard();
 
   const stats = data?.stats || { totalEPIs: 0, inUse: 0, maintenance: 0, workers: 0 };
   const recentMovements = data?.recentMovements || [];
@@ -232,7 +145,11 @@ export function Dashboard() {
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                {loading ? (
-                 <p className="text-center text-muted text-sm mt-8">Analisando dados...</p>
+                 <>
+                   <Skeleton className="h-16 w-full" />
+                   <Skeleton className="h-16 w-full" />
+                   <Skeleton className="h-16 w-full" />
+                 </>
                ) : lifespanAlerts.length === 0 ? (
                  <div className="flex flex-col items-center justify-center text-muted h-full opacity-50">
                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-3" />
@@ -267,7 +184,11 @@ export function Dashboard() {
             </div>
             <div className="flex-1 overflow-y-auto p-0">
                {loading ? (
-                 <p className="text-center text-muted text-sm mt-8">Carregando log...</p>
+                 <div className="space-y-3 p-4">
+                   <Skeleton className="h-12 w-full" />
+                   <Skeleton className="h-12 w-full" />
+                   <Skeleton className="h-12 w-full" />
+                 </div>
                ) : recentMovements.length === 0 ? (
                  <p className="text-center text-muted text-sm mt-8">Sem movimentações.</p>
                ) : (

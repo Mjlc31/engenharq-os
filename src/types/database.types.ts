@@ -346,7 +346,26 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_epi: {
+        Args: {
+          p_worker_id: string
+          p_epi_id: string
+        }
+        Returns: boolean
+      }
+      return_epi: {
+        Args: {
+          p_epi_id: string
+        }
+        Returns: boolean
+      }
+      bulk_assign_epis: {
+        Args: {
+          p_worker_id: string
+          p_assignments: Json
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       epi_status: "AVAILABLE" | "IN_USE" | "MAINTENANCE" | "DISCARDED"

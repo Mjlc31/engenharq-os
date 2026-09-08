@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ShieldCheck, HardHat, Fingerprint, LockKeyhole, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Fingerprint, LockKeyhole, ArrowRight } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import logoImg from '../assets/logo.png';
+import helmet3dImg from '../assets/helmet3d.jpg';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -118,10 +120,7 @@ export function Login() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="relative z-10 flex items-center gap-3"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-primary text-background font-black shadow-[0_0_20px_rgba(229,46,45,0.4)]">
-            EQ
-          </div>
-          <span className="text-xl font-bold tracking-tight uppercase">Engenhar<span className="text-primary">Q</span> OS</span>
+          <img src={logoImg} alt="EngenharQ OS Logo" className="h-10 w-auto object-contain" />
         </motion.div>
 
         <div className="relative z-10 max-w-md">
@@ -129,9 +128,9 @@ export function Login() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
-            className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-8 backdrop-blur-sm"
+            className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-8 backdrop-blur-sm overflow-hidden"
           >
-            <HardHat className="w-8 h-8 text-primary" />
+            <img src={helmet3dImg} alt="3D Safety Helmet" className="w-full h-full object-cover" />
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -177,10 +176,7 @@ export function Login() {
           className="w-full max-w-sm relative z-10"
         >
           <div className="md:hidden flex items-center gap-2 mb-12">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-background font-black">
-              EQ
-            </div>
-            <span className="text-lg font-bold tracking-tight uppercase">Engenhar<span className="text-primary">Q</span> OS</span>
+            <img src={logoImg} alt="EngenharQ OS Logo" className="h-8 w-auto object-contain" />
           </div>
 
           <div className="mb-10">

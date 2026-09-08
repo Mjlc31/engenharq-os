@@ -19,8 +19,8 @@ export function PrintTags() {
         supabase.from('epi_inventory').select('*')
       ]);
       
-      if (workersRes.data) setWorkers(workersRes.data);
-      if (episRes.data) setEpis(episRes.data);
+      if (workersRes.data) setWorkers(workersRes.data as any);
+      if (episRes.data) setEpis(episRes.data as any);
       setLoading(false);
     }
     loadData();

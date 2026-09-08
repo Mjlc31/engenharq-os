@@ -530,7 +530,7 @@ export function WorkerProfile() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate('/assets')}
+                onClick={() => navigate('/scanner')}
                 className="bg-surface hover:bg-surface-hover text-foreground font-medium py-2 px-4 rounded-md transition-colors flex items-center gap-2 border border-border text-sm"
               >
                 <Plus className="w-4 h-4" />
@@ -546,7 +546,7 @@ export function WorkerProfile() {
             </div>
           </div>
 
-          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-x-auto">
             {epiAssignments.length === 0 ? (
               <div className="p-12 text-center text-muted">
                 Este trabalhador ainda não possui EPIs designados.

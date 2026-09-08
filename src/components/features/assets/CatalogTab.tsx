@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import { EpiCatalog } from '../../../types';
+import { useAuth } from '../../../components/AuthProvider';
 
 interface CatalogTabProps {
   catalogs: EpiCatalog[];
@@ -15,6 +16,7 @@ export function CatalogTab({
   saveCatalog,
   deleteCatalog
 }: CatalogTabProps) {
+  const { role } = useAuth();
   const [search, setSearch] = useState('');
   const [isAddingCatalog, setIsAddingCatalog] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState<EpiCatalog | null>(null);
@@ -97,6 +99,7 @@ export function CatalogTab({
       ca_validity: catCaValidity || null,
       lifespan_days: catLifespanDays ? Number(catLifespanDays) : null,
       minimum_stock: catMinStock ? Number(catMinStock) : null,
+      ...(!editingCatalog && catInitialStock !== '' ? { current_stock: Number(catInitialStock) } : {}),
       image_url: catImageUrl || null,
       observations: catObservations || null,
     };
@@ -205,13 +208,13 @@ export function CatalogTab({
               </div>
               {!editingCatalog && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted">Estoque Inicial (Itens Físicos)</label>
+                  <label className="text-sm font-medium text-muted">Estoque Inicial</label>
                   <input
                     type="number"
                     value={catInitialStock}
                     onChange={e => setCatInitialStock(e.target.value ? Number(e.target.value) : '')}
                     className="w-full px-4 py-2 bg-background text-foreground border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    placeholder="0"
+                    placeholder="Quantidade que entrou"
                   />
                 </div>
               )}
@@ -345,14 +348,16 @@ export function CatalogTab({
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button 
-                          onClick={() => handleDelete(catalog.id)}
-                          className="p-1.5 text-muted rounded hover:bg-surface-hover hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-                          title="Excluir"
-                          aria-label="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
+                          <button 
+                            onClick={() => handleDelete(catalog.id)}
+                            className="p-1.5 text-muted rounded hover:bg-surface-hover hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                            title="Excluir"
+                            aria-label="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

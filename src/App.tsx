@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { Layout } from './components/Layout';
+import { ToastProvider } from './components/ui/Toast';
+
 const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Assets = React.lazy(() => import('./pages/Assets').then(m => ({ default: m.Assets })));
@@ -26,7 +28,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
         <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary font-medium">Carregando...</div>}>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -45,6 +48,7 @@ export default function App() {
           </Routes>
         </React.Suspense>
       </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

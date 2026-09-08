@@ -1,3 +1,9 @@
+const fs = require('fs');
+
+let code = fs.readFileSync('src/components/ui/SignaturePadModal.tsx', 'utf8');
+
+// We want to make handleSave async and manage a loading state.
+const newComponent = `
 import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, Eraser, Check, Loader2 } from 'lucide-react';
@@ -123,3 +129,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/components/ui/SignaturePadModal.tsx', newComponent.trim());
+console.log("Updated SignaturePadModal");

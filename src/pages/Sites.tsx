@@ -6,6 +6,7 @@ import { ConstructionSite } from '../types';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useAuth } from '../components/AuthProvider';
 
 // Fix Leaflet default icon issue
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -29,6 +30,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function Sites() {
+  const { role } = useAuth();
   const [sites, setSites] = useState<(ConstructionSite & { worker_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -262,7 +264,7 @@ export function Sites() {
           <p className="text-muted mt-2">Gerencie os canteiros de obra ativos, mapas e efetivo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 cursor-pointer text-sm">
+          <label role="button" tabIndex={0} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 cursor-pointer text-sm">
             <Upload className="w-4 h-4" /> Importar CSV
             <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
           </label>
@@ -498,12 +500,14 @@ export function Sites() {
                     >
                       <Edit2 className="w-4 h-4" /> Editar
                     </button>
-                    <button 
-                      onClick={() => setDeleteConfirmId(site.id)}
-                      className="py-2 px-4 rounded-md text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" /> Excluir
-                    </button>
+                    {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
+                      <button 
+                        onClick={() => setDeleteConfirmId(site.id)}
+                        className="py-2 px-4 rounded-md text-sm font-medium bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" /> Excluir
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

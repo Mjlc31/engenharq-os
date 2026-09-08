@@ -4,10 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkers } from '../hooks/useWorkers';
 import { WorkerForm } from '../components/features/workers/WorkerForm';
 import { Worker } from '../types';
+import { useToast } from '../components/ui/Toast';
+import { useAuth } from '../components/AuthProvider';
 
 export function Workers() {
   const navigate = useNavigate();
   const { workers, sites, loading, error, setError, addWorker, deleteWorker, importCSV, exportCSV } = useWorkers();
+  const { role } = useAuth();
+
+  const { toast } = useToast();
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -64,8 +69,9 @@ export function Workers() {
     if (window.confirm('Tem certeza que deseja excluir este trabalhador?')) {
       try {
         await deleteWorker(id);
+        toast({ type: 'success', title: 'Sucesso', message: 'Trabalhador excluído com sucesso.' });
       } catch (err: any) {
-        alert(err.message || 'Erro ao excluir.');
+        toast({ type: 'error', title: 'Erro', message: err.message || 'Erro ao excluir trabalhador.' });
       }
     }
   };
@@ -216,20 +222,22 @@ export function Workers() {
                       <Edit2 className="w-3.5 h-3.5" />
                       Perfil
                     </button>
-                    <button 
-                      onClick={() => navigate(`/workers/${worker.id}?tab=epi`)} 
-                      className="p-3 text-muted hover:text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors text-xs font-medium"
-                    >
-                      <HardHat className="w-3.5 h-3.5" />
-                      EPIs
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(worker.id)} 
-                      className="p-3 text-muted hover:text-red-500 hover:bg-red-500/5 flex items-center justify-center gap-2 transition-colors text-xs font-medium"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Excluir
-                    </button>
+                      <button 
+                        onClick={() => navigate(`/workers/${worker.id}?tab=epi`)} 
+                        className="p-3 text-muted hover:text-primary hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors text-xs font-medium"
+                      >
+                        <HardHat className="w-3.5 h-3.5" />
+                        EPIs
+                      </button>
+                      {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
+                        <button 
+                          onClick={() => handleDelete(worker.id)} 
+                          className="p-3 text-muted hover:text-red-500 hover:bg-red-500/5 flex items-center justify-center gap-2 transition-colors text-xs font-medium"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Excluir
+                        </button>
+                      )}
                   </div>
                 </div>
               ))}

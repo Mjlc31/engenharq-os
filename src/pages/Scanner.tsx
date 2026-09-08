@@ -7,6 +7,7 @@ import { User, Package, CheckCircle2, AlertCircle, X, PenTool, Check, ScanFace, 
 import { BiometricScanner } from '../components/BiometricScanner';
 import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
+import { useScanner } from '../hooks/useScanner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -27,8 +28,15 @@ export function Scanner() {
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
   const [worker, setWorker] = useState<Worker | null>(null);
   const [epis, setEpis] = useState<EpiInventory[]>([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { 
+    loading, 
+    error, 
+    setError, 
+    setLoading, 
+    fetchWorker, 
+    fetchEpi, 
+    confirmAssignment 
+  } = useScanner();
   const [biometricsData, setBiometricsData] = useState<{selfieUrl: string, score: number, liveness: boolean} | null>(null);
   
   const sigCanvas = useRef<SignatureCanvas>(null);
@@ -46,8 +54,9 @@ export function Scanner() {
 
   // Initialize scanner when step changes
   useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null;
     if ((step === 'SCAN_WORKER' || step === 'SCAN_EPI') && !manualInputOpen) {
-      const scanner = new Html5QrcodeScanner(
+      scanner = new Html5QrcodeScanner(
         "qr-reader",
         { 
           fps: 10, 
@@ -67,78 +76,42 @@ export function Scanner() {
         false
       );
       
-      scanner.render(onScanSuccess, onScanError);
-      
-      return () => {
-        scanner.clear().catch(console.error);
-      };
+      scanner.render(onScanSuccess, (err) => {
+        // Ignorar erros de log contínuos
+      });
     }
+    
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(console.error);
+      }
+    };
   }, [step, manualInputOpen]);
 
   const onScanSuccess = async (decodedText: string) => {
-    setError('');
-    setLoading(true);
+    if (loading) return;
     setManualInputOpen(null);
     setManualInputValue('');
     
     if (step === 'SCAN_WORKER') {
-      // Find worker by CPF or Registration (simulated scan output: "CPF:12345678900" or just ID)
       const searchTerm = decodedText.replace('CPF:', '').replace('MAT:', '').trim();
-      let { data, error } = await supabase
-        .from('workers')
-        .select('*, site:construction_sites(name, latitude, longitude)')
-        .or(`cpf.eq.${searchTerm},registration_number.eq.${searchTerm}`)
-        .single();
-        
-      if (error && error.message === 'Failed to fetch') {
-         setError('Falha de conexão. Verifique sua rede e tente novamente.');
-         setLoading(false);
-         return;
-      }
-        
-      if (data) {
-        setWorker(data as Worker);
+      const w = await fetchWorker(searchTerm);
+      if (w) {
+        setWorker(w);
         setStep('SCAN_EPI');
-      } else {
-        setError('Colaborador não encontrado.');
       }
     } else if (step === 'SCAN_EPI') {
-      // Find EPI by tracking code
       const searchTerm = decodedText.trim();
-      let { data, error } = await supabase
-        .from('epi_inventory')
-        .select('*')
-        .or(`tracking_code.eq.${searchTerm},id.eq.${searchTerm}`)
-        .single();
-        
-      if (error && error.message === 'Failed to fetch') {
-         setError('Falha de conexão. Verifique sua rede e tente novamente.');
-         setLoading(false);
-         return;
-      }
-        
-      if (data) {
-        if (data.status !== 'AVAILABLE') {
-          setError(`EPI não disponível. Status atual: ${data.status}`);
-        } else if (epis.some(e => e.id === data.id)) {
+      const e = await fetchEpi(searchTerm);
+      if (e) {
+        if (e.status !== 'AVAILABLE') {
+          setError(`EPI não disponível. Status atual: ${e.status}`);
+        } else if (epis.some(item => item.id === e.id)) {
           setError('EPI já escaneado nesta ficha.');
         } else {
-          setEpis(prev => [...prev, data]);
-          // Não avança o step automaticamente, permitindo escanear mais
+          setEpis(prev => [...prev, e]);
         }
-      } else {
-        setError('EPI não encontrado.');
       }
-    }
-    
-    setLoading(false);
-  };
-
-  const onScanError = (err: string | any) => {
-    // Exibe erro apenas se for problema de permissão
-    const errorMsg = String(err).toLowerCase();
-    if (errorMsg.includes('notallowed') || errorMsg.includes('permission') || errorMsg.includes('not requested')) {
-      setError('Permissão de câmera negada. Por favor, libere o acesso e tente novamente.');
     }
   };
 
@@ -179,13 +152,13 @@ export function Scanner() {
   const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
     try {
       const blob = dataUrlToBlob(dataUrl);
-      const { data, error } = await supabase.storage.from(bucket).upload(path, blob, {
+      const { data, error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
         contentType: blob.type,
         upsert: true
       });
-      if (error) {
-         if (error.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
-         throw error;
+      if (uploadError) {
+         if (uploadError.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
+         throw uploadError;
       }
       const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
       return publicUrlData.publicUrl;
@@ -219,39 +192,16 @@ export function Scanner() {
         biometricsData?.selfieUrl ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
       ]);
       
-      // Save assignment for multiple EPIs
-      const assignments = epis.map(item => {
-        const expectedReturn = new Date();
-        expectedReturn.setDate(expectedReturn.getDate() + (item.recommended_lifespan_days || 180));
-        
-        return {
-          epi_id: item.id, 
-          worker_id: worker.id,
-          expected_return_date: expectedReturn.toISOString(),
-          digital_signature_url: signatureUrl,
-          audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,
-          biometric_match_score: biometricsData?.score,
-          liveness_verified: biometricsData?.liveness
-        };
-      });
-
-      let { error: assignError } = await supabase.from('epi_assignments').insert(assignments);
+      const success = await confirmAssignment(worker.id, epis, signatureUrl, selfieUrl ?? undefined, biometricsData);
       
-
-      
-      if (assignError) throw assignError;
-      
-      // Update EPI status in bulk
-      const epiIds = epis.map(e => e.id);
-      const { error: updateError } = await supabase.from('epi_inventory')
-        .update({ status: 'IN_USE' })
-        .in('id', epiIds);
-      
-      setStep('SUCCESS');
+      if (success) {
+        setStep('SUCCESS');
+      }
     } catch (err: unknown) {
       setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const resetFlow = () => {
@@ -473,7 +423,9 @@ export function Scanner() {
                     style={{ height: '100%', width: '100%', zIndex: 1 }}
                   >
                     <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      className="dark-tiles"
                     />
                     <LeafletMarker position={[worker.site.latitude, worker.site.longitude]} icon={defaultIcon} />
                   </MapContainer>

@@ -33,7 +33,7 @@ export function useEpiInventory() {
 
   const addEpi = async (epiData: Partial<EpiInventory>) => {
     try {
-      const { error: insertError } = await supabase.from('epi_inventory').insert([epiData]);
+      const { error: insertError } = await supabase.from('epi_inventory').insert([epiData as any]);
       if (insertError) throw insertError;
       toast({ type: 'success', title: 'Sucesso', message: 'Equipamento registrado com sucesso.' });
       await fetchEpis();
@@ -47,13 +47,13 @@ export function useEpiInventory() {
   
   const assignEpi = async (epiId: string, workerId: string) => {
     try {
-      const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { epi_id: epiId, worker_id: workerId }
-      ]);
-      if (assignError) throw assignError;
-
-      const { error: updateError } = await supabase.from('epi_inventory').update({ status: 'IN_USE' }).eq('id', epiId);
-      if (updateError) throw updateError;
+      const { data, error } = await supabase.rpc('assign_epi', {
+        p_worker_id: workerId,
+        p_epi_id: epiId
+      });
+      
+      if (error) throw error;
+      if (!data) throw new Error('Falha ao designar EPI via RPC');
 
       toast({ type: 'success', title: 'Sucesso', message: 'Equipamento designado com sucesso.' });
       await fetchEpis();
@@ -67,25 +67,12 @@ export function useEpiInventory() {
 
   const returnEpi = async (epiId: string) => {
     try {
-      const { data, error: fetchError } = await supabase.from('epi_assignments')
-        .select('*')
-        .eq('epi_id', epiId)
-        .is('returned_at', null)
-        .single();
+      const { data, error } = await supabase.rpc('return_epi', {
+        p_epi_id: epiId
+      });
 
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-      if (data) {
-        const { error: updateAssignError } = await supabase.from('epi_assignments')
-          .update({ returned_at: new Date().toISOString(), condition_on_return: 'GOOD' })
-          .eq('id', data.id);
-        if (updateAssignError) throw updateAssignError;
-      }
-
-      const { error: updateEpiError } = await supabase.from('epi_inventory')
-        .update({ status: 'AVAILABLE' })
-        .eq('id', epiId);
-      if (updateEpiError) throw updateEpiError;
+      if (error) throw error;
+      if (!data) throw new Error('Falha ao devolver EPI via RPC');
         
       toast({ type: 'success', title: 'Devolvido', message: 'Equipamento devolvido com sucesso.' });
       await fetchEpis();

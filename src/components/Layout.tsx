@@ -6,20 +6,20 @@ import { useState } from 'react';
 import { cn } from '../lib/utils';
 
 export function Layout() {
-  const { signOut, user } = useAuth();
+  const { signOut, user, role } = useAuth();
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const navigation = [
-    { name: 'Dashboard Central', href: '/', icon: ShieldCheck },
-    { name: 'Almoxarifado (Scan)', href: '/scanner', icon: ScanBarcode },
-    { name: 'Mapa de Ativos', href: '/map', icon: MapPin },
-    { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat },
-    { name: 'Colaboradores', href: '/workers', icon: Users },
-    { name: 'Empresa / Obras', href: '/sites', icon: Building2 },
-    { name: 'Imprimir QR Codes', href: '/tags', icon: Printer },
-    { name: 'Auditoria NR-6', href: '/audit', icon: FileBarChart },
-  ];
+    { name: 'Dashboard Central', href: '/', icon: ShieldCheck, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Almoxarifado (Scan)', href: '/scanner', icon: ScanBarcode, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Mapa de Ativos', href: '/map', icon: MapPin, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Colaboradores', href: '/workers', icon: Users, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Empresa / Obras', href: '/sites', icon: Building2, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Imprimir QR Codes', href: '/tags', icon: Printer, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Auditoria NR-6', href: '/audit', icon: FileBarChart, roles: ['ADMIN', 'SAFETY_ENGINEER'] },
+  ].filter(item => item.roles.includes(role || 'SITE_MANAGER'));
 
   return (
     <div className="flex h-screen w-full flex-col bg-background font-sans text-foreground overflow-hidden">
@@ -50,8 +50,8 @@ export function Layout() {
             >
               <LogOut className="w-4 h-4" />
             </button>
-            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden text-muted ml-2">
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-muted ml-2 focus:outline-none focus:ring-2 focus:ring-primary rounded p-1">
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
@@ -59,17 +59,17 @@ export function Layout() {
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile Backdrop */}
-        {isMobileMenuOpen && (
+        {isSidebarOpen && (
           <div 
             className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden transition-opacity" 
-            onClick={() => setIsMobileMenuOpen(false)} 
+            onClick={() => setIsSidebarOpen(false)} 
           />
         )}
 
         {/* Sidebar */}
         <aside className={cn(
-          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-40 h-full transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-40 h-full transition-all duration-300 ease-in-out shadow-2xl md:shadow-none",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         )}>
           <nav className="flex flex-col gap-1">
             {navigation.map((item) => {
@@ -78,7 +78,11 @@ export function Layout() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={() => {
+                    if (window.innerWidth < 768) {
+                      setIsSidebarOpen(false);
+                    }
+                  }}
                   className={cn(
                     "flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer",
                     isActive

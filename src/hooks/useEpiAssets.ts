@@ -34,7 +34,7 @@ export function useEpiAssets() {
   const workers = data?.workers || [];
   const catalogs = data?.catalogs || [];
 
-  const addEpi = async (category: string, caNumber: string) => {
+  const addEpi = async (category: string, caNumber: string): Promise<string> => {
     setError(null);
     const prefix = category.substring(0, 3).toUpperCase();
     const existingSamePrefix = epis.filter(e => e.tracking_code.startsWith(prefix));
@@ -51,6 +51,7 @@ export function useEpiAssets() {
       ]);
       if (insertError) throw insertError;
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      return tracking_code;
     } catch (err: unknown) {
       console.error('Erro ao criar EPI:', err);
       throw new Error('Falha ao registrar novo equipamento.');
@@ -60,13 +61,13 @@ export function useEpiAssets() {
   const assignEpi = async (epiId: string, workerId: string) => {
     setError(null);
     try {
-      const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { epi_id: epiId, worker_id: workerId }
-      ]);
-      if (assignError) throw assignError;
-
-      const { error: updateError } = await supabase.from('epi_inventory').update({ status: 'IN_USE' }).eq('id', epiId);
-      if (updateError) throw updateError;
+      const { data, error } = await supabase.rpc('assign_epi', {
+        p_worker_id: workerId,
+        p_epi_id: epiId
+      });
+      
+      if (error) throw error;
+      if (!data) throw new Error('Falha ao designar EPI via RPC');
 
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
@@ -78,27 +79,12 @@ export function useEpiAssets() {
   const returnEpi = async (epiId: string) => {
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase.from('epi_assignments')
-        .select('*')
-        .eq('epi_id', epiId)
-        .is('returned_at', null)
-        .single();
+      const { data, error } = await supabase.rpc('return_epi', {
+        p_epi_id: epiId
+      });
 
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-      if (data) {
-        const { error: updateAssignError } = await supabase.from('epi_assignments')
-          .update({ returned_at: new Date().toISOString(), condition_on_return: 'GOOD' })
-          .eq('id', data.id);
-        
-        if (updateAssignError) throw updateAssignError;
-      }
-
-      const { error: updateEpiError } = await supabase.from('epi_inventory')
-        .update({ status: 'AVAILABLE' })
-        .eq('id', epiId);
-      
-      if (updateEpiError) throw updateEpiError;
+      if (error) throw error;
+      if (!data) throw new Error('Falha ao devolver EPI via RPC');
         
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
