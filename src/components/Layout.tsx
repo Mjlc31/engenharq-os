@@ -72,23 +72,63 @@ export function Layout() {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         )}>
           <nav className="flex flex-col gap-1">
-            {navigation.map((item) => {
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-2 mb-1">Principal</div>
+            {navigation.filter(item => ['Dashboard Central'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => {
-                    if (window.innerWidth < 768) {
-                      setIsSidebarOpen(false);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer",
-                    isActive
-                      ? "bg-surface-hover text-primary font-bold shadow-sm"
-                      : "text-muted hover:bg-surface-hover hover:text-foreground"
-                  )}
+                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
+                >
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
+                  {item.name}
+                </Link>
+              );
+            })}
+            
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Cadastros</div>
+            {navigation.filter(item => ['Empresa / Obras', 'Colaboradores', 'Estoque (NR-6)'].includes(item.name)).map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
+                >
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Operações</div>
+            {navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos'].includes(item.name)).map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
+                >
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Relatórios</div>
+            {navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes'].includes(item.name)).map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                 >
                   <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
                   {item.name}

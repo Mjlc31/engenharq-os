@@ -35,9 +35,11 @@ export interface WorkerRole {
 export interface Worker {
   id: string;
   full_name: string;
+  email?: string | null;
   cpf: string;
   registration_number: string;
   initial_role?: string | null;
+  current_role?: string | null;
   admission_date?: string | null;
   birth_date?: string | null;
   work_sector?: string | null;
