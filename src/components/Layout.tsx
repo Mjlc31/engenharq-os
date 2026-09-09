@@ -1,14 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 
 export function Layout() {
   const { signOut, user, role } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Próxima Vistoria State
+  const [nextSiteName, setNextSiteName] = useState<string>('Carregando...');
+  const [nextTime, setNextTime] = useState<string>('--:--h');
+
+  useEffect(() => {
+    async function fetchNextSite() {
+      try {
+        const { data, error } = await supabase
+          .from('construction_sites')
+          .select('name')
+          .eq('status', 'ACTIVE')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!error && data) {
+          setNextSiteName(data.name);
+          
+          const currentHour = new Date().getHours();
+          if (currentHour < 12) {
+            setNextTime('14:00h');
+          } else {
+            setNextTime('08:30h');
+          }
+        } else {
+          setNextSiteName('Nenhuma obra ativa');
+          setNextTime('--:--');
+        }
+      } catch (err) {
+        setNextSiteName('Erro ao carregar');
+      }
+    }
+    fetchNextSite();
+  }, []);
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Cadastros: false,
     Operações: false,
@@ -190,8 +225,8 @@ export function Layout() {
           <div className="mt-auto hidden md:block">
             <div className="rounded border border-border bg-background/50 p-4">
               <p className="text-[10px] text-muted uppercase tracking-widest mb-2 font-bold">Próxima Vistoria</p>
-              <p className="text-xs">Obra Ponta Verde</p>
-              <p className="text-lg font-mono text-primary">14:20h</p>
+              <p className="text-xs">{nextSiteName}</p>
+              <p className="text-lg font-mono text-primary">{nextTime}</p>
             </div>
           </div>
         </aside>
