@@ -37,9 +37,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, title, message }]);
 
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 5000);
+    if (type !== 'error') {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 5000);
+    }
   }, []);
 
   const removeToast = (id: string) => {
@@ -73,6 +75,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             
             <button
               onClick={() => removeToast(t.id)}
+              aria-label="Fechar notificação"
               className="inline-flex shrink-0 rounded-md p-1 text-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               <X className="h-4 w-4" />

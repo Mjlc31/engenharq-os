@@ -20,13 +20,31 @@ const itemVariants = {
 };
 
 export function Dashboard() {
-  const { data, isLoading: loading } = useDashboard();
+  const { data, isLoading: loading, error, refetch } = useDashboard();
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-muted">
+        <AlertTriangle className="w-12 h-12 text-red-500 opacity-80" />
+        <div className="text-center">
+          <h2 className="text-lg font-bold text-foreground">Erro ao carregar o painel</h2>
+          <p className="text-sm">Não foi possível buscar as estatísticas do sistema.</p>
+        </div>
+        <button 
+          onClick={() => refetch()}
+          className="mt-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-md transition-colors"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   const stats = data?.stats || { totalEPIs: 0, inUse: 0, maintenance: 0, workers: 0 };
   const recentMovements = data?.recentMovements || [];
   const lifespanAlerts = data?.lifespanAlerts || [];
 
-  const cards = [
+  const cards = React.useMemo(() => [
     {
       title: 'Total EPIs em Uso',
       value: stats.inUse,
@@ -55,13 +73,13 @@ export function Dashboard() {
       subtitleColor: 'text-muted',
       valueColor: 'text-foreground'
     },
-  ];
+  ], [stats]);
 
-  const pieData = [
-    { name: 'Em Uso', value: stats.inUse, color: '#ef4444' },
+  const pieData = React.useMemo(() => [
+    { name: 'Em Uso', value: stats.inUse, color: '#3b82f6' }, // Updated color to blue
     { name: 'Manutenção', value: stats.maintenance, color: '#f59e0b' },
     { name: 'Estoque', value: Math.max(0, stats.totalEPIs - stats.inUse - stats.maintenance), color: '#27272a' },
-  ];
+  ], [stats]);
 
   return (
     <motion.div 

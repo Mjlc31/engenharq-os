@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2 } from 'lucide-react';
+import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
 
@@ -9,6 +9,15 @@ export function Layout() {
   const { signOut, user, role } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Cadastros: false,
+    Operações: false,
+    Relatórios: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const navigation = [
     { name: 'Dashboard Central', href: '/', icon: ShieldCheck, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
@@ -47,10 +56,16 @@ export function Layout() {
               onClick={signOut}
               className="h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer relative group text-muted hover:text-primary transition-colors"
               title="Sign Out"
+              aria-label="Sair da conta"
             >
               <LogOut className="w-4 h-4" />
             </button>
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-muted ml-2 focus:outline-none focus:ring-2 focus:ring-primary rounded p-1">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className="text-muted ml-2 focus:outline-none focus:ring-2 focus:ring-primary rounded p-1"
+              aria-label={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={isSidebarOpen}
+            >
               <Menu className="w-6 h-6" />
             </button>
           </div>
@@ -88,8 +103,14 @@ export function Layout() {
               );
             })}
             
-            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Cadastros</div>
-            {navigation.filter(item => ['Empresa / Obras', 'Colaboradores', 'Estoque (NR-6)'].includes(item.name)).map(item => {
+            <button 
+              onClick={() => toggleSection('Cadastros')}
+              className="flex items-center justify-between w-full text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1 hover:text-foreground transition-colors focus:outline-none"
+            >
+              <span>Cadastros</span>
+              {openSections['Cadastros'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {openSections['Cadastros'] && navigation.filter(item => ['Empresa / Obras', 'Colaboradores', 'Estoque (NR-6)'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -104,8 +125,14 @@ export function Layout() {
               );
             })}
 
-            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Operações</div>
-            {navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos'].includes(item.name)).map(item => {
+            <button 
+              onClick={() => toggleSection('Operações')}
+              className="flex items-center justify-between w-full text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1 hover:text-foreground transition-colors focus:outline-none"
+            >
+              <span>Operações</span>
+              {openSections['Operações'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {openSections['Operações'] && navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -120,8 +147,14 @@ export function Layout() {
               );
             })}
 
-            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Relatórios</div>
-            {navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes'].includes(item.name)).map(item => {
+            <button 
+              onClick={() => toggleSection('Relatórios')}
+              className="flex items-center justify-between w-full text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1 hover:text-foreground transition-colors focus:outline-none"
+            >
+              <span>Relatórios</span>
+              {openSections['Relatórios'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {openSections['Relatórios'] && navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -135,6 +168,23 @@ export function Layout() {
                 </Link>
               );
             })}
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Administração</div>
+            <button
+              className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-not-allowed text-muted/50"
+              disabled
+            >
+              <Settings className="w-4 h-4" />
+              Configurações
+            </button>
+
+            <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Sistema</div>
+            <button
+              onClick={signOut}
+              className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer text-muted hover:bg-red-500/10 hover:text-red-500"
+            >
+              <LogOut className="w-4 h-4" />
+              Sair
+            </button>
           </nav>
           
           <div className="mt-auto hidden md:block">
@@ -148,7 +198,12 @@ export function Layout() {
 
         {/* Main Content */}
         <main className="flex flex-1 flex-col p-4 md:p-6 overflow-auto gap-4 relative z-10">
-          <React.Suspense fallback={<div className="flex-1 flex items-center justify-center text-primary/50 text-sm">Carregando módulo...</div>}>
+          <React.Suspense fallback={
+            <div className="flex-1 flex flex-col items-center justify-center h-full gap-3 text-muted">
+              <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <span className="text-sm font-medium tracking-wide animate-pulse">Carregando módulo...</span>
+            </div>
+          }>
             <Outlet />
           </React.Suspense>
         </main>

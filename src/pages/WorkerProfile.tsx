@@ -573,9 +573,9 @@ export function WorkerProfile() {
                       </td>
                       <td className="px-6 py-4">
                         {assignment.returned_at ? (
-                          <span className="bg-surface border border-border text-muted px-2 py-1 rounded text-xs font-medium">Devolvido</span>
+                          <span className="bg-blue-500/10 border border-blue-500/20 text-blue-500 px-2 py-1 rounded text-xs font-medium">Devolvido</span>
                         ) : (
-                          <span className="bg-green-500/10 border border-green-500/20 text-green-500 px-2 py-1 rounded text-xs font-medium">Em Posse</span>
+                          <span className="bg-green-500/10 border border-green-500/20 text-green-500 px-2 py-1 rounded text-xs font-medium">Em Uso</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-right">

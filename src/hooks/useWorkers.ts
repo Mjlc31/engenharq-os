@@ -32,8 +32,22 @@ export function useWorkers() {
 
   const addWorkerMutation = useMutation({
     mutationFn: async (workerData: Partial<Worker>) => {
-      const { error: insertError } = await supabase.from('workers').insert([workerData as any]);
+      const { data: newWorker, error: insertError } = await supabase
+        .from('workers')
+        .insert([workerData as any])
+        .select()
+        .single();
+        
       if (insertError) throw insertError;
+
+      // Se houver initial_role, insere no histórico também
+      if (newWorker && newWorker.initial_role) {
+        await supabase.from('worker_roles_history').insert([{
+          worker_id: newWorker.id,
+          role_name: newWorker.initial_role,
+          start_date: newWorker.admission_date || new Date().toISOString().split('T')[0]
+        }]);
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workers-sites'] }),
     onError: (err: any) => {

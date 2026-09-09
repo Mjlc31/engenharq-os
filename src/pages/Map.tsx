@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker as LeafletMarker, Popup, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { supabase } from '../lib/supabase';
 import { HardHat, MapPin, Plus, X, AlertCircle, Users, Package, Activity, Navigation2, Filter } from 'lucide-react';
 import { ConstructionSite, EpiAssignment, EpiInventory, Worker } from '../types';
@@ -230,21 +231,25 @@ export function MapTracking() {
                 className="dark-tiles"
               />
               <MapBounds sites={siteData} />
-              {siteData.map(site => (
-                site.latitude && site.longitude && (
-                  <LeafletMarker 
-                    key={site.id} 
-                    position={[site.latitude, site.longitude]}
-                    icon={CustomMarkerIcon(site.epis.length)}
-                    eventHandlers={{
-                      click: () => {
-                        setSelectedSiteId(site.id);
-                      },
-                    }}
-                  >
-                  </LeafletMarker>
-                )
-              ))}
+              <MarkerClusterGroup
+                chunkedLoading
+                showCoverageOnHover={false}
+              >
+                {siteData.map(site => (
+                  site.latitude && site.longitude && (
+                    <LeafletMarker 
+                      key={site.id} 
+                      position={[site.latitude, site.longitude]}
+                      icon={CustomMarkerIcon(site.epis.length)}
+                      eventHandlers={{
+                        click: () => {
+                          setSelectedSiteId(site.id);
+                        },
+                      }}
+                    />
+                  )
+                ))}
+              </MarkerClusterGroup>
             </MapContainer>
           )}
         </div>
@@ -338,7 +343,7 @@ export function MapTracking() {
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
-              <h3 className="font-bold text-foreground">Subir EPI no Mapa</h3>
+              <h3 className="font-bold text-foreground">Registrar Entrega de EPI</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-muted hover:text-red-500">
                 <X className="w-5 h-5" />
               </button>

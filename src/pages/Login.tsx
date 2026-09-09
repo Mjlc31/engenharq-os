@@ -106,10 +106,10 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col md:flex-row font-sans text-foreground overflow-hidden selection:bg-primary/30">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row font-sans text-foreground overflow-hidden selection:bg-primary/30">
       
       {/* Left Pane - Abstract Graphic / Branding */}
-      <div className="hidden md:flex md:w-1/2 relative flex-col justify-between p-12 border-r border-white/5 bg-gradient-to-br from-[#0a0a0a] to-[#111]">
+      <div className="hidden md:flex md:w-1/2 relative flex-col justify-between p-12 border-r border-border bg-gradient-to-br from-surface to-background">
         
         {/* Subtle Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />

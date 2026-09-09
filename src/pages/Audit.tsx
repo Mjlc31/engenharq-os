@@ -132,6 +132,7 @@ export function Audit() {
           </div>
           <input 
             type="date" 
+            aria-label="Data inicial"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="bg-background border border-border rounded-md py-1.5 px-3 text-sm focus:outline-none focus:border-primary text-muted-foreground"
@@ -139,6 +140,7 @@ export function Audit() {
           <span className="text-muted text-sm">até</span>
           <input 
             type="date" 
+            aria-label="Data final"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="bg-background border border-border rounded-md py-1.5 px-3 text-sm focus:outline-none focus:border-primary text-muted-foreground"
@@ -168,7 +170,14 @@ export function Audit() {
             {loading ? (
               <tr><td colSpan={6} className="text-center py-8 text-muted">Carregando registros...</td></tr>
             ) : filteredAssignments.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-8 text-muted">Nenhum registro encontrado.</td></tr>
+              <tr>
+                <td colSpan={6} className="text-center py-16 text-muted">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Search className="w-8 h-8 opacity-20" />
+                    <p>Nenhum registro encontrado para estes filtros.</p>
+                  </div>
+                </td>
+              </tr>
             ) : filteredAssignments.map((a, i) => {
               const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
               const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;

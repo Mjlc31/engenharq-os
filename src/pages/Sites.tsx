@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useAuth } from '../components/AuthProvider';
+import { useToast } from '../components/ui/Toast';
 
 // Fix Leaflet default icon issue
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -33,7 +34,11 @@ export function Sites() {
   const { role } = useAuth();
   const [sites, setSites] = useState<(ConstructionSite & { worker_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const setError = (message: string | null) => {
+    if (message) toast({ type: 'error', title: 'Erro', message });
+  };
+  const error = null;
   const [search, setSearch] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingSite, setEditingSite] = useState<ConstructionSite | null>(null);
@@ -260,7 +265,15 @@ export function Sites() {
     <div data-testid="sites-container" className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Empresa / Obras</h1>
+          <div className="bg-surface border border-border rounded-xl p-6 mb-6">
+          <h2 className="text-xl font-bold mb-2">Dados Base da Empresa (Matriz)</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div><span className="text-muted block">Razão Social:</span><span className="font-medium">EngenharQ Construções e Soluções LTDA</span></div>
+            <div><span className="text-muted block">CNPJ:</span><span className="font-medium">00.000.000/0001-00</span></div>
+            <div><span className="text-muted block">Endereço Principal:</span><span className="font-medium">Maceió - AL</span></div>
+          </div>
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Obras Ativas</h1>
           <p className="text-muted mt-2">Gerencie os canteiros de obra ativos, mapas e efetivo.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -297,128 +310,140 @@ export function Sites() {
             {isAdding ? 'Cancelar' : <><Plus className="w-4 h-4" /> Nova Obra</>}
           </button>
         </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      )}
-
-      {isAdding && (
-        <div className="bg-surface border border-border rounded-xl p-6 shadow-sm">
-          <h3 className="text-lg font-medium mb-4">{editingSite ? 'Editar Obra' : 'Registro de Nova Obra'}</h3>
-          <form onSubmit={handleSaveSite} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Nome da Obra</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                placeholder="Ex: Residencial Pajuçara"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Latitude</label>
-              <input
-                type="text"
-                required
-                value={latitude}
-                onChange={e => setLatitude(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                placeholder="-9.6705"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Longitude</label>
-              <input
-                type="text"
-                required
-                value={longitude}
-                onChange={e => setLongitude(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                placeholder="-35.7143"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">CNPJ</label>
-              <input
-                type="text"
-                value={cnpj}
-                onChange={e => setCnpj(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">CNO</label>
-              <input
-                type="text"
-                value={cno}
-                onChange={e => setCno(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Data de Início</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Data de Término</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Endereço</label>
-              <input
-                type="text"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Imagem (URL)</label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={e => setImageUrl(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted">Status</label>
-              <select
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-                className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+        {isAdding && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface border border-border rounded-xl p-6 w-full max-w-4xl shadow-2xl relative my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-foreground">
+                {editingSite ? 'Editar Obra' : 'Nova Obra'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setIsAdding(false);
+                  setEditingSite(null);
+                }}
+                className="text-muted hover:text-red-500 transition-colors"
               >
-                <option value="ACTIVE">Ativa</option>
-                <option value="FINISHED">Finalizada</option>
-              </select>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-4">
-              <button
-                type="submit"
-                className="bg-primary hover:bg-primary-dark text-background font-medium py-2 px-6 rounded-md transition-colors"
-              >
-                {editingSite ? 'Atualizar Obra' : 'Salvar Obra'}
+                <X className="w-6 h-6" />
               </button>
             </div>
-          </form>
+            
+            <form onSubmit={handleSaveSite} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Nome da Obra *</label>
+                <input
+                  required
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  placeholder="Ex: Edf. Varandas"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Latitude</label>
+                <input
+                  type="text"
+                  value={latitude}
+                  onChange={e => setLatitude(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  placeholder="-9.6659"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Longitude</label>
+                <input
+                  type="text"
+                  value={longitude}
+                  onChange={e => setLongitude(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  placeholder="-35.7143"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">CNPJ</label>
+                <input
+                  type="text"
+                  value={cnpj}
+                  onChange={e => setCnpj(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">CNO</label>
+                <input
+                  type="text"
+                  value={cno}
+                  onChange={e => setCno(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Data de Início</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Data de Término</label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-sm font-medium text-muted">Endereço</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <label className="text-sm font-medium text-muted">Imagem (URL)</label>
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={e => setImageUrl(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Status</label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                  className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                >
+                  <option value="ACTIVE">Ativa</option>
+                  <option value="FINISHED">Finalizada</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3 flex justify-end mt-4 pt-4 border-t border-border gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAdding(false)}
+                  className="text-muted hover:text-foreground font-medium py-2 px-6 rounded-md transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="bg-primary hover:bg-primary-dark text-background font-medium py-2 px-6 rounded-md transition-colors"
+                >
+                  {editingSite ? 'Atualizar Obra' : 'Salvar Obra'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      )}
+      )}  </div>
 
       <div className="flex-1 flex flex-col">
         <div className="mb-4">
@@ -464,7 +489,7 @@ export function Sites() {
                     </div>
                   )}
                   <div className="absolute top-3 right-3 z-10">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-sm shadow-sm ${site.status === 'ACTIVE' ? 'bg-emerald-500/90 text-background' : 'bg-red-500/90 text-background'}`}>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${site.status === 'ACTIVE' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
                       {site.status === 'ACTIVE' ? 'Ativa' : 'Finalizada'}
                     </span>
                   </div>
@@ -551,7 +576,7 @@ export function Sites() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground border border-border rounded-lg transition-colors"
+                className="px-6 py-3 min-h-[48px] text-base font-medium text-muted hover:text-foreground border border-border rounded-lg transition-colors"
                 disabled={isDeleting}
               >
                 Cancelar
@@ -563,10 +588,10 @@ export function Sites() {
                   setIsDeleting(false);
                   setDeleteConfirmId(null);
                 }}
-                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="px-6 py-3 min-h-[48px] text-base font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
                 disabled={isDeleting}
               >
-                {isDeleting ? 'Excluindo...' : 'Excluir'}
+                {isDeleting ? 'Excluindo...' : 'Sim, Excluir Obra'}
               </button>
             </div>
           </div>

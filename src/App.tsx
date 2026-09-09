@@ -14,6 +14,8 @@ const PrintTags = React.lazy(() => import('./pages/PrintTags').then(m => ({ defa
 const Audit = React.lazy(() => import('./pages/Audit').then(m => ({ default: m.Audit })));
 const Sites = React.lazy(() => import('./pages/Sites').then(m => ({ default: m.Sites })));
 const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m => ({ default: m.WorkerProfile })));
+const Operations = React.lazy(() => import('./pages/Operations').then(m => ({ default: m.Operations })));
+const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -43,6 +45,8 @@ export default function App() {
               <Route path="map" element={<MapTracking />} />
               <Route path="tags" element={<PrintTags />} />
               <Route path="audit" element={<Audit />} />
+              <Route path="operations" element={<Operations />} />
+              <Route path="reports" element={<Reports />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

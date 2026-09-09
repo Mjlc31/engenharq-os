@@ -314,9 +314,15 @@ export function Scanner() {
                 </div>
               </div>
             ) : (
-              <div className="mx-auto w-full max-w-sm rounded-xl overflow-hidden border-[3px] border-primary/50 relative shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+              <div className="mx-auto w-full max-w-sm rounded-xl overflow-hidden border-[3px] border-primary/50 relative shadow-[0_0_30px_rgba(59,130,246,0.15)]">
                 <div className="absolute inset-0 border-2 border-primary/20 pointer-events-none z-10 rounded-xl m-4 border-dashed animate-pulse"></div>
-                <div id="qr-reader" className="w-full bg-black/50 backdrop-blur-sm min-h-[250px]"></div>
+                <div id="qr-reader" className="w-full bg-black/50 backdrop-blur-sm min-h-[250px] relative">
+                  {/* Camera Placeholder */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted -z-10">
+                    <ScanFace className="w-12 h-12 opacity-20 mb-2" />
+                    <span className="text-xs font-medium uppercase tracking-widest opacity-50">Câmera Inicializando</span>
+                  </div>
+                </div>
               </div>
             )}
             
@@ -439,7 +445,26 @@ export function Scanner() {
                   <PenTool className="w-4 h-4 text-muted" />
                   <span className="text-xs font-bold text-muted uppercase tracking-wider">Ficha de EPI • Assinatura Legal</span>
                 </div>
-                <button onClick={clearSignature} className="text-xs text-primary hover:underline">Limpar</button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => {
+                      const data = sigCanvas.current?.toData();
+                      if (data && data.length > 0) {
+                        data.pop();
+                        sigCanvas.current?.fromData(data);
+                      }
+                    }} 
+                    className="text-xs text-muted hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    Desfazer
+                  </button>
+                  <button 
+                    onClick={clearSignature} 
+                    className="text-xs text-muted hover:text-red-500 transition-colors"
+                  >
+                    Limpar Tudo
+                  </button>
+                </div>
               </div>
               
               <SignatureCanvas 
