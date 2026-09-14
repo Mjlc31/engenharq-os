@@ -119,7 +119,7 @@ export function useEpiAssets() {
             ca_number: payload.ca_number || 'N/A',
             ca_expiration_date: payload.ca_validity || null,
             recommended_lifespan_days: payload.lifespan_days || 180,
-            status: 'AVAILABLE'
+            status: 'AVAILABLE' as const
           }));
           
           const { error: stockError } = await supabase.from('epi_inventory').insert(newItems);

@@ -23,14 +23,14 @@ export function Reports() {
       let dataToExport = [];
       
       if (type === 'funcionarios') {
-        const { data } = await supabase.from('workers').select('full_name, registration_number, cpf, department, current_role, admission_date, site_id, status');
+        const { data } = await supabase.from('workers').select('full_name, registration_number, cpf, work_sector, current_role, admission_date, current_site_id, status');
         dataToExport = (data || []).map(w => ({
           Nome: w.full_name,
           Matricula: w.registration_number,
           CPF: w.cpf,
-          Setor: w.department,
+          Setor: w.work_sector,
           Funcao: w.current_role,
-          Admissao: new Date(w.admission_date).toLocaleDateString(),
+          Admissao: w.admission_date ? new Date(w.admission_date).toLocaleDateString() : 'N/A',
           Status: w.status
         }));
       } else if (type === 'epis' || type === 'estoque') {

@@ -24,7 +24,7 @@ export function useScanner() {
          throw fetchError;
       }
       
-      return data as Worker;
+      return data as unknown as Worker;
     } catch (err: unknown) {
       console.error(err);
       setError('Colaborador não encontrado.');
