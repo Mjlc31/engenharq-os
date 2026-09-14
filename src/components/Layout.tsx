@@ -204,13 +204,19 @@ export function Layout() {
               );
             })}
             <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Administração</div>
-            <button
-              className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-not-allowed text-muted/50"
-              disabled
+            <NavLink
+              to="/settings"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20'
+                    : 'text-muted hover:bg-surface hover:text-foreground'
+                }`
+              }
             >
               <Settings className="w-4 h-4" />
               Configurações
-            </button>
+            </NavLink>
 
             <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Sistema</div>
             <button

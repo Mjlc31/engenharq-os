@@ -155,7 +155,7 @@ export function Workers() {
                   <td className="p-4 text-foreground">{worker.cpf}</td>
                   <td className="p-4 text-foreground">{worker.work_sector || '-'}</td>
                   <td className="p-4 text-foreground font-medium">{worker.current_role || worker.initial_role || '-'}</td>
-                  <td className="p-4 text-foreground">{worker.admission_date ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '-'}</td>
+                  <td className="p-4 text-foreground">{(worker.admission_date && !isNaN(new Date(worker.admission_date).getTime())) ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '-'}</td>
                   <td className="p-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>

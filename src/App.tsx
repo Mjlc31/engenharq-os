@@ -45,6 +45,7 @@ export default function App() {
               <Route path="map" element={<MapTracking />} />
               <Route path="tags" element={<PrintTags />} />
               <Route path="audit" element={<Audit />} />
+              <Route path="settings" element={<Settings />} />
               <Route path="operations" element={<Operations />} />
               <Route path="reports" element={<Reports />} />
             </Route>

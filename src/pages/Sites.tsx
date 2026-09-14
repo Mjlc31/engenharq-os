@@ -161,14 +161,15 @@ export function Sites() {
       if (editingSite) {
         const { error } = await supabase.from('construction_sites').update(payload).eq('id', editingSite.id);
         if (error) throw error;
+        await fetchSites();
         toast({ type: 'success', title: 'Sucesso', message: 'Obra atualizada.' });
       } else {
         const { error } = await supabase.from('construction_sites').insert([payload]);
         if (error) throw error;
+        await fetchSites();
         toast({ type: 'success', title: 'Sucesso', message: 'Obra registrada.' });
       }
       resetSiteForm();
-      fetchSites();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
