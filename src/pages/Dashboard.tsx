@@ -67,7 +67,7 @@ export function Dashboard() {
       valueColor: 'text-amber-500'
     },
     {
-      title: 'Colaboradores Ativos',
+      title: 'Retenção Média',
       value: stats.workers,
       subtitle: 'No canteiro atual',
       subtitleColor: 'text-muted',

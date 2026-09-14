@@ -12,7 +12,6 @@ export interface User {
 export interface ConstructionSite {
   id: string;
   code?: string | null;
-  code?: string | null;
   name: string;
   model?: string | null;
   status?: string | null;
@@ -24,7 +23,6 @@ export interface ConstructionSite {
   end_date?: string | null;
   address?: string | null;
   image_url?: string | null;
-  status?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   created_at: string;
@@ -56,7 +54,7 @@ export interface Worker {
   current_site_id: string | null;
   reference_photo_url?: string | null;
   facial_descriptor?: number[];
-  status?: string;
+  status?: string | null;
   created_at: string;
   site?: ConstructionSite;
   roles?: WorkerRole[];
@@ -64,8 +62,10 @@ export interface Worker {
 
 export interface EpiCatalog {
   id: string;
+  code?: string | null;
   name: string;
   category: string;
+  model?: string | null;
   description?: string | null;
   brand?: string | null;
   ca_number?: string | null;
@@ -74,6 +74,7 @@ export interface EpiCatalog {
   minimum_stock?: number | null;
   current_stock?: number | null;
   image_url?: string | null;
+  status?: string | null;
   observations?: string | null;
   created_at: string;
 }

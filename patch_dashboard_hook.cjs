@@ -1,4 +1,5 @@
-
+const fs = require('fs');
+const content = `
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
@@ -37,13 +38,13 @@ export function useDashboard() {
         supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
         supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
         supabase.from('epi_assignments')
-          .select(`
+          .select(\`
             id,
             assigned_at,
             returned_at,
             epi:epi_inventory(tracking_code, category),
             worker:workers(full_name)
-          `)
+          \`)
           .order('assigned_at', { ascending: false })
           .limit(10),
         supabase.from('epi_inventory')
@@ -53,13 +54,13 @@ export function useDashboard() {
           .order('ca_expiration_date', { ascending: true })
           .limit(10),
         supabase.from('epi_assignments')
-          .select(`
+          .select(\`
             id,
             assigned_at,
             returned_at,
             epi:epi_inventory(tracking_code, category, recommended_lifespan_days),
             worker:workers(full_name)
-          `)
+          \`)
           .is('returned_at', null)
       ]);
 
@@ -91,10 +92,10 @@ export function useDashboard() {
           
           if (daysUntilReplacement <= 7) {
              lifespanAlerts.push({
-               id: `lifespan-${assignment.id}`,
+               id: \`lifespan-\${assignment.id}\`,
                type: 'LIFESPAN',
                severity: daysUntilReplacement <= 0 ? 'CRITICAL' : 'WARNING',
-               message: daysUntilReplacement <= 0 ? 'Troca Atrasada' : `Troca em ${daysUntilReplacement} dias`,
+               message: daysUntilReplacement <= 0 ? 'Troca Atrasada' : \`Troca em \${daysUntilReplacement} dias\`,
                epi: epiInfo,
                worker: workerInfo
              });
@@ -106,10 +107,10 @@ export function useDashboard() {
         const expDate = new Date(item.ca_expiration_date);
         const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         return {
-          id: `ca-${item.id}`,
+          id: \`ca-\${item.id}\`,
           type: 'CA_EXPIRATION' as const,
           severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
-          message: daysUntilExpiry <= 0 ? 'CA Vencido' : `CA vence em ${daysUntilExpiry} dias`,
+          message: daysUntilExpiry <= 0 ? 'CA Vencido' : \`CA vence em \${daysUntilExpiry} dias\`,
           epi: { tracking_code: item.tracking_code, category: item.category, ca_expiration_date: item.ca_expiration_date },
           worker: undefined
         } as DashboardAlert;
@@ -136,3 +137,5 @@ export function useDashboard() {
     }
   });
 }
+`;
+fs.writeFileSync('src/hooks/useDashboard.ts', content);

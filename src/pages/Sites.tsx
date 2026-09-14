@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { useSites } from '../hooks/useSites';
 import { useCompany, Company } from '../hooks/useCompany';
-import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon } from 'lucide-react';
+import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConstructionSite } from '../types';
 import { uploadImage } from '../lib/storage';

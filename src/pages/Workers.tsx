@@ -213,8 +213,12 @@ export function Workers() {
 
       {isAdding && (
         <WorkerForm sites={sites} onClose={() => setIsAdding(false)} onSave={async (data) => {
-          const success = await addWorker(data);
-          if (success) setIsAdding(false);
+          try {
+            await addWorker(data);
+            setIsAdding(false);
+          } catch (e) {
+            console.error(e);
+          }
         }} />
       )}
 

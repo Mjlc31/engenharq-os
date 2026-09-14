@@ -4,12 +4,16 @@ import { useToast } from '../components/ui/Toast';
 import { Package, Users, FileText, CheckCircle, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
+import { ReturnForm } from '../components/features/operations/ReturnForm';
+import { ReplacementForm } from '../components/features/operations/ReplacementForm';
+import { LossForm } from '../components/features/operations/LossForm';
 
 export function Operations() {
   const { epis, catalogs, workers, loading } = useEpiAssets();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('entregas');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [pendingReplacement, setPendingReplacement] = useState<{workerId: string, oldEpiId: string, newEpiId: string} | null>(null);
 
   // Form states
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
@@ -65,6 +69,44 @@ export function Operations() {
       setObservations('');
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
+    } finally {
+      setSubmitting(false);
+      window.location.reload();
+    }
+  };
+
+  const processReplacement = async (signatureDataUrl: string) => {
+    if (!pendingReplacement) return;
+    setSubmitting(true);
+    try {
+      // 1. Devolve o antigo
+      const { error: returnError } = await supabase.rpc('return_epi', {
+        p_worker_id: pendingReplacement.workerId,
+        p_epi_id: pendingReplacement.oldEpiId,
+        p_condition: 'DAMAGED'
+      });
+      if (returnError) throw returnError;
+
+      // 2. Entrega o novo
+      const { error: assignError } = await supabase.rpc('assign_epi', {
+        p_worker_id: pendingReplacement.workerId,
+        p_epi_id: pendingReplacement.newEpiId
+      });
+      if (assignError) throw assignError;
+
+      // 3. Assina
+      const { error: sigError } = await supabase
+        .from('epi_assignments')
+        .update({ digital_signature_url: signatureDataUrl })
+        .eq('epi_id', pendingReplacement.newEpiId)
+        .eq('worker_id', pendingReplacement.workerId)
+        .is('returned_at', null);
+      if (sigError) throw sigError;
+
+      toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
+      setPendingReplacement(null);
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setSubmitting(false);
       window.location.reload();
@@ -144,19 +186,15 @@ export function Operations() {
           </div>
         )}
 
-        {activeTab !== 'entregas' && (
-          <div className="text-center py-12 text-muted">
-            <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium">Módulo em Desenvolvimento</h3>
-            <p>O fluxo de {activeTab} está planejado para a próxima iteração do MVP.</p>
-          </div>
-        )}
+        {activeTab === 'devolucoes' && <ReturnForm workers={workers} />}
+        {activeTab === 'substituicoes' && <ReplacementForm workers={workers} catalogs={catalogs} epis={epis} setIsSignatureModalOpen={setIsSignatureModalOpen} setPendingReplacement={setPendingReplacement} />}
+        {activeTab === 'extravios' && <LossForm workers={workers} />}
       </div>
 
       <SignaturePadModal
         isOpen={isSignatureModalOpen}
-        onClose={() => setIsSignatureModalOpen(false)}
-        onSave={processEntrega}
+        onClose={() => { setIsSignatureModalOpen(false); setPendingReplacement(null); }}
+        onSave={pendingReplacement ? processReplacement : processEntrega}
         title="Assinatura da Nova Entrega"
       />
     </div>
