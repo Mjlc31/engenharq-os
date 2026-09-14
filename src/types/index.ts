@@ -11,7 +11,13 @@ export interface User {
 
 export interface ConstructionSite {
   id: string;
+  code?: string | null;
+  code?: string | null;
   name: string;
+  model?: string | null;
+  status?: string | null;
+  city?: string | null;
+  manager_name?: string | null;
   cnpj?: string | null;
   cno?: string | null;
   start_date?: string | null;
@@ -19,8 +25,8 @@ export interface ConstructionSite {
   address?: string | null;
   image_url?: string | null;
   status?: string | null;
-  latitude: number;
-  longitude: number;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 

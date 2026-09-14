@@ -1,4 +1,6 @@
+const fs = require('fs');
 
+const content = `
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { useSites } from '../hooks/useSites';
@@ -207,13 +209,13 @@ export function Sites() {
       <div className="flex border-b border-border">
         <button
           onClick={() => setActiveTab('COMPANY')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'COMPANY' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'}`}
+          className={\`px-6 py-3 text-sm font-medium border-b-2 transition-colors \${activeTab === 'COMPANY' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'}\`}
         >
           Dados da Empresa
         </button>
         <button
           onClick={() => setActiveTab('SITES')}
-          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'SITES' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'}`}
+          className={\`px-6 py-3 text-sm font-medium border-b-2 transition-colors \${activeTab === 'SITES' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-foreground'}\`}
         >
           Obras
         </button>
@@ -330,7 +332,7 @@ export function Sites() {
                     <td className="p-4 text-muted">{site.city || '-'}</td>
                     <td className="p-4 text-muted">{site.manager_name || '-'}</td>
                     <td className="p-4">
-                      <span className={`inline-flex px-2 py-1 text-[11px] font-bold rounded uppercase ${site.status === 'ACTIVE' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                      <span className={\`inline-flex px-2 py-1 text-[11px] font-bold rounded uppercase \${site.status === 'ACTIVE' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}\`}>
                         {site.status === 'ACTIVE' ? 'Ativa' : 'Finalizada'}
                       </span>
                     </td>
@@ -461,3 +463,6 @@ export function Sites() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/Sites.tsx', content);

@@ -39,6 +39,11 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
     return () => clearTimeout(captureTimer);
   }, [status]);
 
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
+
   const captureAndAnalyze = useCallback(async () => {
     if (!webcamRef.current) return;
     
@@ -47,8 +52,10 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
     const imageSrc = webcamRef.current.getScreenshot();
     
     if (!imageSrc) {
-      setStatus('FAILED');
-      setFailCount(prev => prev + 1);
+      if (isMounted.current) {
+        setStatus('FAILED');
+        setFailCount(prev => prev + 1);
+      }
       return;
     }
 
@@ -64,16 +71,19 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
       if (error) throw error;
       
       if (result && result.match) {
-        setStatus('SUCCESS');
+        if (isMounted.current) setStatus('SUCCESS');
         setTimeout(() => {
-          onMatchSuccess(imageSrc, result.score, result.liveness);
+          if (isMounted.current) onMatchSuccess(imageSrc, result.score, result.liveness);
         }, 1500);
       } else {
-        setStatus('FAILED');
-        setFailCount(prev => prev + 1);
+        if (isMounted.current) {
+          setStatus('FAILED');
+          setFailCount(prev => prev + 1);
+        }
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         
         setTimeout(() => {
+          if (!isMounted.current) return;
           if (failCount < 2) {
             setStatus('SCANNING'); // Retry automatically
           } else {
@@ -83,11 +93,14 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
       }
     } catch (err) {
       console.error("Biometric validation error:", err);
-      setStatus('FAILED');
-      setFailCount(prev => prev + 1);
+      if (isMounted.current) {
+        setStatus('FAILED');
+        setFailCount(prev => prev + 1);
+      }
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       
       setTimeout(() => {
+        if (!isMounted.current) return;
         if (failCount < 2) {
           setStatus('SCANNING');
         } else {

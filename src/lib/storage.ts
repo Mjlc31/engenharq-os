@@ -1,34 +1,27 @@
 import { supabase } from './supabase';
 
-export const dataUrlToBlob = (dataUrl: string): Blob => {
-  const arr = dataUrl.split(',');
-  const match = arr[0].match(/:(.*?);/);
-  if (!match) throw new Error("Invalid Data URL");
-  const mime = match[1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-};
-
-export const uploadToStorage = async (dataUrl: string, bucket: string, path: string): Promise<string> => {
+export async function uploadImage(file: File, bucket: string): Promise<string | null> {
   try {
-    const blob = dataUrlToBlob(dataUrl);
-    const { error } = await supabase.storage.from(bucket).upload(path, blob, {
-      contentType: blob.type,
-      upsert: true
-    });
-    if (error) {
-       if (error.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
-       throw error;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError, data } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file);
+
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
+      return null;
     }
-    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
+
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(filePath);
+
     return publicUrlData.publicUrl;
-  } catch (e) {
-    console.warn(`Storage upload failed for ${path}`, e);
-    throw e;
+  } catch (error) {
+    console.error('Error in uploadImage:', error);
+    return null;
   }
-};
+}

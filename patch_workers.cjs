@@ -1,4 +1,6 @@
+const fs = require('fs');
 
+const content = `
 import React, { useEffect, useState, useMemo } from 'react';
 import { Plus, Search, Upload, Download, Edit2, HardHat, ChevronLeft, ChevronRight, Trash2, MapPin, UserCircle2, Mail, Phone, MoreVertical, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -157,17 +159,17 @@ export function Workers() {
                   <td className="p-4 text-foreground font-medium">{worker.current_role || worker.initial_role || '-'}</td>
                   <td className="p-4 text-foreground">{worker.admission_date ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '-'}</td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
+                    <span className={\`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full \${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}\`}>
+                      <span className={\`w-1.5 h-1.5 rounded-full \${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}\`}></span>
                       {worker.status === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
                     </span>
                   </td>
                   <td className="p-4 flex justify-end gap-2 relative group">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => navigate(`/workers/${worker.id}`)} className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors" title="Editar Perfil">
+                      <button onClick={() => navigate(\`/workers/\${worker.id}\`)} className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors" title="Editar Perfil">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => navigate(`/workers/${worker.id}?tab=epi`)} className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="Ver Ficha EPI">
+                      <button onClick={() => navigate(\`/workers/\${worker.id}?tab=epi\`)} className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="Ver Ficha EPI">
                         <FileText className="w-4 h-4" />
                       </button>
                       {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
@@ -240,3 +242,5 @@ export function Workers() {
     </div>
   );
 }
+`;
+fs.writeFileSync('src/pages/Workers.tsx', content);

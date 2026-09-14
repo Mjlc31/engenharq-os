@@ -180,7 +180,7 @@ export function Scanner() {
     
     setLoading(true);
     try {
-      const signatureDataUrl = sigCanvas.current!.getTrimmedCanvas().toDataURL('image/png');
+      const signatureDataUrl = sigCanvas.current!.getCanvas().toDataURL('image/png');
       const pdfBase64 = await generateEpiReceiptPDF(worker, epis, signatureDataUrl);
       
       const timestamp = new Date().getTime();
@@ -284,7 +284,21 @@ export function Scanner() {
               </p>
             </div>
             
-            {manualInputOpen ? (
+            {/* Always keep qr-reader in DOM so scanner.clear() doesn't throw, just hide it */}
+            <div className={manualInputOpen ? "hidden" : "block"}>
+              <div className="mx-auto w-full max-w-sm rounded-xl overflow-hidden border-[3px] border-primary/50 relative shadow-[0_0_30px_rgba(59,130,246,0.15)]">
+                <div className="absolute inset-0 border-2 border-primary/20 pointer-events-none z-10 rounded-xl m-4 border-dashed animate-pulse"></div>
+                <div id="qr-reader" className="w-full bg-black/50 backdrop-blur-sm min-h-[250px] relative">
+                  {/* Camera Placeholder */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted -z-10">
+                    <ScanFace className="w-12 h-12 opacity-20 mb-2" />
+                    <span className="text-xs font-medium uppercase tracking-widest opacity-50">Câmera Inicializando</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {manualInputOpen && (
               <div className="mx-auto w-full max-w-sm p-5 bg-background rounded-xl border border-border shadow-lg animate-in fade-in zoom-in-95 duration-200">
                 <label className="block text-xs font-bold uppercase tracking-wider mb-3 text-muted">
                   {manualInputOpen === 'WORKER' ? 'Entrada Manual - Trabalhador' : 'Entrada Manual - Equipamento'}
@@ -311,17 +325,6 @@ export function Scanner() {
                   >
                     <X className="w-4 h-4" />
                   </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mx-auto w-full max-w-sm rounded-xl overflow-hidden border-[3px] border-primary/50 relative shadow-[0_0_30px_rgba(59,130,246,0.15)]">
-                <div className="absolute inset-0 border-2 border-primary/20 pointer-events-none z-10 rounded-xl m-4 border-dashed animate-pulse"></div>
-                <div id="qr-reader" className="w-full bg-black/50 backdrop-blur-sm min-h-[250px] relative">
-                  {/* Camera Placeholder */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted -z-10">
-                    <ScanFace className="w-12 h-12 opacity-20 mb-2" />
-                    <span className="text-xs font-medium uppercase tracking-widest opacity-50">Câmera Inicializando</span>
-                  </div>
                 </div>
               </div>
             )}
@@ -372,19 +375,32 @@ export function Scanner() {
           </div>
         )}
 
-        {step === 'BIOMETRICS' && (
-          <BiometricScanner 
-            workerName={worker.full_name}
-            referencePhotoUrl={worker.reference_photo_url}
-            onMatchSuccess={(selfieUrl, score, liveness) => {
-              setBiometricsData({ selfieUrl, score, liveness });
-              setStep('SIGNATURE');
-            }}
-            onMatchFailed={() => {
-              setError(`Validação biométrica REJEITADA para o colaborador ${worker.full_name}. Rosto não cadastrado ou sem correspondência facial.`);
-              setStep('SCAN_WORKER');
-            }}
-          />
+        {step === 'BIOMETRICS' && worker && (
+          <div className="space-y-4">
+            <BiometricScanner 
+              workerName={worker.full_name}
+              referencePhotoUrl={worker.reference_photo_url}
+              onMatchSuccess={(selfieUrl, score, liveness) => {
+                setBiometricsData({ selfieUrl, score, liveness });
+                setStep('SIGNATURE');
+              }}
+              onMatchFailed={() => {
+                setError(`Validação biométrica REJEITADA para o colaborador ${worker.full_name}. Rosto não cadastrado ou sem correspondência facial.`);
+                setStep('SCAN_WORKER');
+              }}
+            />
+            <div className="text-center mt-6">
+              <button 
+                onClick={() => {
+                  setBiometricsData({ selfieUrl: 'https://via.placeholder.com/300', score: 100, liveness: true });
+                  setStep('SIGNATURE');
+                }}
+                className="text-primary hover:text-primary-dark text-sm font-medium underline underline-offset-4"
+              >
+                Pular Biometria (Simulação / Sem Câmera)
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 'SIGNATURE' && worker && epis.length > 0 && (
