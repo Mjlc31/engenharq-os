@@ -552,6 +552,7 @@ export function WorkerProfile() {
                 Este trabalhador ainda não possui EPIs designados.
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-surface-hover text-muted uppercase text-xs font-semibold">
                   <tr>
@@ -600,6 +601,7 @@ export function WorkerProfile() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

@@ -84,8 +84,8 @@ export function LossForm({ workers }: { workers: any[] }) {
         )}
 
         {!loading && activeAssignments.length > 0 && (
-          <div className="mt-4 border border-border rounded-md overflow-hidden">
-            <table className="w-full text-sm text-left">
+          <div className="mt-4 border border-border rounded-md overflow-x-auto">
+            <table className="w-full whitespace-nowrap text-sm text-left">
               <thead className="bg-surface border-b border-border">
                 <tr>
                   <th className="px-4 py-2 font-medium">EPI / Código</th>

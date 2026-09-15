@@ -204,7 +204,7 @@ export function CatalogTab({
 
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full whitespace-nowrap text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-surface-hover/50 text-[11px] uppercase tracking-wider text-muted">
                 <th className="p-4 font-medium">EPI / Modelo</th>
@@ -284,7 +284,7 @@ export function CatalogTab({
             </div>
             
             <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Nome / Descrição Curta *</label>
                   <input required type="text" value={catName} onChange={e => setCatName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -297,7 +297,7 @@ export function CatalogTab({
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Marca / Fabricante</label>
                   <input type="text" value={catBrand} onChange={e => setCatBrand(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -308,7 +308,7 @@ export function CatalogTab({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Número do CA</label>
                   <input type="text" value={catCaNumber} onChange={e => setCatCaNumber(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -319,7 +319,7 @@ export function CatalogTab({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Vida Útil (Dias)</label>
                   <input type="number" value={catLifespanDays} onChange={e => setCatLifespanDays(e.target.value ? Number(e.target.value) : '')} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />

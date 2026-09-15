@@ -16,6 +16,7 @@ const Sites = React.lazy(() => import('./pages/Sites').then(m => ({ default: m.S
 const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m => ({ default: m.WorkerProfile })));
 const Operations = React.lazy(() => import('./pages/Operations').then(m => ({ default: m.Operations })));
 const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {

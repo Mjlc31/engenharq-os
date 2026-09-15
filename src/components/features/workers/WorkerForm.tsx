@@ -70,7 +70,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
             <div className="w-24 h-24 rounded-full bg-surface-hover border border-border flex items-center justify-center overflow-hidden relative group shrink-0">
               {referencePhotoUrl ? (
                 <img src={referencePhotoUrl} alt="Foto" className="w-full h-full object-cover" />

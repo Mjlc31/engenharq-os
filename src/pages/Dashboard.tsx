@@ -90,7 +90,7 @@ export function Dashboard() {
       animate="visible"
     >
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {cards.map((card, i) => (
           <motion.div key={i} variants={itemVariants} className="bg-surface border border-border p-4 rounded-xl hover:border-border/80 hover:-translate-y-1 transition-all duration-300 shadow-sm flex flex-col justify-between">
             <span className="text-[10px] text-muted uppercase font-bold tracking-wider">{card.title}</span>

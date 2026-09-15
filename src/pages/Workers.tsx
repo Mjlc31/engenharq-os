@@ -120,7 +120,7 @@ export function Workers() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full whitespace-nowrap text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-surface-hover/50 text-[11px] uppercase tracking-wider text-muted">
                 <th className="p-4 font-medium">Funcionário</th>

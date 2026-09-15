@@ -210,7 +210,7 @@ export function InventoryTab({
             <div className="p-8 text-center text-muted">Nenhum equipamento no inventário físico.</div>
           ) : (
             <div className="min-w-[800px]">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full whitespace-nowrap text-left border-collapse">
                 <thead>
                   <tr className="border-b border-border bg-surface/50 text-xs uppercase tracking-wider text-muted font-semibold">
                     <th className="p-3">CÓDIGO DE RASTREIO</th>

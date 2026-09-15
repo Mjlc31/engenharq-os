@@ -251,7 +251,7 @@ export function Sites() {
                 <label className="block text-sm font-medium text-muted mb-1">Nome Fantasia</label>
                 <input type="text" value={compTradeName} onChange={e => setCompTradeName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">CNPJ *</label>
                   <input type="text" value={compCnpj} onChange={e => setCompCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -273,7 +273,7 @@ export function Sites() {
                 <label className="block text-sm font-medium text-muted mb-1">Endereço Completo</label>
                 <input type="text" value={compAddress} onChange={e => setCompAddress(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Telefone Comercial</label>
                   <input type="text" value={compPhone} onChange={e => setCompPhone(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -311,7 +311,7 @@ export function Sites() {
           </div>
 
           <div className="bg-surface border border-border rounded-xl overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full whitespace-nowrap text-left border-collapse">
               <thead>
                 <tr className="border-b border-border bg-surface-hover/50 text-xs uppercase tracking-wider text-muted">
                   <th className="p-4 font-medium">Código</th>
@@ -366,7 +366,7 @@ export function Sites() {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Código</label>
                   <input type="text" value={siteCode} onChange={e => setSiteCode(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" placeholder="Ex: OB01" />
@@ -385,7 +385,7 @@ export function Sites() {
                 <input type="text" value={siteName} onChange={e => setSiteName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Responsável (Eng. Residente)</label>
                   <input type="text" value={siteManager} onChange={e => setSiteManager(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
@@ -396,7 +396,7 @@ export function Sites() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">CNPJ Específico (se houver)</label>
                   <input type="text" value={siteCnpj} onChange={e => setSiteCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
@@ -407,7 +407,7 @@ export function Sites() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Data de Início</label>
                   <input type="date" value={siteStart} onChange={e => setSiteStart(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
