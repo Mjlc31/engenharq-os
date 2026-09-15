@@ -181,44 +181,44 @@ CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE TO authe
 
 -- Sites
 CREATE POLICY "Authenticated users can view sites" ON public.construction_sites FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can insert sites" ON public.construction_sites FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can update sites" ON public.construction_sites FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can delete sites" ON public.construction_sites FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can insert sites" ON public.construction_sites FOR INSERT WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update sites" ON public.construction_sites FOR UPDATE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete sites" ON public.construction_sites FOR DELETE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Workers
 CREATE POLICY "Authenticated users can view workers" ON public.workers FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can insert workers" ON public.workers FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can update workers" ON public.workers FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can delete workers" ON public.workers FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can insert workers" ON public.workers FOR INSERT WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update workers" ON public.workers FOR UPDATE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete workers" ON public.workers FOR DELETE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Worker Roles
 CREATE POLICY "Authenticated users can view worker roles" ON public.worker_roles FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can manage worker roles" ON public.worker_roles FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can manage worker roles" ON public.worker_roles FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Worker Roles History
 CREATE POLICY "Authenticated users can view worker roles history" ON public.worker_roles_history FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can manage worker roles history" ON public.worker_roles_history FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can manage worker roles history" ON public.worker_roles_history FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Catalog
 CREATE POLICY "Authenticated users can view EPI catalog" ON public.epi_catalog FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can manage EPI catalog" ON public.epi_catalog FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can manage EPI catalog" ON public.epi_catalog FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Inventory
 CREATE POLICY "Authenticated users can view EPIs" ON public.epi_inventory FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can insert EPIs" ON public.epi_inventory FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can update EPIs" ON public.epi_inventory FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can delete EPIs" ON public.epi_inventory FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can insert EPIs" ON public.epi_inventory FOR INSERT WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update EPIs" ON public.epi_inventory FOR UPDATE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete EPIs" ON public.epi_inventory FOR DELETE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- EPI Assignments
 CREATE POLICY "Authenticated users can view assignments" ON public.epi_assignments FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can insert assignments" ON public.epi_assignments FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can update assignments" ON public.epi_assignments FOR UPDATE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can delete assignments" ON public.epi_assignments FOR DELETE USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can insert assignments" ON public.epi_assignments FOR INSERT WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update assignments" ON public.epi_assignments FOR UPDATE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can delete assignments" ON public.epi_assignments FOR DELETE USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- Inventory Transactions
 CREATE POLICY "Authenticated users can view inventory transactions" ON public.inventory_transactions FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and Engineers can insert inventory transactions" ON public.inventory_transactions FOR INSERT WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
-CREATE POLICY "Admins and Engineers can update/delete inventory transactions" ON public.inventory_transactions FOR ALL USING (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can insert inventory transactions" ON public.inventory_transactions FOR INSERT WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
+CREATE POLICY "Admins and Engineers can update/delete inventory transactions" ON public.inventory_transactions FOR ALL USING ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER')) WITH CHECK ((SELECT role FROM public.users WHERE id = auth.uid()) IN ('ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'));
 
 -- 8. Create a trigger to automatically create a user record when auth.users is created
 CREATE SCHEMA IF NOT EXISTS private;

@@ -10,11 +10,17 @@ export function useScanner() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('workers')
-        .select('*, site:construction_sites(name, latitude, longitude)')
-        .or(`cpf.eq.${searchTerm},registration_number.eq.${searchTerm}`)
-        .single();
+      const isId = searchTerm.startsWith('WK-');
+      const cleanTerm = searchTerm.replace('WK-', '');
+      let query = supabase.from('workers').select('*, site:construction_sites(name, latitude, longitude)');
+      
+      if (isId) {
+        query = query.eq('id', cleanTerm);
+      } else {
+        query = query.or(`cpf.eq.${cleanTerm},registration_number.eq.${cleanTerm}`);
+      }
+      
+      const { data, error: fetchError } = await query.single();
         
       if (fetchError) {
          if (fetchError.message === 'Failed to fetch') {
@@ -38,11 +44,17 @@ export function useScanner() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('epi_inventory')
-        .select('*')
-        .or(`tracking_code.eq.${searchTerm},ca_number.eq.${searchTerm}`)
-        .single();
+      const isId = searchTerm.startsWith('EPI-');
+      const cleanTerm = searchTerm.replace('EPI-', '');
+      let query = supabase.from('epi_inventory').select('*');
+      
+      if (isId) {
+        query = query.eq('id', cleanTerm);
+      } else {
+        query = query.or(`tracking_code.eq.${cleanTerm},ca_number.eq.${cleanTerm}`);
+      }
+      
+      const { data, error: fetchError } = await query.single();
         
       if (fetchError) {
          if (fetchError.message === 'Failed to fetch') {

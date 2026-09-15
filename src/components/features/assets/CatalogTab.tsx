@@ -258,7 +258,14 @@ export function CatalogTab({
                       <Edit2 className="w-4 h-4" />
                     </button>
                     {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
-                      <button onClick={() => deleteCatalog(cat.id)} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir">
+                      <button onClick={async () => {
+                        try {
+                          await deleteCatalog(cat.id);
+                          toast({ type: 'success', title: 'Sucesso', message: 'Excluído com sucesso' });
+                        } catch (e: any) {
+                          toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao excluir' });
+                        }
+                      }} className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}

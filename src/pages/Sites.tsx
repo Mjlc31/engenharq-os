@@ -134,6 +134,7 @@ export function Sites() {
     setSiteStatus(site.status || 'ACTIVE');
     setSiteImage(site.image_url || '');
     setIsAddingSite(true);
+    setIsAddingSite(true);
   };
 
   const handleSaveSite = async () => {

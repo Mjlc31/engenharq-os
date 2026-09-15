@@ -231,9 +231,14 @@ export function Workers() {
               <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-muted hover:text-foreground">Cancelar</button>
               <button onClick={async () => {
                 setIsDeleting(true);
-                await handleDelete(deleteConfirmId);
-                setIsDeleting(false);
-                setDeleteConfirmId(null);
+                try {
+                  await handleDelete(deleteConfirmId);
+                } catch(e) {
+                  console.error(e);
+                } finally {
+                  setIsDeleting(false);
+                  setDeleteConfirmId(null);
+                }
               }} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700" disabled={isDeleting}>
                 {isDeleting ? 'Excluindo...' : 'Sim, Excluir'}
               </button>
