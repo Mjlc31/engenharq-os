@@ -10,7 +10,7 @@ export function useScanner() {
     setLoading(true);
     setError(null);
     try {
-      let { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('workers')
         .select('*, site:construction_sites(name, latitude, longitude)')
         .or(`cpf.eq.${searchTerm},registration_number.eq.${searchTerm}`)
@@ -38,7 +38,7 @@ export function useScanner() {
     setLoading(true);
     setError(null);
     try {
-      let { data, error: fetchError } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('epi_inventory')
         .select('*')
         .or(`tracking_code.eq.${searchTerm},ca_number.eq.${searchTerm}`)

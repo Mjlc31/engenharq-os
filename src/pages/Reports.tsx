@@ -47,7 +47,7 @@ export function Reports() {
           Status_Estoque: c.current_stock <= c.minimum_stock ? 'BAIXO' : 'OK'
         }));
       } else if (type === 'entregas') {
-        let query = supabase.from('epi_assignments').select(`
+        const query = supabase.from('epi_assignments').select(`
           assigned_at, returned_at, condition_on_return,
           worker:workers(full_name, department),
           epi:epi_inventory(tracking_code, catalog:epi_catalog(name))
