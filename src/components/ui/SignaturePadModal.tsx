@@ -32,7 +32,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
     
     try {
       // Get the base64 string
-      const dataUrl = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
+      const dataUrl = sigCanvas.current?.getCanvas().toDataURL('image/png');
       if (dataUrl) {
         await onSave(dataUrl);
         onClose();

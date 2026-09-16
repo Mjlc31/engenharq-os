@@ -12,18 +12,18 @@ export function useEpiAssets() {
   const { data, isLoading: queryLoading } = useQuery({
     queryKey: ['epi-assets'],
     queryFn: async () => {
-      const [episData, workersData, catalogsData] = await Promise.all([
-        supabase.from('epi_inventory').select('*').order('created_at', { ascending: false }),
+      const [workersData, catalogsData] = await Promise.all([
+        
         supabase.from('workers').select('*').order('full_name', { ascending: true }),
         supabase.from('epi_catalog').select('*').order('name', { ascending: true })
       ]);
       
-      if (episData.error) throw episData.error;
+      
       if (workersData.error) throw workersData.error;
       if (catalogsData.error) throw catalogsData.error;
 
       return {
-        epis: (episData.data as EpiInventory[]) || [],
+        epis: [],
         workers: (workersData.data as Worker[]) || [],
         catalogs: (catalogsData.data as EpiCatalog[]) || []
       };
@@ -100,31 +100,9 @@ export function useEpiAssets() {
         const { error: updateError } = await supabase.from('epi_catalog').update(payload as any).eq('id', id);
         if (updateError) throw updateError;
       } else {
-        const { data, error: insertError } = await supabase.from('epi_catalog').insert([payload as any]).select().single();
+        const payloadWithStock = { ...payload, current_stock: initialStock || 0 };
+        const { error: insertError } = await supabase.from('epi_catalog').insert([payloadWithStock as any]);
         if (insertError) throw insertError;
-        
-        if (initialStock && initialStock > 0 && data) {
-          const prefix = payload.category!.substring(0, 3).toUpperCase();
-          const existingSamePrefix = epis.filter(e => e.tracking_code.startsWith(prefix));
-          let nextNum = 1;
-          if (existingSamePrefix.length > 0) {
-            const nums = existingSamePrefix.map(e => parseInt(e.tracking_code.replace(prefix, '') || '0'));
-            nextNum = Math.max(...nums) + 1;
-          }
-          
-          const newItems = Array.from({ length: initialStock }).map((_, i) => ({
-            epi_catalog_id: data.id,
-            category: payload.category,
-            tracking_code: `${prefix}${String(nextNum + i).padStart(3, '0')}`,
-            ca_number: payload.ca_number || 'N/A',
-            ca_expiration_date: payload.ca_validity || null,
-            recommended_lifespan_days: payload.lifespan_days || 180,
-            status: 'AVAILABLE' as const
-          }));
-          
-          const { error: stockError } = await supabase.from('epi_inventory').insert(newItems);
-          if (stockError) throw stockError;
-        }
       }
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
