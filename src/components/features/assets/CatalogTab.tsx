@@ -70,6 +70,40 @@ export function CatalogTab({
     return ['Todas as categorias', ...Array.from(new Set(catalogs.map(c => c.category)))];
   }, [catalogs]);
 
+  const handleExport = () => {
+    if (catalogs.length === 0) {
+      toast({ type: 'error', title: 'Erro', message: 'Não há dados para exportar.' });
+      return;
+    }
+    
+    const headers = ['Nome', 'Categoria', 'Modelo', 'Marca', 'CA', 'Validade CA', 'Vida Útil (Dias)', 'Estoque Atual', 'Estoque Mínimo', 'Status'];
+    const csvContent = [
+      headers.join(','),
+      ...catalogs.map(c => [
+        `"${c.name || ''}"`,
+        `"${c.category || ''}"`,
+        `"${c.model || ''}"`,
+        `"${c.brand || ''}"`,
+        `"${c.ca_number || ''}"`,
+        `"${c.ca_validity || ''}"`,
+        c.lifespan_days || '',
+        c.current_stock || 0,
+        c.minimum_stock || 0,
+        `"${c.status || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `catalogo_epis_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredCatalogs = useMemo(() => {
     return catalogs.filter(c => {
       const searchL = search.toLowerCase();
