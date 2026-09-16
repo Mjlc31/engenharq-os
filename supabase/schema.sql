@@ -121,6 +121,7 @@ CREATE TABLE public.epi_assignments (
   worker_id UUID REFERENCES public.workers(id) ON DELETE CASCADE NOT NULL,
   assigned_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   returned_at TIMESTAMP WITH TIME ZONE,
+  condition_on_delivery item_condition,
   condition_on_return item_condition,
   digital_signature_url TEXT,
   generated_pdf_url TEXT,
@@ -322,8 +323,8 @@ CREATE OR REPLACE FUNCTION public.assign_epi(p_worker_id UUID, p_epi_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   -- Insert into assignments
-  INSERT INTO public.epi_assignments (epi_id, worker_id)
-  VALUES (p_epi_id, p_worker_id);
+  INSERT INTO public.epi_assignments (epi_id, worker_id, condition_on_delivery)
+  VALUES (p_epi_id, p_worker_id, 'GOOD'::item_condition);
 
   -- Update inventory status
   UPDATE public.epi_inventory
@@ -336,7 +337,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE FUNCTION public.return_epi(p_epi_id UUID)
+CREATE OR REPLACE FUNCTION public.return_epi(p_epi_id UUID, p_worker_id UUID DEFAULT NULL, p_condition item_condition DEFAULT 'GOOD'::item_condition)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_assignment_id UUID;
@@ -344,20 +345,28 @@ BEGIN
   -- Find active assignment
   SELECT id INTO v_assignment_id
   FROM public.epi_assignments
-  WHERE epi_id = p_epi_id AND returned_at IS NULL
+  WHERE epi_id = p_epi_id 
+    AND (p_worker_id IS NULL OR worker_id = p_worker_id)
+    AND returned_at IS NULL
   LIMIT 1;
 
   IF v_assignment_id IS NOT NULL THEN
     -- Complete assignment
     UPDATE public.epi_assignments
-    SET returned_at = timezone('utc'::text, now()), condition_on_return = 'GOOD'
+    SET returned_at = timezone('utc'::text, now()), condition_on_return = p_condition
     WHERE id = v_assignment_id;
   END IF;
 
-  -- Update inventory
-  UPDATE public.epi_inventory
-  SET status = 'AVAILABLE', updated_at = timezone('utc'::text, now())
-  WHERE id = p_epi_id;
+  -- Update inventory based on condition
+  IF p_condition = 'DAMAGED' OR p_condition = 'LOST' THEN
+    UPDATE public.epi_inventory
+    SET status = p_condition::text::epi_status, updated_at = timezone('utc'::text, now())
+    WHERE id = p_epi_id;
+  ELSE
+    UPDATE public.epi_inventory
+    SET status = 'AVAILABLE', updated_at = timezone('utc'::text, now())
+    WHERE id = p_epi_id;
+  END IF;
 
   RETURN TRUE;
 EXCEPTION WHEN OTHERS THEN
@@ -428,6 +437,12 @@ CREATE TABLE IF NOT EXISTS public.companies (
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Companies viewable by authenticated users" ON public.companies FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Companies editable by admin" ON public.companies FOR ALL TO authenticated USING (
+  EXISTS (
+    SELECT 1 FROM public.users 
+    WHERE users.id = auth.uid() 
+    AND (users.role = 'ADMIN' OR users.role = 'SAFETY_ENGINEER')
+  )
+) WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE users.id = auth.uid() 
