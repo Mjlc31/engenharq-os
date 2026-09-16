@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import {  ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings , ClipboardList, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
@@ -60,6 +60,8 @@ export function Layout() {
     { name: 'Mapa de Ativos', href: '/map', icon: MapPin, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Colaboradores', href: '/workers', icon: Users, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Painel de Operações', href: '/operations', icon: Activity, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Painel de Relatórios', href: '/reports', icon: ClipboardList, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Empresa / Obras', href: '/sites', icon: Building2, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Imprimir QR Codes', href: '/tags', icon: Printer, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Auditoria NR-6', href: '/audit', icon: FileBarChart, roles: ['ADMIN', 'SAFETY_ENGINEER'] },
@@ -167,7 +169,7 @@ export function Layout() {
               <span>Operações</span>
               {openSections['Operações'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
-            {openSections['Operações'] && navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos'].includes(item.name)).map(item => {
+            {openSections['Operações'] && navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos', 'Painel de Operações'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -189,7 +191,7 @@ export function Layout() {
               <span>Relatórios</span>
               {openSections['Relatórios'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
-            {openSections['Relatórios'] && navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes'].includes(item.name)).map(item => {
+            {openSections['Relatórios'] && navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes', 'Painel de Relatórios'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
