@@ -216,8 +216,10 @@ export function Workers() {
           try {
             await addWorker(data);
             setIsAdding(false);
-          } catch (e) {
+          } catch (e: any) {
             console.error(e);
+            toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao registrar trabalhador.' });
+            throw e;
           }
         }} />
       )}
