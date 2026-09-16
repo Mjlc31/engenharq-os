@@ -77,9 +77,9 @@ export function MapTracking() {
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
-          .select(`*, epi:epi_inventory(*), worker:workers(*)`)
+          .select(`*, catalog:epi_catalog(*), worker:workers(*)`)
           .is('returned_at', null),
-        supabase.from('epi_inventory').select('*').eq('status', 'AVAILABLE'),
+        supabase.from('epi_catalog').select('*').gt('current_stock', 0),
         supabase.from('workers').select('*, site:construction_sites(*)')
       ]);
 
@@ -131,7 +131,7 @@ export function MapTracking() {
   const categories = useMemo(() => {
     const cats = new Set<string>();
     assignments.forEach(a => {
-      if (a.epi?.category) cats.add(a.epi.category);
+      if (a.epi?.category) cats.add(a.catalog.category);
     });
     return Array.from(cats);
   }, [assignments]);

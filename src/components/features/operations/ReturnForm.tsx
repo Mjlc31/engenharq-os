@@ -23,8 +23,8 @@ export function ReturnForm({ workers }: { workers: any[] }) {
     const { data, error } = await supabase
       .from('epi_assignments')
       .select(`
-        id, assigned_at, epi_id, condition_on_delivery,
-        epi:epi_inventory(id, tracking_code, catalog:epi_catalog(name))
+        id, assigned_at, catalog_id, condition_on_delivery,
+        catalog:epi_catalog(name)
       `)
       .eq('worker_id', selectedWorkerId)
       .is('returned_at', null);
@@ -41,8 +41,7 @@ export function ReturnForm({ workers }: { workers: any[] }) {
     setSubmitting(true);
     try {
       const { error } = await supabase.rpc('return_epi', {
-        p_worker_id: selectedWorkerId,
-        p_epi_id: epiId,
+        p_assignment_id: epiId,
         p_condition: 'GOOD'
       });
       if (error) throw error;

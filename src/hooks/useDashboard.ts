@@ -6,7 +6,7 @@ export interface DashboardMovement {
   id: string;
   assigned_at: string;
   returned_at: string | null;
-  epi: { tracking_code: string; category: string } | { tracking_code: string; category: string }[];
+  catalog: { name: string } | { name: string }[];
   worker: { full_name: string } | { full_name: string }[];
 }
 
@@ -15,7 +15,7 @@ export interface DashboardAlert {
   type: 'CA_EXPIRATION' | 'LIFESPAN';
   severity: 'CRITICAL' | 'WARNING';
   message: string;
-  epi: { tracking_code: string; category: string; ca_expiration_date?: string } | undefined;
+  epi: { name: string; ca_validity?: string } | undefined;
   worker: { full_name: string } | undefined;
 }
 
@@ -23,41 +23,30 @@ export function useDashboard() {
   return useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => {
-      const [
-        epiCountReq,
-        inUseReq,
-        maintenanceReq,
+            const [
+        catalogsReq,
         workersReq,
         movementsReq,
-        alertsReq,
         activeAssignmentsReq
       ] = await Promise.allSettled([
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).neq('status', 'DISCARDED'),
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'IN_USE'),
-        supabase.from('epi_inventory').select('*', { count: 'exact', head: true }).eq('status', 'MAINTENANCE'),
+        supabase.from('epi_catalog').select('current_stock, ca_number, ca_validity, status, name, id'),
         supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
         supabase.from('epi_assignments')
           .select(`
             id,
             assigned_at,
             returned_at,
-            epi:epi_inventory(tracking_code, category),
+            catalog:epi_catalog(name),
             worker:workers(full_name)
           `)
           .order('assigned_at', { ascending: false })
-          .limit(10),
-        supabase.from('epi_inventory')
-          .select('id, tracking_code, category, ca_expiration_date')
-          .not('ca_expiration_date', 'is', null)
-          .neq('status', 'DISCARDED')
-          .order('ca_expiration_date', { ascending: true })
           .limit(10),
         supabase.from('epi_assignments')
           .select(`
             id,
             assigned_at,
             returned_at,
-            epi:epi_inventory(tracking_code, category, recommended_lifespan_days),
+            catalog:epi_catalog(name, lifespan_days),
             worker:workers(full_name)
           `)
           .is('returned_at', null)
@@ -81,12 +70,12 @@ export function useDashboard() {
       // Calculate Scheduled Replacements (Lifespan Alerts)
       const lifespanAlerts: DashboardAlert[] = [];
       activeAssignments.forEach((assignment: any) => {
-        const epiInfo = Array.isArray(assignment.epi) ? assignment.epi[0] : assignment.epi;
+        const epiInfo = Array.isArray(assignment.catalog) ? assignment.catalog[0] : assignment.catalog;
         const workerInfo = Array.isArray(assignment.worker) ? assignment.worker[0] : assignment.worker;
         
-        if (epiInfo?.recommended_lifespan_days) {
+        if (epiInfo?.lifespan_days) {
           const assigned = new Date(assignment.assigned_at);
-          const expiryDate = new Date(assigned.getTime() + (epiInfo.recommended_lifespan_days * 24 * 60 * 60 * 1000));
+          const expiryDate = new Date(assigned.getTime() + (epiInfo.lifespan_days * 24 * 60 * 60 * 1000));
           const daysUntilReplacement = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           
           if (daysUntilReplacement <= 7) {
@@ -102,18 +91,21 @@ export function useDashboard() {
         }
       });
 
-      const caAlerts = getData(alertsReq).map((item: any) => {
-        const expDate = new Date(item.ca_expiration_date);
+            const caAlerts = catalogs.filter((item: any) => item.ca_validity).map((item: any) => {
+        const expDate = new Date(item.ca_validity);
         const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          id: `ca-${item.id}`,
-          type: 'CA_EXPIRATION' as const,
-          severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
-          message: daysUntilExpiry <= 0 ? 'CA Vencido' : `CA vence em ${daysUntilExpiry} dias`,
-          epi: { tracking_code: item.tracking_code, category: item.category, ca_expiration_date: item.ca_expiration_date },
-          worker: undefined
-        } as DashboardAlert;
-      });
+        if (daysUntilExpiry <= 30) {
+          return {
+            id: `ca-${item.id}`,
+            type: 'CA_EXPIRATION' as const,
+            severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
+            message: daysUntilExpiry <= 0 ? 'CA Vencido' : `CA vence em ${daysUntilExpiry} dias`,
+            epi: { name: item.name, ca_validity: item.ca_validity },
+            worker: undefined
+          } as DashboardAlert;
+        }
+        return null;
+      }).filter(Boolean) as DashboardAlert[];
 
       const allAlerts = [...lifespanAlerts, ...caAlerts].sort((a, b) => {
         if (a.severity === 'CRITICAL' && b.severity !== 'CRITICAL') return -1;
@@ -123,12 +115,12 @@ export function useDashboard() {
 
       return {
         stats: {
-          totalEPIs: getCount(epiCountReq),
-          inUse: getCount(inUseReq),
-          maintenance: getCount(maintenanceReq),
+          totalEPIs,
+          inUse: inUseCount,
+          maintenance: 0,
           workers: getCount(workersReq),
           avgRetentionDays,
-          activeAssignmentsCount: activeAssignments.length
+          activeAssignmentsCount: inUseCount
         },
         recentMovements: getData(movementsReq) as DashboardMovement[],
         lifespanAlerts: allAlerts.slice(0, 10)

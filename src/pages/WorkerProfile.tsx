@@ -46,7 +46,7 @@ export function WorkerProfile() {
         supabase.from('workers').select('*, site:construction_sites(*)').eq('id', id).single(),
         supabase.from('worker_roles').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name'),
-        supabase.from('epi_assignments').select('*, epi:epi_inventory(*, catalog:epi_catalog(*))').eq('worker_id', id).order('assigned_at', { ascending: false })
+        supabase.from('epi_assignments').select('*, catalog:epi_catalog(*)').eq('worker_id', id).order('assigned_at', { ascending: false })
       ]);
 
       if (workerRes.error) throw workerRes.error;
@@ -566,7 +566,7 @@ export function WorkerProfile() {
                   {epiAssignments.map(assignment => (
                     <tr key={assignment.id} className="hover:bg-surface-hover/30 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-foreground">{assignment.epi?.catalog?.name || 'EPI Desconhecido'}</div>
+                        <div className="font-medium text-foreground">{assignment.catalog?.name || 'EPI Desconhecido'}</div>
                         <div className="text-xs text-muted">CA: {assignment.epi?.ca_number} • Cód: {assignment.epi?.tracking_code}</div>
                       </td>
                       <td className="px-6 py-4">

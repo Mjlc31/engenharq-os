@@ -19,7 +19,7 @@ export function useAudit() {
           returned_at,
           condition_on_return,
           generated_pdf_url,
-          epi:epi_inventory(tracking_code, category, ca_number),
+          catalog:epi_catalog(name, category, ca_number),
           worker:workers(full_name, cpf, registration_number)
         `)
         .order('assigned_at', { ascending: false });
