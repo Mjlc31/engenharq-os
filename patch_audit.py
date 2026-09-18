@@ -1,19 +1,24 @@
-import re
+import os
 
-with open('src/hooks/useAudit.ts', 'r') as f:
+file_path = 'src/pages/Audit.tsx'
+with open(file_path, 'r', encoding='utf-8') as f:
     content = f.read()
 
-content = content.replace("epi:epi_inventory(tracking_code, category, ca_number)", "catalog:epi_catalog(name, category, ca_number)")
+content = content.replace(
+    'epi: { tracking_code: string; category: string; ca_number: string } | { tracking_code: string; category: string; ca_number: string }[];',
+    'catalog: { code: string; category: string; ca_number: string } | { code: string; category: string; ca_number: string }[];'
+)
 
-with open('src/hooks/useAudit.ts', 'w') as f:
+content = content.replace(
+    'epi:epi_inventory(tracking_code, category, ca_number),',
+    'catalog:epi_catalog(code, category, ca_number),'
+)
+
+content = content.replace('const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;', 'const epiInfo = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;')
+
+content = content.replace('epiInfo?.tracking_code', 'epiInfo?.code')
+
+with open(file_path, 'w', encoding='utf-8') as f:
     f.write(content)
 
-with open('src/pages/Audit.tsx', 'r') as f:
-    content = f.read()
-
-content = content.replace("log.epi?.tracking_code", "log.catalog?.name")
-content = content.replace("log.epi?.category", "log.catalog?.category")
-content = content.replace("log.epi?.ca_number", "log.catalog?.ca_number")
-
-with open('src/pages/Audit.tsx', 'w') as f:
-    f.write(content)
+print("Patch applied to Audit.tsx")

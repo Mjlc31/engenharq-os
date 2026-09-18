@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Worker, WorkerRole, ConstructionSite, EpiAssignment } from '../types';
-import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat } from 'lucide-react';
 import { generateEpiRecordPdf } from '../lib/pdfGenerator';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 

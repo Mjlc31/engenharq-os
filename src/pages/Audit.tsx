@@ -13,7 +13,7 @@ interface AuditAssignment {
   generated_pdf_url: string | null;
   biometric_match_score?: number | null;
   liveness_verified?: boolean | null;
-  epi: { tracking_code: string; category: string; ca_number: string } | { tracking_code: string; category: string; ca_number: string }[];
+  catalog: { code: string; category: string; ca_number: string } | { code: string; category: string; ca_number: string }[];
   worker: { full_name: string; cpf: string; registration_number: string } | { full_name: string; cpf: string; registration_number: string }[];
 }
 
@@ -38,7 +38,7 @@ export function Audit() {
           generated_pdf_url,
           biometric_match_score,
           liveness_verified,
-          epi:epi_inventory(tracking_code, category, ca_number),
+          catalog:epi_catalog(code, category, ca_number),
           worker:workers(full_name, cpf, registration_number)
         `)
         .order('assigned_at', { ascending: false });
@@ -51,13 +51,13 @@ export function Audit() {
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter(a => {
-      const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
+      const epiInfo = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;
       const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;
       
       const matchesSearch = searchTerm === '' || 
         workerInfo?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         epiInfo?.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        epiInfo?.tracking_code?.toLowerCase().includes(searchTerm.toLowerCase());
+        epiInfo?.code?.toLowerCase().includes(searchTerm.toLowerCase());
         
       let matchesDate = true;
       const assignmentDate = parseISO(a.assigned_at);
@@ -75,7 +75,7 @@ export function Audit() {
 
   const handleExportCSV = () => {
     const csvData = filteredAssignments.map(a => {
-      const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
+      const epiInfo = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;
       const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;
       
       return {
@@ -87,7 +87,7 @@ export function Audit() {
         'Matrícula': workerInfo?.registration_number,
         'Categoria EPI': epiInfo?.category,
         'CA EPI': epiInfo?.ca_number,
-        'Código Rastreio': epiInfo?.tracking_code,
+        'Código Rastreio': epiInfo?.code,
         'Condição Devolução': a.condition_on_return || 'N/A',
         'Score Biometria (%)': a.biometric_match_score ? (a.biometric_match_score * 100).toFixed(2) : 'N/A',
         'Liveness (Prova de Vida)': a.liveness_verified ? 'Sim' : 'Não/N/A',
@@ -179,7 +179,7 @@ export function Audit() {
                 </td>
               </tr>
             ) : filteredAssignments.map((a, i) => {
-              const epiInfo = Array.isArray(a.epi) ? a.epi[0] : a.epi;
+              const epiInfo = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;
               const workerInfo = Array.isArray(a.worker) ? a.worker[0] : a.worker;
               
               const bioScore = a.biometric_match_score !== null && a.biometric_match_score !== undefined 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { useSites } from '../hooks/useSites';
 import { useCompany, Company } from '../hooks/useCompany';
-import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon, X } from 'lucide-react';
+import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon, X, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConstructionSite } from '../types';
 import { uploadImage } from '../lib/storage';
@@ -47,6 +47,13 @@ export function Sites() {
   const [uploadingSiteImg, setUploadingSiteImg] = useState(false);
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
+
+  const uniqueCities = React.useMemo(() => {
+    return Array.from(new Set(sites.map(s => s.city).filter(Boolean))) as string[];
+  }, [sites]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -302,11 +309,35 @@ export function Sites() {
       {activeTab === 'SITES' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <div className="relative max-w-md w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-              <input type="text" placeholder="Buscar por código, nome ou cidade..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary text-foreground" />
-            </div>
-            <button onClick={() => setIsAddingSite(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
+    <div className="flex-1 flex flex-col gap-4">
+      <div className="relative max-w-md w-full">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+        <input type="text" placeholder="Buscar por código ou nome..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary text-foreground" />
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-muted font-medium bg-background px-3 py-1.5 rounded-full border border-border">
+          <Filter className="w-4 h-4" /> Filtros
+        </div>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer min-w-[150px]"
+        >
+          <option value="">Status: Todos</option>
+          <option value="ACTIVE">Ativa</option>
+          <option value="FINISHED">Finalizada</option>
+        </select>
+        <select
+          value={cityFilter}
+          onChange={e => setCityFilter(e.target.value)}
+          className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer min-w-[150px]"
+        >
+          <option value="">Cidade: Todas</option>
+          {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+    </div>
+    <button onClick={() => setIsAddingSite(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
               + Nova Obra
             </button>
           </div>

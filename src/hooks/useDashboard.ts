@@ -91,7 +91,10 @@ export function useDashboard() {
         }
       });
 
-            const caAlerts = catalogs.filter((item: any) => item.ca_validity).map((item: any) => {
+      const catalogs = getData(catalogsReq);
+      const totalEPIs = catalogs.reduce((acc: number, item: any) => acc + (item.current_stock || 0), 0);
+      const inUseCount = getCount(activeAssignmentsReq);
+      const caAlerts = catalogs.filter((item: any) => item.ca_validity).map((item: any) => {
         const expDate = new Date(item.ca_validity);
         const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         if (daysUntilExpiry <= 30) {

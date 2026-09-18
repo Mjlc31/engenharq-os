@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Plus, Search, Upload, Download, Edit2, HardHat, ChevronLeft, ChevronRight, Trash2, MapPin, UserCircle2, Mail, Phone, MoreVertical, FileText } from 'lucide-react';
+import { Plus, Search, Upload, Download, Edit2, HardHat, ChevronLeft, ChevronRight, Trash2, MapPin, UserCircle2, Mail, Phone, MoreVertical, FileText, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkers } from '../hooks/useWorkers';
 import { WorkerForm } from '../components/features/workers/WorkerForm';
@@ -19,6 +19,9 @@ export function Workers() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isAdding, setIsAdding] = useState(false);
@@ -34,6 +37,11 @@ export function Workers() {
     return Array.from(new Set(workers.map(w => w.work_sector).filter(Boolean))) as string[];
   }, [workers]);
 
+  const uniqueRoles = useMemo(() => {
+    return Array.from(new Set(workers.map(w => w.current_role || w.initial_role).filter(Boolean))) as string[];
+  }, [workers]);
+
+
   const filteredWorkers = useMemo(() => {
     return workers.filter(w => {
       const searchLower = debouncedSearch.toLowerCase();
@@ -42,9 +50,11 @@ export function Workers() {
                           (w.registration_number || '').toLowerCase().includes(searchLower);
       const matchSector = sectorFilter ? w.work_sector === sectorFilter : true;
       const matchStatus = statusFilter ? w.status === statusFilter : true;
-      return matchSearch && matchSector && matchStatus;
+      const matchRole = roleFilter ? (w.current_role === roleFilter || w.initial_role === roleFilter) : true;
+      const matchSite = siteFilter ? w.current_site_id === siteFilter : true;
+      return matchSearch && matchSector && matchStatus && matchRole && matchSite;
     });
-  }, [workers, debouncedSearch, sectorFilter, statusFilter]);
+  }, [workers, debouncedSearch, sectorFilter, statusFilter, roleFilter, siteFilter]);
 
   const totalPages = Math.ceil(filteredWorkers.length / itemsPerPage);
   const paginatedWorkers = filteredWorkers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
