@@ -567,7 +567,7 @@ export function WorkerProfile() {
                     <tr key={assignment.id} className="hover:bg-surface-hover/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-medium text-foreground">{assignment.catalog?.name || 'EPI Desconhecido'}</div>
-                        <div className="text-xs text-muted">CA: {assignment.epi?.ca_number} • Cód: {assignment.epi?.tracking_code}</div>
+                        <div className="text-xs text-muted">CA: {assignment.catalog?.ca_number} • Cód: {assignment.catalog?.code}</div>
                       </td>
                       <td className="px-6 py-4">
                         {new Date(assignment.assigned_at).toLocaleDateString()}

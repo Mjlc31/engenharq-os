@@ -127,7 +127,7 @@ export type Database = {
           condition_on_return: string | null
           deleted_at: string | null
           digital_signature_url: string | null
-          epi_id: string
+          catalog_id: string
           expected_return_date: string | null
           generated_pdf_url: string | null
           id: string
@@ -142,7 +142,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
-          epi_id: string
+          catalog_id: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
@@ -157,7 +157,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
-          epi_id?: string
+          catalog_id?: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
@@ -296,7 +296,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
-          epi_id: string
+          catalog_id: string
           id: string
           new_status: Database["public"]["Enums"]["epi_status"] | null
           notes: string | null
@@ -307,7 +307,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          epi_id: string
+          catalog_id: string
           id?: string
           new_status?: Database["public"]["Enums"]["epi_status"] | null
           notes?: string | null
@@ -318,7 +318,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
-          epi_id?: string
+          catalog_id?: string
           id?: string
           new_status?: Database["public"]["Enums"]["epi_status"] | null
           notes?: string | null
@@ -523,7 +523,7 @@ export type Database = {
     }
     Functions: {
       assign_epi: {
-        Args: { p_epi_id: string; p_worker_id: string }
+        Args: { p_catalog_id: string; p_worker_id: string; p_quantity?: number }
         Returns: boolean
       }
       bulk_assign_epis: {
@@ -532,7 +532,7 @@ export type Database = {
       }
       checkout_epi: {
         Args: {
-          p_epi_id: string
+          p_catalog_id: string
           p_expected_return_date?: string
           p_worker_id: string
         }
@@ -545,14 +545,14 @@ export type Database = {
           assignment_id: string
           ca_number: string
           days_remaining: number
-          epi_id: string
+          catalog_id: string
           epi_name: string
           worker_id: string
           worker_name: string
         }[]
       }
       is_valid_cpf: { Args: { cpf: string }; Returns: boolean }
-      return_epi: { Args: { p_epi_id: string }; Returns: boolean }
+      return_epi: { Args: { p_assignment_id: string, p_condition?: string }; Returns: boolean }
     }
     Enums: {
       epi_status: "AVAILABLE" | "IN_USE" | "MAINTENANCE" | "DISCARDED"

@@ -114,13 +114,13 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
     
     if (epiAssignments && epiAssignments[i]) {
       const assignment = epiAssignments[i];
-      const catalog = assignment.epi?.catalog;
+      const catalog = assignment.catalog;
       
       doc.text('1', 13, currentY + 5);
       
       if (catalog?.name) {
         const prefix = catalog.category?.toLowerCase().includes('uniforme') ? '[UNIF]' : '[EPI]';
-        const itemName = `${prefix} ${catalog.name} (Cód: ${assignment.epi?.tracking_code || '-'})`;
+        const itemName = `${prefix} ${catalog.name} (Cód: ${assignment.catalog?.code || '-'})`;
         let text = itemName;
         if (text.length > 32) text = text.substring(0, 30) + '...';
         doc.text(text, 19, currentY + 4.5);

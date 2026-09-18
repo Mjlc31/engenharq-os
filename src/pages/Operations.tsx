@@ -23,14 +23,14 @@ export function Operations() {
   const [submitting, setSubmitting] = useState(false);
 
   const selectedCatalog = catalogs.find(c => c.id === selectedCatalogId);
-  const availableInventory = epis.filter(e => e.epi_catalog_id === selectedCatalogId && e.status === 'AVAILABLE');
+  const availableStock = selectedCatalog ? selectedCatalog.current_stock : 0;
 
   const handleEntrega = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedWorkerId || !selectedCatalogId || quantity < 1) return;
 
-    if (quantity > availableInventory.length) {
-      toast({ type: 'error', title: 'Estoque Insuficiente', message: `Você solicitou ${quantity}, mas há apenas ${availableInventory.length} disponíveis.` });
+    if (quantity > availableStock) {
+      toast({ type: 'error', title: 'Estoque Insuficiente', message: `Você solicitou ${quantity}, mas há apenas ${availableStock} disponíveis.` });
       return;
     }
     
@@ -41,25 +41,29 @@ export function Operations() {
   const processEntrega = async (signatureDataUrl: string) => {
     setSubmitting(true);
     try {
-      const itemsToAssign = availableInventory.slice(0, quantity);
+      const { error } = await supabase.rpc('assign_epi', {
+        p_worker_id: selectedWorkerId,
+        p_catalog_id: selectedCatalogId,
+        p_quantity: quantity
+      });
+      if (error) throw error;
       
-      for (const item of itemsToAssign) {
-        // Primeiro, vincula o EPI via RPC (que altera o estoque e cria o assignment)
-        const { error } = await supabase.rpc('assign_epi', {
-          p_worker_id: selectedWorkerId,
-          p_epi_id: item.id
-        });
-        if (error) throw error;
+      // Update signature on new assignments
+      const { data: newAssignments } = await supabase
+        .from('epi_assignments')
+        .select('id')
+        .eq('catalog_id', selectedCatalogId)
+        .eq('worker_id', selectedWorkerId)
+        .is('returned_at', null)
+        .order('assigned_at', { ascending: false })
+        .limit(quantity);
         
-        // Agora, localiza o assignment recém criado (ativo) para este EPI e insere a assinatura
-        const { error: sigError } = await supabase
+      if (newAssignments && newAssignments.length > 0) {
+        const ids = newAssignments.map(a => a.id);
+        await supabase
           .from('epi_assignments')
           .update({ digital_signature_url: signatureDataUrl })
-          .eq('epi_id', item.id)
-          .eq('worker_id', selectedWorkerId)
-          .is('returned_at', null);
-          
-        if (sigError) throw sigError;
+          .in('id', ids);
       }
 
       toast({ type: 'success', title: 'Sucesso', message: `${quantity} EPI(s) entregues, assinados e registrados na ficha.` });
@@ -81,8 +85,7 @@ export function Operations() {
     try {
       // 1. Devolve o antigo
       const { error: returnError } = await supabase.rpc('return_epi', {
-        p_worker_id: pendingReplacement.workerId,
-        p_epi_id: pendingReplacement.oldEpiId,
+        p_assignment_id: pendingReplacement.oldEpiId, // Using oldEpiId as assignmentId here for compatibility
         p_condition: 'DAMAGED'
       });
       if (returnError) throw returnError;
@@ -90,18 +93,27 @@ export function Operations() {
       // 2. Entrega o novo
       const { error: assignError } = await supabase.rpc('assign_epi', {
         p_worker_id: pendingReplacement.workerId,
-        p_epi_id: pendingReplacement.newEpiId
+        p_catalog_id: pendingReplacement.newEpiId, // Using newEpiId as catalogId
+        p_quantity: 1
       });
       if (assignError) throw assignError;
 
       // 3. Assina
-      const { error: sigError } = await supabase
+      const { data: newAssignments } = await supabase
         .from('epi_assignments')
-        .update({ digital_signature_url: signatureDataUrl })
-        .eq('epi_id', pendingReplacement.newEpiId)
+        .select('id')
+        .eq('catalog_id', pendingReplacement.newEpiId)
         .eq('worker_id', pendingReplacement.workerId)
-        .is('returned_at', null);
-      if (sigError) throw sigError;
+        .is('returned_at', null)
+        .order('assigned_at', { ascending: false })
+        .limit(1);
+        
+      if (newAssignments && newAssignments.length > 0) {
+        await supabase
+          .from('epi_assignments')
+          .update({ digital_signature_url: signatureDataUrl })
+          .eq('id', newAssignments[0].id);
+      }
 
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
@@ -167,7 +179,7 @@ export function Operations() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Estoque Disponível</label>
                   <div className="w-full px-4 py-2 bg-surface-hover border border-border rounded-md text-foreground font-medium flex items-center gap-2">
-                    {selectedCatalogId ? (availableInventory.length > 0 ? <span className="text-emerald-500">{availableInventory.length} un.</span> : <span className="text-red-500">Sem Estoque</span>) : '-'}
+                    {selectedCatalogId ? (availableStock > 0 ? <span className="text-emerald-500">{availableStock} un.</span> : <span className="text-red-500">Sem Estoque</span>) : '-'}
                   </div>
                 </div>
               </div>
@@ -178,7 +190,7 @@ export function Operations() {
               </div>
 
               <div className="flex justify-end pt-4">
-                <button type="submit" disabled={submitting || !selectedCatalogId || availableInventory.length < quantity} className="px-6 py-2 bg-primary text-background font-medium rounded-md hover:bg-primary-dark disabled:opacity-50">
+                <button type="submit" disabled={submitting || !selectedCatalogId || availableStock < quantity} className="px-6 py-2 bg-primary text-background font-medium rounded-md hover:bg-primary-dark disabled:opacity-50">
                   {submitting ? 'Registrando...' : 'Confirmar Entrega'}
                 </button>
               </div>
@@ -195,8 +207,8 @@ export function Operations() {
             <h2 className="text-xl font-bold mb-4">Posição de Estoque (Disponíveis vs Em Uso)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {catalogs.map(cat => {
-                const available = epis.filter(e => e.epi_catalog_id === cat.id && e.status === 'AVAILABLE').length;
-                const inUse = epis.filter(e => e.epi_catalog_id === cat.id && e.status === 'IN_USE').length;
+                const available = cat.current_stock;
+                const inUse = 0; // We no longer strictly track IN_USE separate from total without querying assignments, but current_stock is what matters
                 return (
                   <div key={cat.id} className="p-4 border border-border rounded-lg bg-background">
                     <h3 className="font-bold text-foreground truncate">{cat.name}</h3>

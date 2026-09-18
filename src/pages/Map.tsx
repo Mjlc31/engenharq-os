@@ -90,7 +90,7 @@ export function MapTracking() {
       
       setSites(sitesData.data as ConstructionSite[]);
       setAssignments(assignmentsData.data as EpiAssignment[]);
-      setAvailableEpis(episData.data as EpiInventory[]);
+      setAvailableEpis(episData.data as any[]);
       setAllWorkers(workersData.data as Worker[]);
     } catch (err: any) {
       console.error('Error loading map data:', err);
@@ -117,7 +117,7 @@ export function MapTracking() {
       // Filter by category if selected
       const filteredEpis = filterCategory === 'ALL' 
         ? episAtSite 
-        : episAtSite.filter(a => a.epi?.category.toLowerCase().includes(filterCategory.toLowerCase()));
+        : episAtSite.filter(a => a.catalog?.category.toLowerCase().includes(filterCategory.toLowerCase()));
 
       return {
         ...site,
@@ -131,7 +131,7 @@ export function MapTracking() {
   const categories = useMemo(() => {
     const cats = new Set<string>();
     assignments.forEach(a => {
-      if (a.epi?.category) cats.add(a.catalog.category);
+      if (a.catalog?.category) cats.add(a.catalog.category);
     });
     return Array.from(cats);
   }, [assignments]);
@@ -146,7 +146,7 @@ export function MapTracking() {
       expectedReturn.setDate(expectedReturn.getDate() + 180);
 
       const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { epi_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString() }
+        { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString() }
       ]);
       
       if (!assignError) {
@@ -308,9 +308,9 @@ export function MapTracking() {
                   selectedSiteInfo.epis.map(a => (
                     <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-sm text-foreground">{a.epi?.category}</span>
+                        <span className="font-medium text-sm text-foreground">{a.catalog?.category}</span>
                         <span className="text-[10px] bg-surface-hover text-muted px-2 py-0.5 rounded font-mono border border-border">
-                          {a.epi?.tracking_code}
+                          {a.catalog?.code}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted">

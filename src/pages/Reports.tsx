@@ -65,9 +65,9 @@ export function Reports() {
       } else if (type === 'vencimentos' || type === 'trocas') {
         const { data } = await supabase.from('epi_assignments').select('assigned_at, catalog:epi_catalog(name, ca_validity, lifespan_days)').is('returned_at', null);
         dataToExport = (data || []).map(e => {
-          const expDate = e.ca_expiration_date ? new Date(e.ca_expiration_date).toLocaleDateString() : 'N/A';
+          const expDate = (e.catalog as any)?.ca_validity ? new Date((e.catalog as any)?.ca_validity).toLocaleDateString() : 'N/A';
           return {
-            Codigo_Rastreio: e.tracking_code,
+            Codigo_Rastreio: (e.catalog as any)?.code,
             Nome_EPI: (e.catalog as any)?.name,
             Validade_CA: expDate,
             Vida_Util_Dias: (e.catalog as any)?.recommended_lifespan_days || 'N/A'

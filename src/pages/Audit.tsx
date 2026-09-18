@@ -43,7 +43,7 @@ export function Audit() {
         `)
         .order('assigned_at', { ascending: false });
         
-      if (data) setAssignments(data);
+      if (data) setAssignments(data as any);
       setLoading(false);
     }
     loadAudit();

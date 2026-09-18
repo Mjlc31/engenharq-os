@@ -49,7 +49,7 @@ export function useEpiInventory() {
     try {
       const { data, error } = await supabase.rpc('assign_epi', {
         p_worker_id: workerId,
-        p_epi_id: epiId
+        p_catalog_id: epiId, p_quantity: 1
       });
       
       if (error) throw error;
@@ -68,7 +68,7 @@ export function useEpiInventory() {
   const returnEpi = async (epiId: string) => {
     try {
       const { data, error } = await supabase.rpc('return_epi', {
-        p_epi_id: epiId
+        p_assignment_id: epiId, p_condition: "GOOD"
       });
 
       if (error) throw error;

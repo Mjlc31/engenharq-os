@@ -22,8 +22,8 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
     const { data, error } = await supabase
       .from('epi_assignments')
       .select(`
-        id, assigned_at, epi_id, condition_on_delivery,
-        epi:epi_inventory(id, tracking_code, epi_catalog_id, catalog:epi_catalog(name))
+        id, assigned_at, catalog_id, condition_on_delivery,
+        catalog:epi_catalog(name)
       `)
       .eq('worker_id', selectedWorkerId)
       .is('returned_at', null);
@@ -36,16 +36,16 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
     setLoading(false);
   };
 
-  const handleSubstituicao = (assignmentId: string, epiId: string, catalogId: string) => {
-    const availableInventory = epis.filter((e: any) => e.epi_catalog_id === catalogId && e.status === 'AVAILABLE');
-    if (availableInventory.length === 0) {
+  const handleSubstituicao = (assignmentId: string, catalogId: string) => {
+    const catalog = catalogs.find((c: any) => c.id === catalogId);
+    if (!catalog || catalog.current_stock === 0) {
       toast({ type: 'error', title: 'Estoque Insuficiente', message: 'Não há itens disponíveis no estoque para substituição deste mesmo modelo.' });
       return;
     }
     setPendingReplacement({
       workerId: selectedWorkerId,
-      oldEpiId: epiId,
-      newEpiId: availableInventory[0].id
+      oldEpiId: assignmentId, // Pass assignmentId as oldEpiId for the RPC
+      newEpiId: catalogId // Pass catalogId as newEpiId for the RPC
     });
     setIsSignatureModalOpen(true);
   };
@@ -82,11 +82,11 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
               <tbody>
                 {activeAssignments.map(a => (
                   <tr key={a.id} className="border-b border-border/50 hover:bg-surface-hover">
-                    <td className="px-4 py-2">{a.epi?.catalog?.name} ({a.epi?.tracking_code})</td>
+                    <td className="px-4 py-2">{a.catalog?.name}</td>
                     <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleDateString()}</td>
                     <td className="px-4 py-2">
                       <button 
-                        onClick={() => handleSubstituicao(a.id, a.epi_id, a.epi?.epi_catalog_id)}
+                        onClick={() => handleSubstituicao(a.id, a.catalog_id)}
                         className="px-3 py-1 bg-primary text-background rounded-md hover:bg-primary-dark disabled:opacity-50"
                       >
                         Substituir

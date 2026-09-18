@@ -95,7 +95,7 @@ export interface EpiInventory {
 
 export interface EpiAssignment {
   id: string;
-  epi_id: string;
+  catalog_id: string;
   worker_id: string;
   assigned_at: string;
   returned_at: string | null;
@@ -106,6 +106,6 @@ export interface EpiAssignment {
   biometric_match_score?: number | null;
   liveness_verified?: boolean | null;
   expected_return_date: string | null;
-  epi?: EpiInventory;
+  catalog?: any;
   worker?: Worker;
 }

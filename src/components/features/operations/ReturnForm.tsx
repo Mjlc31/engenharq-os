@@ -41,7 +41,7 @@ export function ReturnForm({ workers }: { workers: any[] }) {
     setSubmitting(true);
     try {
       const { error } = await supabase.rpc('return_epi', {
-        p_assignment_id: epiId,
+        p_assignment_id: assignmentId,
         p_condition: 'GOOD'
       });
       if (error) throw error;
@@ -85,7 +85,7 @@ export function ReturnForm({ workers }: { workers: any[] }) {
               <tbody>
                 {activeAssignments.map(a => (
                   <tr key={a.id} className="border-b border-border/50 hover:bg-surface-hover">
-                    <td className="px-4 py-2">{a.epi?.catalog?.name} ({a.epi?.tracking_code})</td>
+                    <td className="px-4 py-2">{a.catalog?.name}</td>
                     <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleDateString()}</td>
                     <td className="px-4 py-2">
                       <button 
