@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
 import { ArrowRightLeft } from 'lucide-react';
 
-export function ReturnForm({ workers }: { workers: any[] }) {
+export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn }: { workers: any[], setIsSignatureModalOpen: (b: boolean) => void, setPendingReturn: (v: any) => void }) {
   const { toast } = useToast();
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [activeAssignments, setActiveAssignments] = useState<any[]>([]);
@@ -24,7 +24,7 @@ export function ReturnForm({ workers }: { workers: any[] }) {
       .from('epi_assignments')
       .select(`
         id, assigned_at, catalog_id, condition_on_delivery,
-        catalog:epi_catalog(name)
+        catalog:epi_catalog!catalog_id(name)
       `)
       .eq('worker_id', selectedWorkerId)
       .is('returned_at', null);
@@ -38,20 +38,8 @@ export function ReturnForm({ workers }: { workers: any[] }) {
   };
 
   const handleDevolucao = async (assignmentId: string, epiId: string) => {
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.rpc('return_epi', {
-        p_assignment_id: assignmentId,
-        p_condition: 'GOOD'
-      });
-      if (error) throw error;
-      toast({ type: 'success', title: 'Sucesso', message: 'EPI devolvido com sucesso.' });
-      loadActiveAssignments();
-    } catch (err: any) {
-      toast({ type: 'error', title: 'Erro', message: err.message });
-    } finally {
-      setSubmitting(false);
-    }
+    setPendingReturn({ assignmentId, workerId: selectedWorkerId });
+    setIsSignatureModalOpen(true);
   };
 
   return (

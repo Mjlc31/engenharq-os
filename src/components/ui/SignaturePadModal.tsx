@@ -7,6 +7,7 @@ interface SignaturePadModalProps {
   onClose: () => void;
   onSave: (signatureDataUrl: string) => void | Promise<void>;
   title?: string;
+  description?: React.ReactNode;
 }
 
 export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura Digital" }: SignaturePadModalProps) {

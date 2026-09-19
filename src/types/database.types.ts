@@ -142,6 +142,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
+          return_signature_url?: string | null
           catalog_id: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null
@@ -157,6 +158,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
+          return_signature_url?: string | null
           catalog_id?: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null

@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
 import { AlertTriangle } from 'lucide-react';
 
-export function LossForm({ workers }: { workers: any[] }) {
+export function LossForm({ workers, setIsSignatureModalOpen, setPendingLoss }: { workers: any[], setIsSignatureModalOpen: (b: boolean) => void, setPendingLoss: (v: any) => void }) {
   const { toast } = useToast();
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [activeAssignments, setActiveAssignments] = useState<any[]>([]);
@@ -24,7 +24,7 @@ export function LossForm({ workers }: { workers: any[] }) {
       .from('epi_assignments')
       .select(`
         id, assigned_at, catalog_id, condition_on_delivery,
-        catalog:epi_catalog(name)
+        catalog:epi_catalog!catalog_id(name)
       `)
       .eq('worker_id', selectedWorkerId)
       .is('returned_at', null);
@@ -38,24 +38,8 @@ export function LossForm({ workers }: { workers: any[] }) {
   };
 
   const handleExtravio = async (assignmentId: string) => {
-    if (!window.confirm('Tem certeza? O EPI será marcado como extraviado/perdido e não retornará ao estoque.')) return;
-    
-    setSubmitting(true);
-    try {
-      // Usa o RPC para retornar com condição DAMAGED (assim o estoque não é incrementado)
-      const { error } = await supabase.rpc('return_epi', {
-        p_assignment_id: assignmentId,
-        p_condition: 'DAMAGED'
-      });
-      if (error) throw error;
-
-      toast({ type: 'success', title: 'Sucesso', message: 'EPI registrado como extraviado.' });
-      loadActiveAssignments();
-    } catch (err: any) {
-      toast({ type: 'error', title: 'Erro', message: err.message });
-    } finally {
-      setSubmitting(false);
-    }
+    setPendingLoss({ assignmentId, workerId: selectedWorkerId, reason: 'Perda/Extravio' });
+    setIsSignatureModalOpen(true);
   };
 
   return (

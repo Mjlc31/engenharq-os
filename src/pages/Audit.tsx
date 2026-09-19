@@ -38,7 +38,7 @@ export function Audit() {
           generated_pdf_url,
           biometric_match_score,
           liveness_verified,
-          catalog:epi_catalog(code, category, ca_number),
+          catalog:epi_catalog!catalog_id(code, category, ca_number),
           worker:workers(full_name, cpf, registration_number)
         `)
         .order('assigned_at', { ascending: false });

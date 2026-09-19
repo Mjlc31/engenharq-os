@@ -63,7 +63,7 @@ export function Reports() {
           Condicao_Retorno: a.condition_on_return || '-'
         }));
       } else if (type === 'vencimentos' || type === 'trocas') {
-        const { data } = await supabase.from('epi_assignments').select('assigned_at, catalog:epi_catalog(name, ca_validity, lifespan_days)').is('returned_at', null);
+        const { data } = await supabase.from('epi_assignments').select('assigned_at, catalog:epi_catalog!catalog_id(name, ca_validity, lifespan_days)').is('returned_at', null);
         dataToExport = (data || []).map(e => {
           const expDate = (e.catalog as any)?.ca_validity ? new Date((e.catalog as any)?.ca_validity).toLocaleDateString() : 'N/A';
           return {

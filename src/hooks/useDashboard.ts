@@ -36,7 +36,7 @@ export function useDashboard() {
             id,
             assigned_at,
             returned_at,
-            catalog:epi_catalog(name),
+            catalog:epi_catalog!catalog_id(name),
             worker:workers(full_name)
           `)
           .order('assigned_at', { ascending: false })
@@ -46,7 +46,7 @@ export function useDashboard() {
             id,
             assigned_at,
             returned_at,
-            catalog:epi_catalog(name, lifespan_days),
+            catalog:epi_catalog!catalog_id(name, lifespan_days),
             worker:workers(full_name)
           `)
           .is('returned_at', null)

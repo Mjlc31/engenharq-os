@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Worker, WorkerRole, ConstructionSite, EpiAssignment } from '../types';
+import { useToast } from '../components/ui/Toast';
 import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat } from 'lucide-react';
 import { generateEpiRecordPdf } from '../lib/pdfGenerator';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
@@ -15,6 +16,7 @@ export function WorkerProfile() {
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [epiAssignments, setEpiAssignments] = useState<EpiAssignment[]>([]);
   
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,9 +46,9 @@ export function WorkerProfile() {
 
       const [workerRes, rolesRes, sitesRes, epiRes] = await Promise.all([
         supabase.from('workers').select('*, site:construction_sites(*)').eq('id', id).single(),
-        supabase.from('worker_roles').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
+        supabase.from('worker_roles_history').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name'),
-        supabase.from('epi_assignments').select('*, catalog:epi_catalog(*)').eq('worker_id', id).order('assigned_at', { ascending: false })
+        supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).order('assigned_at', { ascending: false })
       ]);
 
       if (workerRes.error) throw workerRes.error;
@@ -105,30 +107,42 @@ export function WorkerProfile() {
 
   const handleAddRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRoleName || !newRoleStartDate) return;
+    if (!worker || !newRoleName || !newRoleStartDate) return;
     
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error: roleError } = await supabase.from('worker_roles').insert([{
-        worker_id: id,
+    // Close current role if it exists
+    if (roles.length > 0) {
+      const currentRole = roles[0];
+      await supabase
+        .from('worker_roles_history')
+        .update({ end_date: newRoleStartDate })
+        .eq('id', currentRole.id);
+    }
+    
+    // Insert new role
+    const { error: insertError } = await supabase
+      .from('worker_roles_history')
+      .insert({
+        worker_id: worker.id,
         role_name: newRoleName,
         start_date: newRoleStartDate
-      }]);
-
-      if (roleError) throw roleError;
-
-      setIsAddingRole(false);
-      setNewRoleName('');
-      setNewRoleStartDate('');
-      await loadData();
-      setSuccess('Cargo adicionado com sucesso!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err: unknown) {
-      console.error('Erro ao adicionar cargo:', err);
-      setError('Falha ao registrar novo cargo.');
+      });
+      
+    if (insertError) {
+      toast({ type: 'error', title: 'Erro', message: insertError.message });
+      return;
     }
+    
+    // Update worker's current role
+    await supabase
+      .from('workers')
+      .update({ current_role: newRoleName })
+      .eq('id', worker.id);
+      
+    toast({ type: 'success', title: 'Sucesso', message: 'Função atualizada com sucesso.' });
+    setIsAddingRole(false);
+    setNewRoleName('');
+    setNewRoleStartDate('');
+    window.location.reload();
   };
 
   const handleSaveSignature = async (dataUrl: string) => {
@@ -446,9 +460,9 @@ export function WorkerProfile() {
               </h3>
               <button
                 onClick={() => setIsAddingRole(!isAddingRole)}
-                className="bg-surface-hover border border-border text-foreground p-1.5 rounded-md hover:bg-zinc-800 transition-colors"
+                className="bg-surface-hover border border-border text-foreground px-3 py-1.5 text-sm rounded-md hover:bg-zinc-800 transition-colors"
               >
-                <Plus className="w-4 h-4" />
+                Promover / Mudar Função
               </button>
             </div>
 

@@ -23,7 +23,7 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
       .from('epi_assignments')
       .select(`
         id, assigned_at, catalog_id, condition_on_delivery,
-        catalog:epi_catalog(name)
+        catalog:epi_catalog!catalog_id(name)
       `)
       .eq('worker_id', selectedWorkerId)
       .is('returned_at', null);

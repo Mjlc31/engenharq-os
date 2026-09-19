@@ -14,6 +14,8 @@ export function Operations() {
   const [activeTab, setActiveTab] = useState('entregas');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [pendingReplacement, setPendingReplacement] = useState<{workerId: string, oldEpiId: string, newEpiId: string} | null>(null);
+  const [pendingReturn, setPendingReturn] = useState<{workerId: string, assignmentId: string} | null>(null);
+  const [pendingLoss, setPendingLoss] = useState<{workerId: string, assignmentId: string, reason: string} | null>(null);
 
   // Form states
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
@@ -76,6 +78,53 @@ export function Operations() {
     } finally {
       setSubmitting(false);
       window.location.reload();
+    }
+  };
+
+
+  const processReturn = async (signatureDataUrl: string) => {
+    if (!pendingReturn) return;
+    try {
+      const { error } = await supabase.rpc('return_epi', {
+        p_assignment_id: pendingReturn.assignmentId,
+        p_condition: 'GOOD'
+      });
+      if (error) throw error;
+      
+      // Update with signature
+      await supabase.from('epi_assignments').update({
+        return_signature_url: signatureDataUrl
+      }).eq('id', pendingReturn.assignmentId);
+      
+      toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
+      setIsSignatureModalOpen(false);
+      setPendingReturn(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message });
+    }
+  };
+
+  const processLoss = async (signatureDataUrl: string) => {
+    if (!pendingLoss) return;
+    try {
+      const { error } = await supabase.rpc('return_epi', {
+        p_assignment_id: pendingLoss.assignmentId,
+        p_condition: 'DAMAGED'
+      });
+      if (error) throw error;
+      
+      // Update with signature
+      await supabase.from('epi_assignments').update({
+        return_signature_url: signatureDataUrl
+      }).eq('id', pendingLoss.assignmentId);
+      
+      toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura.' });
+      setIsSignatureModalOpen(false);
+      setPendingLoss(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
 
@@ -198,9 +247,9 @@ export function Operations() {
           </div>
         )}
 
-        {activeTab === 'devolucoes' && <ReturnForm workers={workers} />}
+        {activeTab === 'devolucoes' && <ReturnForm workers={workers} setIsSignatureModalOpen={setIsSignatureModalOpen} setPendingReturn={setPendingReturn} />}
         {activeTab === 'substituicoes' && <ReplacementForm workers={workers} catalogs={catalogs} epis={epis} setIsSignatureModalOpen={setIsSignatureModalOpen} setPendingReplacement={setPendingReplacement} />}
-        {activeTab === 'extravios' && <LossForm workers={workers} />}
+        {activeTab === 'extravios' && <LossForm workers={workers} setIsSignatureModalOpen={setIsSignatureModalOpen} setPendingLoss={setPendingLoss} />}
 
         {activeTab === 'estoque' && (
           <div className="space-y-4">
@@ -226,11 +275,17 @@ export function Operations() {
 
       </div>
 
-      <SignaturePadModal
+            <SignaturePadModal
         isOpen={isSignatureModalOpen}
-        onClose={() => { setIsSignatureModalOpen(false); setPendingReplacement(null); }}
-        onSave={pendingReplacement ? processReplacement : processEntrega}
-        title="Assinatura da Nova Entrega"
+        onClose={() => { setIsSignatureModalOpen(false); setPendingReplacement(null); setPendingReturn(null); setPendingLoss(null); }}
+        onSave={(sig) => {
+          if (pendingReplacement) return processReplacement(sig);
+          if (pendingReturn) return processReturn(sig);
+          if (pendingLoss) return processLoss(sig);
+          return processEntrega(sig);
+        }}
+        title={pendingReturn ? "Assinatura de Devolução" : pendingLoss ? "Assinatura de Extravio" : "Assinatura da Nova Entrega"}
+        description={pendingLoss ? "Declaro para os devidos fins que perdi/extraviei o Equipamento de Proteção Individual (EPI) sob minha responsabilidade, assumindo as consequências legais e administrativas conforme política da empresa." : undefined}
       />
     </div>
   );

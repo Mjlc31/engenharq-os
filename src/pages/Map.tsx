@@ -77,7 +77,7 @@ export function MapTracking() {
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
-          .select(`*, catalog:epi_catalog(*), worker:workers(*)`)
+          .select(`*, catalog:epi_catalog!catalog_id(*), worker:workers(*)`)
           .is('returned_at', null),
         supabase.from('epi_catalog').select('*').gt('current_stock', 0),
         supabase.from('workers').select('*, site:construction_sites(*)')

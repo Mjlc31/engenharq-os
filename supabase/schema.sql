@@ -124,6 +124,7 @@ CREATE TABLE public.epi_assignments (
   condition_on_delivery item_condition,
   condition_on_return item_condition,
   digital_signature_url TEXT,
+    return_signature_url TEXT,
   generated_pdf_url TEXT,
   audit_selfie_url TEXT,
   biometric_match_score DECIMAL,
@@ -642,3 +643,27 @@ BEGIN
     AND (ec.lifespan_days - (EXTRACT(EPOCH FROM (now() - ea.assigned_at))/86400)::INTEGER) <= 30;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- System Settings
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  company_name TEXT DEFAULT 'EngenharQ OS',
+  logo_url TEXT,
+  epi_declaration_text TEXT DEFAULT 'Declaro para todos os fins de direito que recebi gratuitamente, após orientação de uso e aplicação os Equipamentos de Proteção Individual a utilizar durante a realização de minhas atividades.',
+  epi_terms_text TEXT DEFAULT 'Declaro, ainda, ter ciência de que: a) Os EPIs deverão ser utilizados...',
+  epi_legal_base_text TEXT DEFAULT 'Base Legal: NR 1 ...',
+  default_expiration_alert_days INTEGER DEFAULT 30,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Settings are viewable by everyone" ON public.system_settings
+    FOR SELECT USING (true);
+
+CREATE POLICY "Settings can be updated by authenticated users" ON public.system_settings
+    FOR UPDATE USING (auth.role() = 'authenticated');
+    
+CREATE POLICY "Settings can be inserted by authenticated users" ON public.system_settings
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
