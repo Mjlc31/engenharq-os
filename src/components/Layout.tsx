@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import {  ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings , ClipboardList, Activity } from 'lucide-react';
+import {  ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings , ClipboardList, Activity, Sun, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
 export function Layout() {
+  const [isLight, setIsLight] = React.useState(() => document.documentElement.classList.contains('light'));
+  
+  const toggleTheme = () => {
+    const newMode = !isLight;
+    setIsLight(newMode);
+    if (newMode) {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  };
   const { signOut, user, role } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -85,6 +96,13 @@ export function Layout() {
             <span className="text-xs text-muted uppercase tracking-widest font-medium">Systems Operational</span>
           </div>
           <div className="flex items-center gap-3 md:border-l md:border-border md:pl-6">
+            <button 
+              onClick={toggleTheme}
+              className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-full transition-colors"
+              title="Alternar Tema"
+            >
+              {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold truncate max-w-[150px]">{user?.email}</p>
               <p className="text-[10px] text-muted uppercase">Safety Lead • Maceió</p>
