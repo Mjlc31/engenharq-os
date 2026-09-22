@@ -29,7 +29,7 @@ export function Scanner() {
   const { catalogs } = useEpiAssets();
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
   const [worker, setWorker] = useState<Worker | null>(null);
-  const [epis, setEpis] = useState<EpiCatalog[]>([]);
+  const [epis, setEpis] = useState<any[]>([]);
   const { 
     loading, 
     error, 
@@ -46,8 +46,7 @@ export function Scanner() {
   const [manualInputValue, setManualInputValue] = useState('');
 
   // Clean up scanner when component unmounts
-  useEffect(() => {
-    const groupedEpis = epis.reduce((acc, current) => {
+  const groupedEpis = epis.reduce((acc, current) => {
     const existing = acc.find(item => item.id === current.id);
     if (existing) {
       existing.quantity += 1;
@@ -57,6 +56,7 @@ export function Scanner() {
     return acc;
   }, [] as (EpiCatalog & { quantity: number })[]);
 
+  useEffect(() => {
   return () => {
       const el = document.getElementById('qr-reader');
       if (el) el.innerHTML = '';

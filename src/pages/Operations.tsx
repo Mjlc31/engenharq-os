@@ -24,6 +24,23 @@ export function Operations() {
   const [observations, setObservations] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+
+  const uploadPhoto = async (photoFile?: File) => {
+    if (!photoFile) return null;
+    try {
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `deliveries/${fileName}`;
+      const { error } = await supabase.storage.from('epi-evidence').upload(filePath, photoFile);
+      if (error) throw error;
+      const { data } = supabase.storage.from('epi-evidence').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch(err) {
+      console.error(err);
+      return null;
+    }
+  };
+
   const selectedCatalog = catalogs.find(c => c.id === selectedCatalogId);
   const availableStock = selectedCatalog ? selectedCatalog.current_stock : 0;
 
@@ -40,9 +57,10 @@ export function Operations() {
     setIsSignatureModalOpen(true);
   };
 
-  const processEntrega = async (signatureDataUrl: string) => {
+  const processEntrega = async (signatureDataUrl: string, photoFile?: File) => {
     setSubmitting(true);
     try {
+      const photoUrl = await uploadPhoto(photoFile);
       const { error } = await supabase.rpc('assign_epi', {
         p_worker_id: selectedWorkerId,
         p_catalog_id: selectedCatalogId,
@@ -64,7 +82,7 @@ export function Operations() {
         const ids = newAssignments.map(a => a.id);
         await supabase
           .from('epi_assignments')
-          .update({ digital_signature_url: signatureDataUrl })
+          .update({ digital_signature_url: signatureDataUrl, audit_selfie_url: photoUrl })
           .in('id', ids);
       }
 
@@ -82,9 +100,10 @@ export function Operations() {
   };
 
 
-  const processReturn = async (signatureDataUrl: string) => {
+  const processReturn = async (signatureDataUrl: string, photoFile?: File) => {
     if (!pendingReturn) return;
     try {
+      const photoUrl = await uploadPhoto(photoFile);
       const { error } = await supabase.rpc('return_epi', {
         p_assignment_id: pendingReturn.assignmentId,
         p_condition: 'GOOD'
@@ -105,9 +124,10 @@ export function Operations() {
     }
   };
 
-  const processLoss = async (signatureDataUrl: string) => {
+  const processLoss = async (signatureDataUrl: string, photoFile?: File) => {
     if (!pendingLoss) return;
     try {
+      const photoUrl = await uploadPhoto(photoFile);
       const { error } = await supabase.rpc('return_epi', {
         p_assignment_id: pendingLoss.assignmentId,
         p_condition: 'DAMAGED'
@@ -128,7 +148,8 @@ export function Operations() {
     }
   };
 
-  const processReplacement = async (signatureDataUrl: string) => {
+  const processReplacement = async (signatureDataUrl: string, photoFile?: File) => {
+const photoUrl = await uploadPhoto(photoFile);
     if (!pendingReplacement) return;
     setSubmitting(true);
     try {
@@ -160,7 +181,7 @@ export function Operations() {
       if (newAssignments && newAssignments.length > 0) {
         await supabase
           .from('epi_assignments')
-          .update({ digital_signature_url: signatureDataUrl })
+          .update({ digital_signature_url: signatureDataUrl, audit_selfie_url: photoUrl })
           .eq('id', newAssignments[0].id);
       }
 

@@ -159,12 +159,7 @@ export function CatalogTab({
     setIsUpdatingStock(true);
     try {
       const newStock = (stockItem.current_stock || 0) + Number(stockAmount);
-      const { error } = await supabase
-        .from('epi_catalog')
-        .update({ current_stock: newStock })
-        .eq('id', stockItem.id);
-      
-      if (error) throw error;
+      await saveCatalog({ current_stock: newStock }, stockItem.id);
       toast({ type: 'success', title: 'Sucesso', message: 'Saldo adicionado com sucesso.' });
       setIsAddingStock(false);
       setStockAmount('');
