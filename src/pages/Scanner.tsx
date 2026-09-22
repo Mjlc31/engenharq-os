@@ -6,9 +6,10 @@ import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
 import { User, Package, CheckCircle2, AlertCircle, X, PenTool, Check, ScanFace, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BiometricScanner } from '../components/BiometricScanner';
-import { Worker, EpiInventory } from '../types';
+import { Worker, EpiCatalog } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
+import { useEpiAssets } from '../hooks/useEpiAssets';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -26,9 +27,10 @@ const defaultIcon = new L.Icon({
 type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'SIGNATURE' | 'SUCCESS';
 
 export function Scanner() {
+  const { catalogs } = useEpiAssets();
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
   const [worker, setWorker] = useState<Worker | null>(null);
-  const [epis, setEpis] = useState<EpiInventory[]>([]);
+  const [epis, setEpis] = useState<EpiCatalog[]>([]);
   const { 
     loading, 
     error, 
@@ -47,7 +49,17 @@ export function Scanner() {
 
   // Clean up scanner when component unmounts
   useEffect(() => {
-    return () => {
+    const groupedEpis = epis.reduce((acc, current) => {
+    const existing = acc.find(item => item.id === current.id);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      acc.push({ ...current, quantity: 1 });
+    }
+    return acc;
+  }, [] as (EpiCatalog & { quantity: number })[]);
+
+  return () => {
       const el = document.getElementById('qr-reader');
       if (el) el.innerHTML = '';
     };
@@ -133,6 +145,7 @@ export function Scanner() {
   };
 
   const clearSignature = () => {
+    if (!confirm('Deseja realmente apagar a assinatura atual?')) return;
     sigCanvas.current?.clear();
   };
 
@@ -310,15 +323,28 @@ export function Scanner() {
                   {manualInputOpen === 'WORKER' ? 'Entrada Manual - Trabalhador' : 'Entrada Manual - Equipamento'}
                 </label>
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={manualInputValue}
-                    onChange={(e) => setManualInputValue(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
-                    className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
-                    placeholder={manualInputOpen === 'WORKER' ? 'CPF ou Matrícula...' : 'Código de Rastreio...'}
-                    autoFocus
-                  />
+                  {manualInputOpen === 'WORKER' ? (
+                    <input 
+                      type="text" 
+                      value={manualInputValue}
+                      onChange={(e) => setManualInputValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
+                      className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                      placeholder="CPF ou Matrícula..."
+                      autoFocus
+                    />
+                  ) : (
+                    <select 
+                      value={manualInputValue}
+                      onChange={e => setManualInputValue(e.target.value)}
+                      className="flex-1 bg-surface border border-border rounded-md px-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+                    >
+                      <option value="">Selecione um EPI...</option>
+                      {catalogs.map(epi => (
+                        <option key={epi.id} value={'EPI-' + epi.id}>{epi.name} (CA: {epi.ca_number})</option>
+                      ))}
+                    </select>
+                  )}
                   <button 
                     onClick={submitManualInput}
                     className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
@@ -358,18 +384,26 @@ export function Scanner() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {epis.map((e, i) => (
+                  {groupedEpis.map((e, i) => (
                     <div key={i} className="flex justify-between items-center p-3 bg-surface-hover rounded-lg border border-border">
                       <div className="flex items-center gap-3">
                         <Package className="w-5 h-5 text-primary" />
                         <div>
-                          <p className="text-sm font-medium">{e.category}</p>
-                          <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{e.name}</p>
+                            {e.quantity > 1 && (
+                              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-bold">
+                                x{e.quantity}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted font-mono">CA: {e.ca_number}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setEpis(epis.filter(item => item.id !== e.id))}
                         className="p-2 text-muted hover:text-red-500 transition-colors"
+                        title="Remover todos"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -423,12 +457,17 @@ export function Scanner() {
               
               <div className="bg-background border border-border p-4 rounded-lg flex flex-col gap-2 max-h-[120px] overflow-y-auto">
                 <p className="text-[10px] uppercase text-muted font-bold tracking-wider mb-1 sticky top-0 bg-background">Equipamentos ({epis.length})</p>
-                {epis.map((e, idx) => (
+                {groupedEpis.map((e, idx) => (
                   <div key={idx} className="flex items-center gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0">
                     <Package className="w-4 h-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs truncate">{e.category}</p>
-                      <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
+                    <div className="flex-1 min-w-0 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-xs truncate">{e.name}</p>
+                        <p className="text-[10px] text-muted font-mono">CA: {e.ca_number}</p>
+                      </div>
+                      {e.quantity > 1 && (
+                        <span className="text-xs font-bold text-primary">x{e.quantity}</span>
+                      )}
                     </div>
                   </div>
                 ))}
