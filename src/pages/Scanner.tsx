@@ -1,15 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import SignatureCanvas from 'react-signature-canvas';
 import { supabase } from '../lib/supabase';
-import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
-import { User, Package, CheckCircle2, AlertCircle, X, PenTool, Check, ScanFace, MapPin } from 'lucide-react';
+import { User, Package, CheckCircle2, AlertCircle, X, Check, ScanFace, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BiometricScanner } from '../components/BiometricScanner';
 import { Worker, EpiCatalog } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
 import { useEpiAssets } from '../hooks/useEpiAssets';
+import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -41,8 +40,7 @@ export function Scanner() {
     confirmAssignment 
   } = useScanner();
   const [biometricsData, setBiometricsData] = useState<{selfieUrl: string, score: number, liveness: boolean} | null>(null);
-  
-  const sigCanvas = useRef<SignatureCanvas>(null);
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   
   const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | 'EPI' | null>(null);
   const [manualInputValue, setManualInputValue] = useState('');
@@ -144,77 +142,41 @@ export function Scanner() {
     onScanSuccess(manualInputValue.trim());
   };
 
-  const clearSignature = () => {
-    if (!confirm('Deseja realmente apagar a assinatura atual?')) return;
-    sigCanvas.current?.clear();
-  };
-
-  const dataUrlToBlob = (dataUrl: string) => {
-    const arr = dataUrl.split(',');
-    const match = arr[0].match(/:(.*?);/);
-    if (!match) throw new Error("Invalid Data URL");
-    const mime = match[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  };
-
-  const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
-    try {
-      const blob = dataUrlToBlob(dataUrl);
-      const { data, error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
-        contentType: blob.type,
-        upsert: true
-      });
-      if (uploadError) {
-         if (uploadError.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
-         throw uploadError;
-      }
-      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
-      return publicUrlData.publicUrl;
-    } catch (e) {
-      console.warn(`Storage upload failed for ${path}`, e);
-      throw e;
-    }
-  };
-
-  const handleConfirmSignature = async () => {
-    if (sigCanvas.current?.isEmpty()) {
-      setError('Por favor, colete a assinatura do colaborador.');
-      return;
-    }
-    if (!worker) {
-      setError('Dados do colaborador não encontrados.');
-      return;
-    }
+  const handleSignatureSave = async (dataUrl: string, photoFile?: File) => {
+    if (!worker || epis.length === 0) return;
     
     setLoading(true);
-    try {
-      const signatureDataUrl = sigCanvas.current!.getCanvas().toDataURL('image/png');
-      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, signatureDataUrl);
-      
-      const timestamp = new Date().getTime();
-      
-      // Upload files to storage (parallel)
-      const [signatureUrl, pdfUrl, selfieUrl] = await Promise.all([
-        uploadToStorage(signatureDataUrl, 'epi-receipts', `signatures/${worker.id}_${timestamp}.png`),
-        uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`),
-        biometricsData?.selfieUrl ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
-      ]);
-      
-      const success = await confirmAssignment(worker.id, epis, signatureUrl, selfieUrl ?? undefined, biometricsData);
-      
-      if (success) {
-        setStep('SUCCESS');
+    let uploadedPhotoUrl = '';
+    
+    if (photoFile) {
+      try {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `deliveries/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('epi-evidence')
+          .upload(filePath, photoFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage.from('epi-evidence').getPublicUrl(filePath);
+        uploadedPhotoUrl = data.publicUrl;
+      } catch (err) {
+        console.error("Upload error", err);
       }
-    } catch (err: unknown) {
-      setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setLoading(false);
+    }
+
+    const success = await confirmAssignment(
+      worker.id,
+      epis,
+      dataUrl,
+      uploadedPhotoUrl || undefined,
+      biometricsData
+    );
+    
+    if (success) {
+      setStep('SUCCESS');
     }
   };
 
@@ -500,57 +462,16 @@ export function Scanner() {
               </div>
             )}
             
-            <div className="border border-border rounded-lg bg-background overflow-hidden relative">
-              <div className="p-3 border-b border-border flex justify-between items-center bg-surface-hover">
-                <div className="flex items-center gap-2">
-                  <PenTool className="w-4 h-4 text-muted" />
-                  <span className="text-xs font-bold text-muted uppercase tracking-wider">Ficha de EPI • Assinatura Legal</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => {
-                      const data = sigCanvas.current?.toData();
-                      if (data && data.length > 0) {
-                        data.pop();
-                        sigCanvas.current?.fromData(data);
-                      }
-                    }} 
-                    className="text-xs text-muted hover:text-primary transition-colors flex items-center gap-1"
-                  >
-                    Desfazer
-                  </button>
-                  <button 
-                    onClick={clearSignature} 
-                    className="text-xs text-muted hover:text-red-500 transition-colors"
-                  >
-                    Limpar Tudo
-                  </button>
-                </div>
-              </div>
-              
-              <SignatureCanvas 
-                ref={sigCanvas} 
-                canvasProps={{
-                  className: 'w-full h-48 cursor-crosshair touch-none',
-                }}
-                penColor="#f4f4f5"
-                backgroundColor="#121212"
-              />
-              <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-                <span className="text-zinc-600 font-medium text-xs select-none">Assine aqui</span>
-              </div>
-            </div>
-
             <div className="text-[10px] text-muted leading-relaxed">
               Ao assinar, o colaborador declara ter recebido o EPI acima descrito, comprometendo-se a usá-lo exclusivamente para a finalidade a que se destina e zelar pela sua conservação. Uma cópia em PDF (NR-6) será gerada automaticamente.
             </div>
             
             <button
-              onClick={handleConfirmSignature}
+              onClick={() => setIsSignatureModalOpen(true)}
               disabled={loading}
               className="w-full bg-primary hover:bg-primary-dark text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processando NR-6...' : 'Confirmar Entrega'}
+              {loading ? 'Processando...' : 'Assinar e Confirmar Entrega'}
             </button>
           </div>
         )}
@@ -575,6 +496,13 @@ export function Scanner() {
           </div>
         )}
       </div>
+
+      <SignaturePadModal
+        isOpen={isSignatureModalOpen}
+        onClose={() => setIsSignatureModalOpen(false)}
+        onSave={handleSignatureSave}
+        title="Assinatura do Recebimento"
+      />
     </div>
   );
 }

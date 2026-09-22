@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
-import { X, Eraser, Check, Loader2 } from 'lucide-react';
+import { X, Eraser, Check, Loader2, Camera } from 'lucide-react';
 
 interface SignaturePadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (signatureDataUrl: string) => void | Promise<void>;
+  onSave: (signatureDataUrl: string, photoFile?: File) => void | Promise<void>;
   title?: string;
   description?: React.ReactNode;
 }
@@ -14,17 +14,25 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   if (!isOpen) return null;
 
   const handleClear = () => {
+    if (!confirm('Deseja realmente limpar a assinatura?')) return;
     sigCanvas.current?.clear();
     setError('');
   };
 
+  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPhotoFile(e.target.files[0]);
+    }
+  };
+
   const handleSave = async () => {
-    if (sigCanvas.current?.isEmpty()) {
-      setError('Por favor, desenhe sua assinatura antes de salvar.');
+    if (sigCanvas.current?.isEmpty() && !photoFile) {
+      setError('Por favor, assine ou tire uma foto para confirmar a entrega.');
       return;
     }
     
@@ -32,12 +40,9 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
     setError('');
     
     try {
-      // Get the base64 string
-      const dataUrl = sigCanvas.current?.getCanvas().toDataURL('image/png');
-      if (dataUrl) {
-        await onSave(dataUrl);
-        onClose();
-      }
+      const dataUrl = sigCanvas.current?.isEmpty() ? '' : sigCanvas.current?.getCanvas().toDataURL('image/png');
+      await onSave(dataUrl || '', photoFile || undefined);
+      onClose();
     } catch (err: any) {
       console.error("Erro ao salvar assinatura:", err);
       setError(err.message || 'Erro ao processar assinatura. Tente novamente.');
@@ -65,8 +70,24 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
         {/* Body */}
         <div className="p-4 flex flex-col items-center">
           <p className="text-sm text-muted mb-4 self-start">
-            Utilize o mouse ou o dedo (em telas sensíveis a toque) para assinar abaixo.
+            Utilize o mouse ou o dedo (em telas sensíveis a toque) para assinar abaixo, ou tire uma foto.
           </p>
+
+          <div className="flex gap-2 mb-4 w-full">
+            <label className="flex-1 flex flex-col items-center justify-center p-4 border-2 border-dashed border-border rounded-lg cursor-pointer bg-surface hover:bg-surface-hover transition-colors">
+              <Camera className="w-8 h-8 text-muted mb-2" />
+              <span className="text-sm font-medium text-foreground">
+                {photoFile ? "Foto Capturada ✓" : "Tirar Foto do Funcionário"}
+              </span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment"
+                className="hidden" 
+                onChange={handlePhotoCapture} 
+              />
+            </label>
+          </div>
 
           <div className="w-full border-2 border-dashed border-border rounded-lg bg-background overflow-hidden relative">
             {isSaving && (
