@@ -299,7 +299,7 @@ export function Scanner() {
                     <select 
                       value={manualInputValue}
                       onChange={e => setManualInputValue(e.target.value)}
-                      className="flex-1 bg-surface border border-border rounded-md px-4 py-2 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground"
+                      className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all cursor-pointer"
                     >
                       <option value="">Selecione um EPI...</option>
                       {catalogs.map(epi => (

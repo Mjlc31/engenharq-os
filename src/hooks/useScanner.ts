@@ -46,7 +46,7 @@ export function useScanner() {
     try {
       const isId = searchTerm.startsWith('EPI-');
       const cleanTerm = searchTerm.replace('EPI-', '');
-      let query = supabase.from('epi_inventory').select('*');
+      let query = supabase.from('epi_catalog').select('*');
       
       if (isId) {
         query = query.eq('id', cleanTerm);
@@ -64,7 +64,7 @@ export function useScanner() {
          throw fetchError;
       }
       
-      return data as EpiInventory;
+      return { ...data, status: data.current_stock > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK' } as any;
     } catch (err: unknown) {
       console.error(err);
       setError('EPI não encontrado.');
