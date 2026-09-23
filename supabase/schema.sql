@@ -462,7 +462,7 @@ CREATE OR REPLACE FUNCTION generate_epi_code()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.code IS NULL THEN
-    NEW.code := 'EPI' || LPAD(nextval('epi_code_seq')::TEXT, 3, '0');
+    NEW.code := 'EPI' || LPAD(nextval('public.epi_code_seq')::TEXT, 3, '0');
   END IF;
   RETURN NEW;
 END;

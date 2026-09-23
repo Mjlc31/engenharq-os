@@ -17,6 +17,8 @@ const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m =>
 const Operations = React.lazy(() => import('./pages/Operations').then(m => ({ default: m.Operations })));
 const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
+
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -50,7 +52,7 @@ export default function App() {
               <Route path="operations" element={<Operations />} />
               <Route path="reports" element={<Reports />} />
             </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </React.Suspense>
       </BrowserRouter>
