@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { supabase } from '../lib/supabase';
 import { HardHat, MapPin, Plus, X, AlertCircle, Users, Package, Activity, Navigation2, Filter } from 'lucide-react';
-import { ConstructionSite, EpiAssignment, EpiInventory, Worker } from '../types';
+import { ConstructionSite, EpiAssignment, EpiCatalog, Worker } from '../types';
 
 // Fix for default marker icons in leaflet with bundlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -54,7 +54,7 @@ function MapBounds({ sites }: { sites: any[] }) {
 export function MapTracking() {
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [assignments, setAssignments] = useState<EpiAssignment[]>([]);
-  const [availableEpis, setAvailableEpis] = useState<EpiInventory[]>([]);
+  const [availableEpis, setAvailableEpis] = useState<EpiCatalog[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,9 +77,9 @@ export function MapTracking() {
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
-          .select(`*, epi:epi_inventory(*), worker:workers(*)`)
+          .select(`*, epi:epi_catalog(*), worker:workers(*)`)
           .is('returned_at', null),
-        supabase.from('epi_inventory').select('*, catalog:epi_catalog(*)').eq('status', 'AVAILABLE'),
+        supabase.from('epi_catalog').select('*').eq('status', 'ACTIVE'),
         supabase.from('workers').select('*, site:construction_sites(*)')
       ]);
 
@@ -90,7 +90,7 @@ export function MapTracking() {
       
       setSites(sitesData.data as ConstructionSite[]);
       setAssignments(assignmentsData.data as EpiAssignment[]);
-      setAvailableEpis(episData.data as EpiInventory[]);
+      setAvailableEpis(episData.data as EpiCatalog[]);
       setAllWorkers(workersData.data as Worker[]);
     } catch (err: any) {
       console.error('Error loading map data:', err);
@@ -147,11 +147,14 @@ export function MapTracking() {
       expectedReturn.setDate(expectedReturn.getDate() + 180);
 
       const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { epi_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString() }
+        { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString(), condition_on_delivery: 'GOOD' }
       ]);
       
       if (!assignError) {
-        await supabase.from('epi_inventory').update({ status: 'IN_USE' }).eq('id', selectedEpi);
+        const catalogItem = availableEpis.find(e => e.id === selectedEpi);
+        if (catalogItem) {
+           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, (catalogItem.current_stock || 0) - 1) }).eq('id', selectedEpi);
+        }
       }
 
       // Reload Data
@@ -405,7 +408,7 @@ export function MapTracking() {
                   <option value="">-- Escolha um equipamento --</option>
                   {availableEpis.map(e => (
                     <option key={e.id} value={e.id}>
-                      {e.category} (CA: {e.ca_number}) - {e.tracking_code}
+                      {e.name} ({e.category}) - C.A: {e.ca_number || 'N/A'} - Estoque: {e.current_stock}
                     </option>
                   ))}
                 </select>
