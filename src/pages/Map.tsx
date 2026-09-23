@@ -339,8 +339,8 @@ export function MapTracking() {
                       <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-medium text-sm text-foreground">{a.epi?.category}</span>
-                          <span className="text-[10px] bg-surface-hover text-muted px-2 py-0.5 rounded font-mono border border-border">
-                            {a.epi?.tracking_code}
+                          <span className="text-xs text-muted">
+                            {a.epi?.name} - CA: {a.epi?.ca_number || 'N/A'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted">
