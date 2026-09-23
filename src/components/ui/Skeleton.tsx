@@ -1,9 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+
 
 export function Skeleton({
   className,
