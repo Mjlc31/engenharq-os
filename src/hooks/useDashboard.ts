@@ -36,7 +36,7 @@ export function useDashboard() {
             id,
             assigned_at,
             returned_at,
-            catalog:epi_catalog!catalog_id(name),
+            catalog:epi_catalog(name),
             worker:workers(full_name)
           `)
           .order('assigned_at', { ascending: false })
@@ -46,7 +46,7 @@ export function useDashboard() {
             id,
             assigned_at,
             returned_at,
-            catalog:epi_catalog!catalog_id(name, lifespan_days),
+            catalog:epi_catalog(name, lifespan_days),
             worker:workers(full_name)
           `)
           .is('returned_at', null)
@@ -93,7 +93,7 @@ export function useDashboard() {
 
       const catalogs = getData(catalogsReq);
       const totalEPIs = catalogs.reduce((acc: number, item: any) => acc + (item.current_stock || 0), 0);
-      const inUseCount = getCount(activeAssignmentsReq);
+      const inUseCount = activeAssignments.length;
       const caAlerts = catalogs.filter((item: any) => item.ca_validity).map((item: any) => {
         const expDate = new Date(item.ca_validity);
         const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));

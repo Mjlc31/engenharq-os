@@ -107,13 +107,3 @@ html, body {
   outline: none;
 }
 
-
-.light {
-  --color-background: #ffffff;
-  --color-foreground: #09090b;
-  --color-muted: #71717a;
-  --color-border: #e4e4e7;
-  --color-surface: #f4f4f5;
-  --color-surface-hover: #e4e4e7;
-  --color-sidebar: #ffffff;
-}

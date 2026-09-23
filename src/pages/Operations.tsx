@@ -95,7 +95,7 @@ export function Operations() {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
       setSubmitting(false);
-      window.location.reload();
+      setIsSignatureModalOpen(false);
     }
   };
 
@@ -118,7 +118,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
       setIsSignatureModalOpen(false);
       setPendingReturn(null);
-      window.location.reload();
+      setIsSignatureModalOpen(false);
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -142,7 +142,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura.' });
       setIsSignatureModalOpen(false);
       setPendingLoss(null);
-      window.location.reload();
+      setIsSignatureModalOpen(false);
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -191,7 +191,7 @@ const photoUrl = await uploadPhoto(photoFile);
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setSubmitting(false);
-      window.location.reload();
+      setIsSignatureModalOpen(false);
     }
   };
 
@@ -299,11 +299,11 @@ const photoUrl = await uploadPhoto(photoFile);
             <SignaturePadModal
         isOpen={isSignatureModalOpen}
         onClose={() => { setIsSignatureModalOpen(false); setPendingReplacement(null); setPendingReturn(null); setPendingLoss(null); }}
-        onSave={(sig) => {
-          if (pendingReplacement) return processReplacement(sig);
-          if (pendingReturn) return processReturn(sig);
-          if (pendingLoss) return processLoss(sig);
-          return processEntrega(sig);
+        onSave={(sig, photo) => {
+          if (pendingReplacement) return processReplacement(sig, photo);
+          if (pendingReturn) return processReturn(sig, photo);
+          if (pendingLoss) return processLoss(sig, photo);
+          return processEntrega(sig, photo);
         }}
         title={pendingReturn ? "Assinatura de Devolução" : pendingLoss ? "Assinatura de Extravio" : "Assinatura da Nova Entrega"}
         description={pendingLoss ? "Declaro para os devidos fins que perdi/extraviei o Equipamento de Proteção Individual (EPI) sob minha responsabilidade, assumindo as consequências legais e administrativas conforme política da empresa." : undefined}

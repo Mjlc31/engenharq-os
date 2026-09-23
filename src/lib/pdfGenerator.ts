@@ -1,13 +1,18 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
-import { supabase } from './supabase';
 import { Worker, EpiAssignment } from '../types';
+import { supabase } from './supabase';
 
-export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAssignment[]) {
-  const { data: settingsData } = await supabase.from('system_settings' as any).select('*').limit(1).maybeSingle();
-  const settings: any = settingsData || {};
-  const companyName = settings.company_name || 'EngenharQ OS';
-  
+export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAssignment[], mode: 'download' | 'preview' = 'download') {
+  // Fetch system settings
+  const { data } = await (supabase as any)
+    .from('system_settings')
+    .select('*')
+    .limit(1)
+    .single();
+    
+  const settings = data as any;
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -23,10 +28,21 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.rect(10, 10, 190, 20);
   
   // Logo
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(230, 81, 0); // Orange
-  doc.text(companyName, 15, 23);
+  if (settings?.logo_url) {
+    try {
+      doc.addImage(settings.logo_url, 'PNG', 15, 12, 40, 16);
+    } catch (e) {
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(230, 81, 0); // Orange
+      doc.text(settings?.company_name || 'EngenharQ', 15, 23);
+    }
+  } else {
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(230, 81, 0); // Orange
+    doc.text(settings?.company_name || 'EngenharQ', 15, 23);
+  }
 
   // Title
   doc.setTextColor(0);
@@ -53,13 +69,13 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   
-  const declText1 = settings.epi_declaration_text || "Declaro para todos os fins de direito que recebi gratuitamente, após orientação de uso e aplicação os Equipamentos de Proteção Individual a utilizar durante a realização de minhas atividades.";
+  const declText1 = settings?.epi_declaration_text || "Declaro para todos os fins de direito que recebi gratuitamente, após orientação de uso e aplicação os Equipamentos de Proteção Individual a utilizar durante a realização de minhas atividades.";
   doc.text(doc.splitTextToSize(declText1, 90), 12, 59);
 
-  const declText2 = settings.epi_terms_text || "Declaro, ainda, ter ciência de que:\na) Os EPIs deverão ser utilizados, unicamente para a finalidade a qual se destinam;\nb) Qualquer alteração que os tornem parcial ou totalmente inadequados para uso deverá ser por mim comunicada.\nc) A Falta do uso, por mim, dos EPIs fornecidos pela empresa constitui ato faltoso sujeito às sanções disciplinares previstas na legislação e no Regulamento interno, aplicáveis ao assunto, inclusive à demissão por justa causa.\nd) Responsabilizar-me-ei, integralmente, pela guarda e conservação dos EPIs que me forem entregues. Em caso de perda ou extravio ou inutilização proposital comprometo-me a ressarcir a empresa conforme previsto no parágrafo 1º do artigo 462 da CLT, inclusive no que couber a título de indenização por rescisão de contrato de trabalho, a importância correspondente ao valor do material.";
+  const declText2 = settings?.epi_terms_text || "Declaro, ainda, ter ciência de que:\na) Os EPIs deverão ser utilizados, unicamente para a finalidade a qual se destinam;\nb) Qualquer alteração que os tornem parcial ou totalmente inadequados para uso deverá ser por mim comunicada.\nc) A Falta do uso, por mim, dos EPIs fornecidos pela ENGENHARQ LTDA constitui ato faltoso sujeito às sanções disciplinares previstas na legislação e no Regulamento interno, aplicáveis ao assunto, inclusive à demissão por justa causa.\nd) Responsabilizar-me-ei, integralmente, pela guarda e conservação dos EPIs que me forem entregues. Em caso de perda ou extravio ou inutilização proposital comprometo-me a ressarcir a empresa conforme previsto no parágrafo 1º do artigo 462 da CLT, inclusive no que couber a título de indenização por rescisão de contrato de trabalho, a importância correspondente ao valor do material.";
   doc.text(doc.splitTextToSize(declText2, 95), 12, 69);
   
-  const baseLegalText = settings.epi_legal_base_text || "Base Legal:\nNR 1 (aprovada pela portaria MTE 3214, de 08/06/78):\na) Cumprir disposições legais e regulamentares sobre segurança e medicina do trabalho inclusive de ordens de Serviço expedidas pelo empregador;\nb) Submeter-se aos exames médicos previstos nas NR;\nc) Colaborar com a empresa na aplicação das NR; e\nd) Usar o equipamento de proteção individual fornecido pelo empregador.\n\nNR 6 (aprovada pela portaria MTB nº 3214, de 08/06/78).\nItem 6.6.1 - Cabe ao trabalhador, quanto ao EPI:\na) Usar o fornecido pela organização;\nb) Utilizar apenas para a finalidade a que se destina;\nc) Responsabilizar-se pela limpeza, guarda e conservação;\nd) Comunicar à organização quando extraviado, danificado ou qualquer alteração que o torne impróprio para o uso; e\ne) Cumprir as determinações do empregador sobre o uso adequado.\n\nFinalmente, declaro que estou de acordo com todos os termos presentes, razão pela qual assino, nesta data, por livre e espontânea vontade.";
+  const baseLegalText = settings?.epi_legal_base_text || "Base Legal:\nNR 1 (aprovada pela portaria MTE 3214, de 08/06/78):\na) Cumprir disposições legais e regulamentares sobre segurança e medicina do trabalho inclusive de ordens de Serviço expedidas pelo empregador;\nb) Submeter-se aos exames médicos previstos nas NR;\nc) Colaborar com a empresa na aplicação das NR; e\nd) Usar o equipamento de proteção individual fornecido pelo empregador.\n\nNR 6 (aprovada pela portaria MTB nº 3214, de 08/06/78).\nItem 6.6.1 - Cabe ao trabalhador, quanto ao EPI:\na) Usar o fornecido pela organização;\nb) Utilizar apenas para a finalidade a que se destina;\nc) Responsabilizar-se pela limpeza, guarda e conservação;\nd) Comunicar à organização quando extraviado, danificado ou qualquer alteração que o torne impróprio para o uso; e\ne) Cumprir as determinações do empregador sobre o uso adequado.\n\nFinalmente, declaro que estou de acordo com todos os termos presentes, razão pela qual assino, nesta data, por livre e espontânea vontade.";
   doc.text(doc.splitTextToSize(baseLegalText, 85), 110, 59);
 
   doc.setFontSize(8);
@@ -119,13 +135,13 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
     
     if (epiAssignments && epiAssignments[i]) {
       const assignment = epiAssignments[i];
-      const catalog = assignment.catalog;
+      const catalog = assignment.catalog || (assignment as any).epi?.catalog;
       
       doc.text('1', 13, currentY + 5);
       
       if (catalog?.name) {
         const prefix = catalog.category?.toLowerCase().includes('uniforme') ? '[UNIF]' : '[EPI]';
-        const itemName = `${prefix} ${catalog.name} (Cód: ${assignment.catalog?.code || '-'})`;
+        const itemName = `${prefix} ${catalog.name} (Cód: ${catalog?.code || '-'})`;
         let text = itemName;
         if (text.length > 32) text = text.substring(0, 30) + '...';
         doc.text(text, 19, currentY + 4.5);
@@ -159,7 +175,16 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
     currentY += rowHeight;
   }
 
-  doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
+  if (mode === 'preview') {
+    const pdfDataUri = doc.output('datauristring');
+    const newWindow = window.open();
+    if (newWindow) {
+      newWindow.document.write(`<html><head><title>Ficha EPI - ${worker.full_name}</title></head><body style="margin:0"><iframe src="${pdfDataUri}" style="width:100%;height:100%;border:none;"></iframe></body></html>`);
+      newWindow.document.close();
+    }
+  } else {
+    doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
+  }
 }
 
 export const generateEpiReceiptPDF = async (
@@ -167,13 +192,11 @@ export const generateEpiReceiptPDF = async (
   epis: any[], 
   signatureDataUrl: string
 ): Promise<string> => {
-  const { data: settingsData } = await supabase.from('system_settings' as any).select('*').limit(1).maybeSingle();
-  const companyName = (settingsData as any)?.company_name || 'EngenharQ OS';
   const doc = new jsPDF();
   
   doc.setFontSize(20);
   doc.setTextColor(229, 46, 45); 
-  doc.text(companyName, 20, 20);
+  doc.text('EngenharQ OS', 20, 20);
   
   doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
