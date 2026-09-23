@@ -59,34 +59,39 @@ export function Scanner() {
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
     if ((step === 'SCAN_WORKER' || step === 'SCAN_EPI') && !manualInputOpen) {
-      scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { 
-          fps: 10, 
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdgePercentage = 0.7; // 70% of the smallest edge
-            const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
-            const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
-            return {
-                width: qrboxSize,
-                height: qrboxSize
-            };
+      try {
+        scanner = new Html5QrcodeScanner(
+          "qr-reader",
+          { 
+            fps: 10, 
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minEdgePercentage = 0.7; // 70% of the smallest edge
+              const minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+              const qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+              return { width: qrboxSize, height: qrboxSize };
+            },
+            videoConstraints: {
+              facingMode: "environment" // Always use back camera on mobile
+            }
           },
-          videoConstraints: {
-            facingMode: "environment" // Always use back camera on mobile
-          }
-        },
-        false
-      );
-      
-      scanner.render(onScanSuccess, (err) => {
-        // Ignorar erros de log contínuos
-      });
+          false
+        );
+        
+        scanner.render(onScanSuccess, (err) => {
+          // Ignorar erros de log contínuos
+        });
+      } catch (err) {
+        console.error("Erro ao inicializar scanner:", err);
+      }
     }
     
     return () => {
       if (scanner) {
-        scanner.clear().catch(console.error);
+        try {
+          scanner.clear().catch(console.error);
+        } catch (e) {
+          console.error("Erro ao limpar scanner:", e);
+        }
       }
     };
   }, [step, manualInputOpen]);

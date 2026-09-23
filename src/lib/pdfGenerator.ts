@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { Worker, EpiAssignment } from '../types';
 import { supabase } from './supabase';
 
-export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAssignment[]) {
+export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAssignment[], mode: 'preview' | 'download' = 'download') {
   // Fetch system settings
   const { data } = await supabase
     .from('system_settings')
@@ -83,13 +83,13 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   
-  const declText1 = settings?.epi_declaration_text || "Declaro para todos os fins de direito que recebi gratuitamente, após\norientação de uso e aplicação os Equipamentos de Proteção Individual a\nutilizar durante a realização de minhas atividades.";
-  doc.text(doc.splitTextToSize(declText1, 85), 12, 59);
+  const declText1 = "Declaro para todos os fins de direito que recebi gratuitamente, após\norientação de uso e aplicação os Equipamentos de Proteção Individual a\nutilizar durante a realização de minhas atividades.";
+  doc.text(doc.splitTextToSize(declText1, 90), 12, 59);
 
-  const declText2 = settings?.epi_terms_text || "Declaro, ainda, ter ciência de que:\na) Os EPIs deverão ser utilizados, unicamente para a finalidade a qual se\n   destinam;\nb) Qualquer alteração que os tornem parcial ou totalmente\n   inadequados para uso deverá ser por mim comunicada.\nc) A Falta do uso, por mim, dos EPIs fornecidos pela ENGENHARQ LTDA\n   constitui ato faltoso sujeito às sanções disciplinares previstas na\n   legislação e no Regulamento interno, aplicáveis ao assunto, inclusive\n   à demissão por justa causa.\nd) Responsabilizar-me-ei, integralmente, pela guarda e conservação dos\n   EPIs que me forem entregues. Em caso de perda ou extravio ou\n   inutilização proposital comprometo-me a ressarcir a empresa\n   conforme previsto no parágrafo 1º do artigo 462 da CLT, inclusive no\n   que couber a título de indenização por rescisão de contrato de\n   trabalho, a importância correspondente ao valor do material.";
-  doc.text(doc.splitTextToSize(declText2, 85), 12, 70);
+  const declText2 = "Declaro, ainda, ter ciência de que:\na) Os EPIs deverão ser utilizados, unicamente para a finalidade a qual se\n   destinam;\nb) Qualquer alteração que os tornem parcial ou totalmente\n   inadequados para uso deverá ser por mim comunicada.\nc) A Falta do uso, por mim, dos EPIs fornecidos pela ENGENHARQ LTDA\n   constitui ato faltoso sujeito às sanções disciplinares previstas na\n   legislação e no Regulamento interno, aplicáveis ao assunto, inclusive\n   à demissão por justa causa.\nd) Responsabilizar-me-ei, integralmente, pela guarda e conservação dos\n   EPIs que me forem entregues. Em caso de perda ou extravio ou\n   inutilização proposital comprometo-me a ressarcir a empresa\n   conforme previsto no parágrafo 1º do artigo 462 da CLT, inclusive no\n   que couber a título de indenização por rescisão de contrato de\n   trabalho, a importância correspondente ao valor do material.";
+  doc.text(doc.splitTextToSize(declText2, 90), 12, 70);
   
-  const baseLegalText = settings?.epi_legal_base_text || "Base Legal:\n\nNR 1 (aprovada pela portaria MTE 3214, de 08/06/78):\na) Cumprir disposições legais e regulamentares sobre segurança e medicina do trabalho\n   inclusive de ordens de Serviço expedidas pelo empregador;\nb) Submeter-se aos exames médicos previstos nas NR;\nc) Colaborar com a empresa na aplicação das NR; e\nd) Usar o equipamento de proteção individual fornecido pelo empregador.\n\nNR 6 (aprovada pela portaria MTB nº 3214, de 08/06/78).\nItem 6.6.1 – Cabe ao trabalhador, quanto ao EPI:\na) Usar o fornecido pela organização;\nb) Utilizar apenas para a finalidade a que se destina;\nc) Responsabilizar-se pela limpeza, guarda e conservação;\nd) Comunicar à organização quando extraviado, danificado ou qualquer alteração que o\n   torne impróprio para o uso; e\ne) Cumprir as determinações do empregador sobre o uso adequado.\n\nFinalmente, declaro que estou de acordo com todos os termos presentes, razão pela\nqual assino, nesta data, por livre e espontânea vontade.";
+  const baseLegalText = "Base Legal:\n\nNR 1 (aprovada pela portaria MTE 3214, de 08/06/78):\na) Cumprir disposições legais e regulamentares sobre segurança e medicina do trabalho\n   inclusive de ordens de Serviço expedidas pelo empregador;\nb) Submeter-se aos exames médicos previstos nas NR;\nc) Colaborar com a empresa na aplicação das NR; e\nd) Usar o equipamento de proteção individual fornecido pelo empregador.\n\nNR 6 (aprovada pela portaria MTB nº 3214, de 08/06/78).\nItem 6.6.1 – Cabe ao trabalhador, quanto ao EPI:\na) Usar o fornecido pela organização;\nb) Utilizar apenas para a finalidade a que se destina;\nc) Responsabilizar-se pela limpeza, guarda e conservação;\nd) Comunicar à organização quando extraviado, danificado ou qualquer alteração que o\n   torne impróprio para o uso; e\ne) Cumprir as determinações do empregador sobre o uso adequado.\n\nFinalmente, declaro que estou de acordo com todos os termos presentes, razão pela\nqual assino, nesta data, por livre e espontânea vontade.";
   doc.text(doc.splitTextToSize(baseLegalText, 90), 105, 59);
 
   doc.setFontSize(8);
@@ -209,7 +209,13 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
     currentY += rowHeight;
   }
 
-  doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
+  if (mode === 'preview') {
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+  } else {
+    doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
+  }
 }
 
 export const generateEpiReceiptPDF = async (

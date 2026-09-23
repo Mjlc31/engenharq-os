@@ -211,7 +211,7 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
             audio={false}
             ref={webcamRef}
             screenshotFormat="image/jpeg"
-            videoConstraints={{ facingMode: "user" }}
+            onUserMediaError={(err) => setPasswordError("Erro ao acessar câmera: verifique permissões ou dispositivo.")}
             className={cn("absolute inset-0 w-full h-full object-cover transition-opacity duration-500", status === 'IDLE' ? 'opacity-0' : 'opacity-100')}
           />
           
