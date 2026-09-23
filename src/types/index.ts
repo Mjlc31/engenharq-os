@@ -106,6 +106,6 @@ export interface EpiAssignment {
   biometric_match_score?: number | null;
   liveness_verified?: boolean | null;
   expected_return_date: string | null;
-  catalog?: any;
+  catalog?: unknown;
   worker?: Worker;
 }

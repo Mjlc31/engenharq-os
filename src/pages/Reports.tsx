@@ -74,7 +74,7 @@ export function Reports() {
           const today = startOfDay(new Date());
           const limitDate = endOfDay(addDays(today, days));
 
-          filteredData = filteredData.filter((e: any) => {
+          filteredData = filteredData.filter((e: unknown) => {
             if (type === 'expiring') {
               const validityStr = e.catalog?.ca_validity;
               if (!validityStr) return false;
@@ -90,7 +90,7 @@ export function Reports() {
           });
         }
 
-        dataToExport = filteredData.map((e: any) => {
+        dataToExport = filteredData.map((e: unknown) => {
           const expDate = e.catalog?.ca_validity ? new Date(e.catalog.ca_validity).toLocaleDateString() : 'N/A';
           return {
             Codigo_Rastreio: e.tracking_code,
@@ -118,7 +118,7 @@ export function Reports() {
       link.click();
       document.body.removeChild(link);
       toast({ type: 'success', title: 'Relatório Gerado', message: 'O download foi iniciado com sucesso.' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -159,7 +159,7 @@ export function Reports() {
     try {
       const { worker, assignments } = await fetchFichaData();
       await generateEpiRecordPdf(worker, assignments, 'preview');
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setIsGeneratingFicha(false);
@@ -173,7 +173,7 @@ export function Reports() {
       const { worker, assignments } = await fetchFichaData();
       await generateEpiRecordPdf(worker, assignments, 'download');
       toast({ type: 'success', title: 'PDF Gerado', message: 'Download da Ficha de EPI iniciado.' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setIsGeneratingFicha(false);

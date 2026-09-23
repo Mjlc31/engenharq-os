@@ -11,7 +11,7 @@ import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet'
 import { useScanner } from '../hooks/useScanner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { cn } from '../lib/utils';
+
 
 const defaultIcon = new L.Icon({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -77,7 +77,7 @@ export function Scanner() {
           false
         );
         
-        scanner.render(onScanSuccess, (err) => {
+        scanner.render(onScanSuccess, (_err) => {
           // Ignorar erros de log contínuos
         });
       } catch (err) {
@@ -94,6 +94,7 @@ export function Scanner() {
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, manualInputOpen]);
 
   const onScanSuccess = async (decodedText: string) => {
@@ -167,7 +168,7 @@ export function Scanner() {
   const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
     try {
       const blob = dataUrlToBlob(dataUrl);
-      const { data, error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
         contentType: blob.type,
         upsert: true
       });
@@ -205,7 +206,7 @@ export function Scanner() {
       const timestamp = new Date().getTime();
       
       // Upload files to storage (parallel)
-      const [photoUrl, pdfUrl, selfieUrl] = await Promise.all([
+      const [photoUrl, , selfieUrl] = await Promise.all([
         uploadToStorage(capturedPhoto, 'epi-receipts', `evidences/${worker.id}_${timestamp}.jpg`),
         uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`),
         biometricsData?.selfieUrl && biometricsData.selfieUrl !== 'bypass' ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
