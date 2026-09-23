@@ -5,13 +5,11 @@ import { supabase } from '../lib/supabase';
 import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
 import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { BiometricScanner } from '../components/BiometricScanner';
 import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-
 
 const defaultIcon = new L.Icon({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -24,29 +22,28 @@ const defaultIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'PHOTO_CAPTURE' | 'SUCCESS';
+type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'PHOTO_CAPTURE' | 'SUCCESS';
 
 export function Scanner() {
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
   const [catalog, setCatalog] = useState<any[]>([]);
   const [worker, setWorker] = useState<Worker | null>(null);
-  const [epis, setEpis] = useState<EpiInventory[]>([]);
+  const [epis, setEpis] = useState<any[]>([]);
   const { 
     loading, 
     error, 
     setError, 
     setLoading, 
     fetchWorker, 
-    fetchEpi, 
     confirmAssignment 
   } = useScanner();
-  const [biometricsData, setBiometricsData] = useState<{selfieUrl: string, score: number, liveness: boolean} | null>(null);
   
   const webcamRef = useRef<Webcam>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   
-  const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | 'EPI' | null>(null);
+  const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | null>(null);
   const [manualInputValue, setManualInputValue] = useState('');
+  const [epiSearch, setEpiSearch] = useState('');
 
   // Clean up scanner when component unmounts
   useEffect(() => {
@@ -59,7 +56,7 @@ export function Scanner() {
   // Initialize scanner when step changes
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
-    if ((step === 'SCAN_WORKER' || step === 'SCAN_EPI') && !manualInputOpen) {
+    if (step === 'SCAN_WORKER' && !manualInputOpen) {
       try {
         scanner = new Html5QrcodeScanner(
           "qr-reader",
@@ -118,27 +115,11 @@ export function Scanner() {
         setWorker(w);
         setStep('SCAN_EPI');
       }
-    } else if (step === 'SCAN_EPI') {
-      const searchTerm = decodedText.trim();
-      const e = await fetchEpi(searchTerm);
-      if (e) {
-        if (e.status !== 'AVAILABLE') {
-          setError(`EPI não disponível. Status atual: ${e.status}`);
-        } else if (epis.some(item => item.id === e.id)) {
-          setError('EPI já escaneado nesta ficha.');
-        } else {
-          setEpis(prev => [...prev, e]);
-        }
-      }
     }
   };
 
   const handleManualWorker = async () => {
     setManualInputOpen('WORKER');
-  };
-
-  const handleManualEpi = async () => {
-    setManualInputOpen('EPI');
   };
 
   const submitManualInput = () => {
@@ -215,14 +196,13 @@ export function Scanner() {
       const timestamp = new Date().getTime();
       
       // Upload files to storage (parallel)
-      const [photoUrl, , selfieUrl] = await Promise.all([
+      const [photoUrl, ] = await Promise.all([
         uploadToStorage(capturedPhoto, 'epi-receipts', `evidences/${worker.id}_${timestamp}.jpg`),
-        uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`),
-        biometricsData?.selfieUrl && biometricsData.selfieUrl !== 'bypass' ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
+        uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`)
       ]);
       
-      // Note: we pass the photo evidence URL as the digital_signature_url for backward compatibility
-      const success = await confirmAssignment(worker.id, epis, photoUrl, selfieUrl ?? undefined, biometricsData);
+      // confirmAssignment sem biometria
+      const success = await confirmAssignment(worker.id, epis, photoUrl, undefined, null);
       
       if (success) {
         setStep('SUCCESS');
@@ -237,7 +217,6 @@ export function Scanner() {
   const resetFlow = () => {
     setWorker(null);
     setEpis([]);
-    setBiometricsData(null);
     setCapturedPhoto(null);
     setError('');
     setStep('SCAN_WORKER');
@@ -288,8 +267,6 @@ export function Scanner() {
           <span className="text-[10px] uppercase tracking-wider font-bold">EPI</span>
         </div>
 
-        
-        
         <div className={`flex flex-col items-center gap-2 ${step !== 'PHOTO_CAPTURE' ? 'opacity-50' : ''}`}>
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${step === 'SUCCESS' ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${step === 'PHOTO_CAPTURE' ? 'border-primary text-primary' : ''}`}>
             {step === 'SUCCESS' ? <Check className="w-5 h-5" /> : '3'}
@@ -306,12 +283,10 @@ export function Scanner() {
                 <ScanFace className="w-8 h-8 text-primary" />
               </div>
               <h2 className="text-xl font-bold text-foreground">
-                {step === 'SCAN_WORKER' ? 'Identificação do Trabalhador' : 'Registro de Equipamento'}
+                Identificação do Trabalhador
               </h2>
               <p className="text-sm text-muted mt-2 max-w-xs mx-auto">
-                {step === 'SCAN_WORKER' 
-                  ? 'Aponte a câmera para o QR Code no crachá do colaborador.' 
-                  : 'Aponte a câmera para o QR Code fixado no EPI.'}
+                Aponte a câmera para o QR Code no crachá do colaborador.
               </p>
             </div>
             
@@ -332,7 +307,7 @@ export function Scanner() {
             {manualInputOpen && (
               <div className="mx-auto w-full max-w-sm p-5 bg-background rounded-xl border border-border shadow-lg animate-in fade-in zoom-in-95 duration-200">
                 <label className="block text-xs font-bold uppercase tracking-wider mb-3 text-muted">
-                  {manualInputOpen === 'WORKER' ? 'Entrada Manual - Trabalhador' : 'Entrada Manual - Equipamento'}
+                  Entrada Manual - Trabalhador
                 </label>
                 <div className="flex gap-2">
                   <input 
@@ -341,7 +316,7 @@ export function Scanner() {
                     onChange={(e) => setManualInputValue(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
                     className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
-                    placeholder={manualInputOpen === 'WORKER' ? 'CPF ou Matrícula...' : 'Código de Rastreio...'}
+                    placeholder="CPF ou Matrícula..."
                     autoFocus
                   />
                   <button 
@@ -370,26 +345,91 @@ export function Scanner() {
                 </button>
               </div>
             )}
+          </div>
+        )}
 
-            {step === 'SCAN_EPI' && epis.length > 0 && (
+        {step === 'SCAN_EPI' && (
+          <div className="space-y-6 animate-in fade-in">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
+                <Package className="w-6 h-6 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">Selecionar EPI</h2>
+              <p className="text-sm text-muted">
+                Busque pelo nome ou CA do equipamento.
+              </p>
+            </div>
+
+            <div className="relative">
+              <input 
+                type="text" 
+                value={epiSearch}
+                onChange={(e) => setEpiSearch(e.target.value)}
+                className="w-full bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                placeholder="Buscar EPI (Ex: Capacete, 8304)..."
+                autoFocus
+              />
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted mb-4">Disponíveis no Estoque</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
+                {catalog
+                  .filter(item => 
+                    !epiSearch || 
+                    item.name.toLowerCase().includes(epiSearch.toLowerCase()) || 
+                    (item.ca_number && item.ca_number.includes(epiSearch))
+                  )
+                  .map(item => {
+                  const isAdded = epis.some(e => e.id === item.id);
+                  const isOutOfStock = item.current_stock <= 0;
+                  return (
+                    <button
+                      key={item.id}
+                      disabled={isAdded || isOutOfStock}
+                      onClick={() => {
+                        setEpis(prev => [...prev, item]);
+                        setEpiSearch('');
+                      }}
+                      className={`text-left p-3 rounded-lg border ${isAdded ? 'border-primary bg-primary/10' : isOutOfStock ? 'border-border/50 bg-surface/50 opacity-50 cursor-not-allowed' : 'border-border bg-surface hover:border-primary/50 transition-colors'}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <p className="font-bold text-sm text-foreground line-clamp-1">{item.name}</p>
+                        {isAdded && <CheckCircle2 className="w-4 h-4 text-primary shrink-0 ml-2" />}
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-xs text-muted font-mono bg-background px-2 py-0.5 rounded">CA: {item.ca_number || 'N/A'}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                          {item.current_stock} un
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {epis.length > 0 && (
               <div className="mt-6 border-t border-border pt-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-foreground">EPIs na Ficha ({epis.length})</h3>
+                  <h3 className="font-bold text-foreground">EPIs Selecionados ({epis.length})</h3>
                   <button 
-                    onClick={() => setStep('BIOMETRICS')}
+                    onClick={() => setStep('PHOTO_CAPTURE')}
                     className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
                   >
                     Avançar <Check className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {epis.map((e, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-surface-hover rounded-lg border border-border">
+                  {epis.map((e, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-surface p-3 rounded-lg border border-border">
                       <div className="flex items-center gap-3">
-                        <Package className="w-5 h-5 text-primary" />
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Package className="w-4 h-4 text-primary" />
+                        </div>
                         <div>
-                          <p className="text-sm font-medium">{e.category}</p>
-                          <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
+                          <p className="text-sm font-bold">{e.name}</p>
+                          <p className="text-xs text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
                         </div>
                       </div>
                       <button 
@@ -406,10 +446,8 @@ export function Scanner() {
           </div>
         )}
 
-        
-
         {step === 'PHOTO_CAPTURE' && worker && epis.length > 0 && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-background border border-border p-4 rounded-lg flex items-start gap-3">
                 <div className="p-2 bg-surface-hover rounded-md shrink-0"><User className="w-5 h-5 text-muted" /></div>
@@ -426,8 +464,8 @@ export function Scanner() {
                   <div key={idx} className="flex items-center gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0">
                     <Package className="w-4 h-4 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs truncate">{e.category}</p>
-                      <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
+                      <p className="font-medium text-xs truncate">{e.name}</p>
+                      <p className="text-[10px] text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
                     </div>
                   </div>
                 ))}
@@ -484,7 +522,7 @@ export function Scanner() {
                       audio={false}
                       ref={webcamRef}
                       screenshotFormat="image/jpeg"
-                      videoConstraints={{ facingMode: "environment" }} // Use the back camera preferably
+                      videoConstraints={{ facingMode: "user" }} 
                       className="absolute inset-0 w-full h-full object-cover"
                     />
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
@@ -502,8 +540,8 @@ export function Scanner() {
               </div>
             </div>
 
-            <div className="text-[10px] text-muted leading-relaxed">
-              Ao capturar a foto, certifique-se de que o colaborador e o(s) EPI(s) em mãos estão visíveis. O gestor declara a entrega dos EPIs descritos. Uma cópia em PDF (NR-6) será gerada automaticamente com a evidência.
+            <div className="text-[10px] text-muted leading-relaxed text-center px-4">
+              Ao capturar a foto, certifique-se de que o <strong>colaborador e o(s) EPI(s) em mãos estão visíveis</strong>. Esta imagem serve como declaração e evidência da entrega dos equipamentos, substituindo a assinatura física.
             </div>
             
             <button
@@ -517,7 +555,7 @@ export function Scanner() {
         )}
 
         {step === 'SUCCESS' && (
-          <div className="text-center py-12 space-y-6">
+          <div className="text-center py-12 space-y-6 animate-in zoom-in">
             <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-10 h-10 text-emerald-500" />
             </div>
