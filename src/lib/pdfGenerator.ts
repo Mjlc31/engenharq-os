@@ -176,12 +176,9 @@ export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAs
   }
 
   if (mode === 'preview') {
-    const pdfDataUri = doc.output('datauristring');
-    const newWindow = window.open();
-    if (newWindow) {
-      newWindow.document.write(`<html><head><title>Ficha EPI - ${worker.full_name}</title></head><body style="margin:0"><iframe src="${pdfDataUri}" style="width:100%;height:100%;border:none;"></iframe></body></html>`);
-      newWindow.document.close();
-    }
+    const blob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
   } else {
     doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
   }

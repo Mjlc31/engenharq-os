@@ -23,6 +23,23 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Light Theme Override */
+html.light {
+  --color-background: #ffffff;
+  --color-foreground: #18181b;
+  --color-primary: #ef4444;
+  --color-primary-dark: #dc2626;
+  --color-muted: #3f3f46;
+  --color-border: #d4d4d8;
+  --color-surface: #f4f4f5;
+  --color-surface-hover: #e4e4e7;
+  --color-sidebar: #fafafa;
+}
+
+html.light .dark-tiles {
+  filter: none;
+}
+
 @keyframes scan {
   0% { top: 0; }
   50% { top: 100%; }

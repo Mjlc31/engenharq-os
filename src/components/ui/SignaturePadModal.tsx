@@ -13,7 +13,7 @@ interface SignaturePadModalProps {
 export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura Digital", description }: SignaturePadModalProps) {
   const sigCanvas = useRef<SignatureCanvas>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const pendingStreamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -21,16 +21,31 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
   const [isCameraActive, setIsCameraActive] = useState(false);
 
   const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
+    if (pendingStreamRef.current) {
+      pendingStreamRef.current.getTracks().forEach(track => track.stop());
+      pendingStreamRef.current = null;
     }
     setIsCameraActive(false);
   }, []);
 
+  // When the video element mounts (isCameraActive becomes true), attach the stream
   useEffect(() => {
-    return () => { stopCamera(); };
-  }, [stopCamera]);
+    if (isCameraActive && videoRef.current && pendingStreamRef.current) {
+      videoRef.current.srcObject = pendingStreamRef.current;
+      videoRef.current.play().catch(err => {
+        console.error('Video play failed:', err);
+      });
+    }
+  }, [isCameraActive]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingStreamRef.current) {
+        pendingStreamRef.current.getTracks().forEach(track => track.stop());
+        pendingStreamRef.current = null;
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -40,29 +55,31 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
       });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      // Store the stream, then trigger re-render to mount the <video> element
+      pendingStreamRef.current = stream;
       setIsCameraActive(true);
+      // The useEffect above will attach stream to video element after render
     } catch (err: any) {
+      console.error('Camera error:', err);
       setError('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
     }
   };
 
   const capturePhoto = () => {
     if (!videoRef.current) return;
+    const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.drawImage(videoRef.current, 0, 0);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `foto_${Date.now()}.jpg`, { type: 'image/jpeg' });
         setPhotoFile(file);
-        setPhotoPreview(canvas.toDataURL('image/jpeg'));
+        setPhotoPreview(dataUrl);
         stopCamera();
       }
     }, 'image/jpeg', 0.85);
@@ -99,7 +116,8 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
       const dataUrl = sigCanvas.current?.isEmpty() ? '' : sigCanvas.current?.getCanvas().toDataURL('image/png');
       await onSave(dataUrl || '', photoFile || undefined);
       stopCamera();
-      onClose();
+      resetPhoto();
+      sigCanvas.current?.clear();
     } catch (err: any) {
       setError(err.message || 'Erro ao processar. Tente novamente.');
     } finally {
@@ -158,7 +176,13 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Assinatura
 
             {isCameraActive && (
               <div className="relative rounded-lg overflow-hidden border-2 border-primary">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-48 object-cover bg-black" />
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-48 object-cover bg-black"
+                />
                 <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
                   <button type="button" onClick={capturePhoto}
                     className="px-4 py-2 bg-primary text-white rounded-lg font-bold text-sm flex items-center gap-2 shadow-lg">
