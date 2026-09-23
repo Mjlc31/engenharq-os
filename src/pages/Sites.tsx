@@ -178,7 +178,7 @@ export function Sites() {
         toast({ type: 'success', title: 'Sucesso', message: 'Obra registrada.' });
       }
       resetSiteForm();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -189,7 +189,7 @@ export function Sites() {
       if (error) throw error;
       toast({ type: 'success', title: 'Sucesso', message: 'Obra excluída.' });
       fetchSites();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: 'Falha ao excluir.' });
     }
   };

@@ -91,7 +91,7 @@ export function Operations() {
       setQuantity(1);
       setObservations('');
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
       setSubmitting(false);
@@ -126,7 +126,7 @@ export function Operations() {
       setIsSignatureModalOpen(false);
       setPendingReturn(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -148,7 +148,7 @@ export function Operations() {
       setIsSignatureModalOpen(false);
       setPendingLoss(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -190,7 +190,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setSubmitting(false);

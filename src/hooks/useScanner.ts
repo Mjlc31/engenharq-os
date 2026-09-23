@@ -51,7 +51,7 @@ export function useScanner() {
       if (isId) {
         query = query.eq('id', cleanTerm);
       } else {
-        query = query.or(`tracking_code.eq.${cleanTerm},ca_number.eq.${cleanTerm}`);
+        query = query.or(`code.eq.${cleanTerm},ca_number.eq.${cleanTerm}`);
       }
       
       const { data, error: fetchError } = await query.single();
@@ -76,7 +76,7 @@ export function useScanner() {
 
   const confirmAssignment = async (
     workerId: string, 
-    epis: EpiInventory[], 
+    epis: any[], 
     signatureUrl: string, 
     selfieUrl: string | undefined, 
     biometricsData: any
@@ -86,25 +86,29 @@ export function useScanner() {
     try {
       const assignments = epis.map(item => {
         const expectedReturn = new Date();
-        expectedReturn.setDate(expectedReturn.getDate() + (item.recommended_lifespan_days || 180));
+        expectedReturn.setDate(expectedReturn.getDate() + (item.lifespan_days || 180));
         
         return {
-          epi_id: item.id, 
+          catalog_id: item.id,
+          worker_id: workerId,
           expected_return_date: expectedReturn.toISOString(),
           digital_signature_url: signatureUrl,
           audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,
           biometric_match_score: biometricsData?.score,
-          liveness_verified: biometricsData?.liveness
+          liveness_verified: biometricsData?.liveness,
+          condition_on_delivery: 'GOOD'
         };
       });
 
-      const { data, error: rpcError } = await supabase.rpc('bulk_assign_epis', {
-        p_worker_id: workerId,
-        p_assignments: assignments
-      });
+      const { error: insertError } = await supabase.from('epi_assignments').insert(assignments);
+      if (insertError) throw insertError;
 
-      if (rpcError) throw rpcError;
-      if (!data) throw new Error('Falha ao executar bulk_assign_epis no banco');
+      // Update stock for each epi
+      for (const item of epis) {
+        if (item.current_stock !== undefined) {
+           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, item.current_stock - 1) }).eq('id', item.id);
+        }
+      }
 
       return true;
     } catch (err: unknown) {
