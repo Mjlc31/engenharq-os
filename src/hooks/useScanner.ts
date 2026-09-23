@@ -91,6 +91,7 @@ export function useScanner() {
         return {
           catalog_id: item.id,
           worker_id: workerId,
+          quantity: item.quantity || 1,
           expected_return_date: expectedReturn.toISOString(),
           digital_signature_url: signatureUrl,
           audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,
@@ -103,10 +104,11 @@ export function useScanner() {
       const { error: insertError } = await supabase.from('epi_assignments').insert(assignments);
       if (insertError) throw insertError;
 
-      // Update stock for each epi
+      // Update stock for each epi — subtract the actual quantity
       for (const item of epis) {
+        const qty = item.quantity || 1;
         if (item.current_stock !== undefined) {
-           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, item.current_stock - 1) }).eq('id', item.id);
+           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, item.current_stock - qty) }).eq('id', item.id);
         }
       }
 
