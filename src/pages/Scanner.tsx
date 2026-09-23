@@ -250,28 +250,39 @@ export function Scanner() {
       )}
 
       {/* Progress Steps */}
-      <div className="flex items-center justify-between relative mb-8">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-border -z-10"></div>
-        
-        <div className={`flex flex-col items-center gap-2 ${step !== 'SCAN_WORKER' ? 'opacity-50' : ''}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${worker ? 'bg-primary border-primary text-background' : 'bg-surface border-primary text-primary'}`}>
-            {worker ? <Check className="w-5 h-5" /> : '1'}
+      <div className="flex items-center mb-8">
+        {/* Step 1 */}
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${worker ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'SCAN_WORKER' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+            {worker ? <Check className="w-4 h-4" /> : '1'}
           </div>
-          <span className="text-[10px] uppercase tracking-wider font-bold">Colaborador</span>
+          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_WORKER' || worker ? 'text-foreground' : 'text-muted'}`}>Colaborador</span>
         </div>
         
-        <div className={`flex flex-col items-center gap-2 ${step !== 'SCAN_EPI' ? 'opacity-50' : ''}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${epis.length > 0 ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${(step === 'SCAN_EPI' && epis.length === 0) ? 'border-primary text-primary' : ''}`}>
-            {epis.length > 0 ? <Check className="w-5 h-5" /> : '2'}
-          </div>
-          <span className="text-[10px] uppercase tracking-wider font-bold">EPI</span>
+        {/* Connector 1-2 */}
+        <div className="flex-1 mx-3 mb-5">
+          <div className={`h-[2px] rounded-full transition-all duration-500 ${worker ? 'bg-primary' : 'bg-border'}`} />
         </div>
-
-        <div className={`flex flex-col items-center gap-2 ${step !== 'PHOTO_CAPTURE' ? 'opacity-50' : ''}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${step === 'SUCCESS' ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${step === 'PHOTO_CAPTURE' ? 'border-primary text-primary' : ''}`}>
-            {step === 'SUCCESS' ? <Check className="w-5 h-5" /> : '3'}
+        
+        {/* Step 2 */}
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${epis.length > 0 ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'SCAN_EPI' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+            {epis.length > 0 ? <Check className="w-4 h-4" /> : '2'}
           </div>
-          <span className="text-[10px] uppercase tracking-wider font-bold">Foto</span>
+          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_EPI' || epis.length > 0 ? 'text-foreground' : 'text-muted'}`}>EPI</span>
+        </div>
+        
+        {/* Connector 2-3 */}
+        <div className="flex-1 mx-3 mb-5">
+          <div className={`h-[2px] rounded-full transition-all duration-500 ${epis.length > 0 ? 'bg-primary' : 'bg-border'}`} />
+        </div>
+        
+        {/* Step 3 */}
+        <div className="flex flex-col items-center gap-1.5 shrink-0">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step === 'SUCCESS' ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'PHOTO_CAPTURE' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+            {step === 'SUCCESS' ? <Check className="w-4 h-4" /> : '3'}
+          </div>
+          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'PHOTO_CAPTURE' || step === 'SUCCESS' ? 'text-foreground' : 'text-muted'}`}>Foto</span>
         </div>
       </div>
 
@@ -388,7 +399,7 @@ export function Scanner() {
                       key={item.id}
                       disabled={isAdded || isOutOfStock}
                       onClick={() => {
-                        setEpis(prev => [...prev, item]);
+                        setEpis(prev => [...prev, { ...item, quantity: 1 }]);
                         setEpiSearch('');
                       }}
                       className={`text-left p-3 rounded-lg border ${isAdded ? 'border-primary bg-primary/10' : isOutOfStock ? 'border-border/50 bg-surface/50 opacity-50 cursor-not-allowed' : 'border-border bg-surface hover:border-primary/50 transition-colors'}`}
@@ -422,19 +433,48 @@ export function Scanner() {
                 </div>
                 <div className="space-y-2">
                   {epis.map((e, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-surface p-3 rounded-lg border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <div key={idx} className="flex items-center justify-between bg-background p-3 rounded-lg border border-border gap-3">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                           <Package className="w-4 h-4 text-primary" />
                         </div>
-                        <div>
-                          <p className="text-sm font-bold">{e.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold truncate">{e.name}</p>
                           <p className="text-xs text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => {
+                            const updated = [...epis];
+                            if (updated[idx].quantity > 1) {
+                              updated[idx] = { ...updated[idx], quantity: updated[idx].quantity - 1 };
+                              setEpis(updated);
+                            }
+                          }}
+                          disabled={e.quantity <= 1}
+                          className="w-7 h-7 rounded-md bg-surface-hover border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-sm font-bold leading-none">−</span>
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold text-foreground tabular-nums">{e.quantity}</span>
+                        <button
+                          onClick={() => {
+                            const updated = [...epis];
+                            if (updated[idx].quantity < e.current_stock) {
+                              updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + 1 };
+                              setEpis(updated);
+                            }
+                          }}
+                          disabled={e.quantity >= e.current_stock}
+                          className="w-7 h-7 rounded-md bg-surface-hover border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-sm font-bold leading-none">+</span>
+                        </button>
+                      </div>
                       <button 
                         onClick={() => setEpis(epis.filter(item => item.id !== e.id))}
-                        className="p-2 text-muted hover:text-red-500 transition-colors"
+                        className="p-1.5 text-muted hover:text-red-500 transition-colors shrink-0"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -467,6 +507,7 @@ export function Scanner() {
                       <p className="font-medium text-xs truncate">{e.name}</p>
                       <p className="text-[10px] text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
                     </div>
+                    <span className="text-xs font-bold text-primary shrink-0">×{e.quantity || 1}</span>
                   </div>
                 ))}
               </div>
