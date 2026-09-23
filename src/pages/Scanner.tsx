@@ -28,6 +28,7 @@ type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'PHOTO_CAPTURE' | 'S
 
 export function Scanner() {
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
+  const [catalog, setCatalog] = useState<any[]>([]);
   const [worker, setWorker] = useState<Worker | null>(null);
   const [epis, setEpis] = useState<EpiInventory[]>([]);
   const { 
@@ -96,6 +97,14 @@ export function Scanner() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, manualInputOpen]);
+
+  useEffect(() => {
+    const loadCatalog = async () => {
+      const { data } = await supabase.from('epi_catalog').select('*').order('name');
+      if (data) setCatalog(data);
+    };
+    loadCatalog();
+  }, []);
 
   const onScanSuccess = async (decodedText: string) => {
     if (loading) return;
@@ -364,6 +373,39 @@ export function Scanner() {
                 >
                   Entrada Manual (Simulação)
                 </button>
+              </div>
+            )}
+
+            {step === 'SCAN_EPI' && (
+              <div className="mt-6 border-t border-border pt-6 animate-in fade-in">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted mb-4">Selecionar do Estoque</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
+                  {catalog.map(item => {
+                    const isAdded = epis.some(e => e.id === item.id);
+                    const isOutOfStock = item.current_stock <= 0;
+                    return (
+                      <button
+                        key={item.id}
+                        disabled={isAdded || isOutOfStock}
+                        onClick={() => {
+                          setEpis(prev => [...prev, item]);
+                        }}
+                        className={`text-left p-3 rounded-lg border ${isAdded ? 'border-primary bg-primary/10' : isOutOfStock ? 'border-border/50 bg-surface/50 opacity-50 cursor-not-allowed' : 'border-border bg-surface hover:border-primary/50 transition-colors'}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="font-bold text-sm text-foreground line-clamp-1">{item.name}</p>
+                          {isAdded && <CheckCircle2 className="w-4 h-4 text-primary shrink-0 ml-2" />}
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-xs text-muted font-mono bg-background px-2 py-0.5 rounded">CA: {item.ca_number}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                            {item.current_stock} un
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
