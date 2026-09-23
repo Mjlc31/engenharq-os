@@ -197,8 +197,13 @@ export function CatalogTab({
       observations: catObservations || null
     };
 
-    await saveCatalog(payload, editingCatalog?.id, catInitialStock ? Number(catInitialStock) : undefined);
-    resetForm();
+    try {
+      await saveCatalog(payload, editingCatalog?.id, catInitialStock ? Number(catInitialStock) : undefined);
+      toast({ type: 'success', title: 'Sucesso', message: 'Catálogo salvo com sucesso!' });
+      resetForm();
+    } catch(err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar catálogo.' });
+    }
   };
 
   return (
