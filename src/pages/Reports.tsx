@@ -225,26 +225,7 @@ export function Reports() {
           </div>
         </div>
       </div>
-
-      {/* Report Cards Grid */}
-      <div>
-        <h2 className="text-xl font-bold mb-4">Exportações Disponíveis</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {reportCards.map(card => (
-            <div key={card.id} className="bg-surface border border-border rounded-xl p-6 flex flex-col hover:border-primary/50 transition-colors group cursor-pointer" onClick={() => handleCardClick(card.id)}>
-              <div className={`w-12 h-12 ${card.bg} ${card.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <card.icon className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-foreground text-lg mb-1">{card.title}</h3>
-              <p className="text-sm text-muted mb-6 flex-1">{card.desc}</p>
-              <div className="flex items-center text-primary text-sm font-medium gap-1">
-                <Download className="w-4 h-4" /> Gerar Relatório
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      
       {/* Ficha NR-6 Generator */}
       <div className="bg-surface border border-border rounded-xl p-6 mt-8">
         <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
@@ -288,6 +269,27 @@ export function Reports() {
           </div>
         </div>
       </div>
+
+      {/* Report Cards Grid */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Exportações Disponíveis</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {reportCards.map(card => (
+            <div key={card.id} className="bg-surface border border-border rounded-xl p-6 flex flex-col hover:border-primary/50 transition-colors group cursor-pointer" onClick={() => handleCardClick(card.id)}>
+              <div className={`w-12 h-12 ${card.bg} ${card.color} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                <card.icon className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-foreground text-lg mb-1">{card.title}</h3>
+              <p className="text-sm text-muted mb-6 flex-1">{card.desc}</p>
+              <div className="flex items-center text-primary text-sm font-medium gap-1">
+                <Download className="w-4 h-4" /> Gerar Relatório
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+
 
       {/* Days Modal */}
       {showDaysModal && (

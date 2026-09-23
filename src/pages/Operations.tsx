@@ -64,30 +64,26 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
-      const { error } = await supabase.rpc('assign_epi', {
-        p_worker_id: selectedWorkerId,
-        p_catalog_id: selectedCatalogId,
-        p_quantity: quantity
-      });
-      if (error) throw error;
       
-      // Update signature on new assignments
-      const { data: newAssignments } = await supabase
-        .from('epi_assignments')
-        .select('id')
-        .eq('catalog_id', selectedCatalogId)
-        .eq('worker_id', selectedWorkerId)
-        .is('returned_at', null)
-        .order('assigned_at', { ascending: false })
-        .limit(quantity);
-        
-      if (newAssignments && newAssignments.length > 0) {
-        const ids = newAssignments.map(a => a.id);
-        await supabase
-          .from('epi_assignments')
-          .update({ digital_signature_url: signatureDataUrl, audit_selfie_url: photoUrl })
-          .in('id', ids);
-      }
+      const catalog = catalogs.find(c => c.id === selectedCatalogId);
+      if (!catalog) throw new Error("EPI não encontrado.");
+      if (catalog.current_stock < quantity) throw new Error("Estoque insuficiente.");
+
+      const assignmentsToInsert = Array(quantity).fill(null).map(() => ({
+        worker_id: selectedWorkerId,
+        catalog_id: selectedCatalogId,
+        condition_on_delivery: 'GOOD',
+        digital_signature_url: signatureDataUrl,
+        audit_selfie_url: photoUrl
+      }));
+
+      const { error: insertError } = await supabase.from('epi_assignments').insert(assignmentsToInsert);
+      if (insertError) throw insertError;
+
+      const { error: stockError } = await supabase.from('epi_catalog')
+        .update({ current_stock: catalog.current_stock - quantity })
+        .eq('id', selectedCatalogId);
+      if (stockError) throw stockError;
 
       toast({ type: 'success', title: 'Sucesso', message: `${quantity} EPI(s) entregues, assinados e registrados na ficha.` });
       setSelectedWorkerId('');
@@ -108,16 +104,23 @@ export function Operations() {
     if (!pendingReturn) return;
     try {
       const photoUrl = await uploadPhoto(photoFile);
-      const { error } = await supabase.rpc('return_epi', {
-        p_assignment_id: pendingReturn.assignmentId,
-        p_condition: 'GOOD'
-      });
+      
+      const { data: assignmentData } = await supabase.from('epi_assignments').select('catalog_id').eq('id', pendingReturn.assignmentId).single();
+      
+      const { error } = await supabase.from('epi_assignments').update({
+        returned_at: new Date().toISOString(),
+        condition_on_return: 'GOOD',
+        return_signature_url: signatureDataUrl,
+        audit_selfie_url: photoUrl
+      }).eq('id', pendingReturn.assignmentId);
       if (error) throw error;
       
-      // Update with signature
-      await supabase.from('epi_assignments').update({
-        return_signature_url: signatureDataUrl
-      }).eq('id', pendingReturn.assignmentId);
+      if (assignmentData) {
+        const catalog = catalogs.find(c => c.id === assignmentData.catalog_id);
+        if (catalog) {
+          await supabase.from('epi_catalog').update({ current_stock: catalog.current_stock + 1 }).eq('id', catalog.id);
+        }
+      }
       
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
       setIsSignatureModalOpen(false);
@@ -132,16 +135,14 @@ export function Operations() {
     if (!pendingLoss) return;
     try {
       const photoUrl = await uploadPhoto(photoFile);
-      const { error } = await supabase.rpc('return_epi', {
-        p_assignment_id: pendingLoss.assignmentId,
-        p_condition: 'DAMAGED'
-      });
-      if (error) throw error;
       
-      // Update with signature
-      await supabase.from('epi_assignments').update({
-        return_signature_url: signatureDataUrl
+      const { error } = await supabase.from('epi_assignments').update({
+        returned_at: new Date().toISOString(),
+        condition_on_return: 'DAMAGED',
+        return_signature_url: signatureDataUrl,
+        audit_selfie_url: photoUrl
       }).eq('id', pendingLoss.assignmentId);
+      if (error) throw error;
       
       toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura.' });
       setIsSignatureModalOpen(false);
@@ -153,41 +154,38 @@ export function Operations() {
   };
 
   const processReplacement = async (signatureDataUrl: string, photoFile?: File) => {
-const photoUrl = await uploadPhoto(photoFile);
     if (!pendingReplacement) return;
     setSubmitting(true);
     try {
-      // 1. Devolve o antigo
-      const { error: returnError } = await supabase.rpc('return_epi', {
-        p_assignment_id: pendingReplacement.oldEpiId, // Using oldEpiId as assignmentId here for compatibility
-        p_condition: 'DAMAGED'
-      });
+      const photoUrl = await uploadPhoto(photoFile);
+
+      // 1. Devolve o antigo (como DAMAGED)
+      const { error: returnError } = await supabase.from('epi_assignments').update({
+        returned_at: new Date().toISOString(),
+        condition_on_return: 'DAMAGED',
+        return_signature_url: signatureDataUrl,
+      }).eq('id', pendingReplacement.oldEpiId);
       if (returnError) throw returnError;
 
       // 2. Entrega o novo
-      const { error: assignError } = await supabase.rpc('assign_epi', {
-        p_worker_id: pendingReplacement.workerId,
-        p_catalog_id: pendingReplacement.newEpiId, // Using newEpiId as catalogId
-        p_quantity: 1
+      const catalog = catalogs.find(c => c.id === pendingReplacement.newEpiId);
+      if (!catalog) throw new Error("Novo EPI não encontrado no catálogo.");
+      if (catalog.current_stock < 1) throw new Error("Estoque insuficiente para substituição.");
+
+      const { error: assignError } = await supabase.from('epi_assignments').insert({
+        worker_id: pendingReplacement.workerId,
+        catalog_id: pendingReplacement.newEpiId,
+        condition_on_delivery: 'GOOD',
+        digital_signature_url: signatureDataUrl,
+        audit_selfie_url: photoUrl
       });
       if (assignError) throw assignError;
 
-      // 3. Assina
-      const { data: newAssignments } = await supabase
-        .from('epi_assignments')
-        .select('id')
-        .eq('catalog_id', pendingReplacement.newEpiId)
-        .eq('worker_id', pendingReplacement.workerId)
-        .is('returned_at', null)
-        .order('assigned_at', { ascending: false })
-        .limit(1);
-        
-      if (newAssignments && newAssignments.length > 0) {
-        await supabase
-          .from('epi_assignments')
-          .update({ digital_signature_url: signatureDataUrl, audit_selfie_url: photoUrl })
-          .eq('id', newAssignments[0].id);
-      }
+      // 3. Atualiza estoque do novo EPI
+      const { error: stockError } = await supabase.from('epi_catalog')
+        .update({ current_stock: catalog.current_stock - 1 })
+        .eq('id', pendingReplacement.newEpiId);
+      if (stockError) throw stockError;
 
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);

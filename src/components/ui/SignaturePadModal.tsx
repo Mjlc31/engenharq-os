@@ -92,7 +92,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Foto de Ev
                   audio={false}
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
-                  videoConstraints={{ facingMode: "environment" }}
+                  onUserMediaError={(err) => setError("Erro ao acessar câmera: " + (typeof err === 'string' ? err : err.message || 'Permissão negada ou dispositivo indisponível.'))}
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
