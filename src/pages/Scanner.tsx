@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import Webcam from 'react-webcam';
 import { supabase } from '../lib/supabase';
-import { User, Package, CheckCircle2, AlertCircle, X, Check, ScanFace, MapPin } from 'lucide-react';
+import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
+import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { BiometricScanner } from '../components/BiometricScanner';
-import { Worker, EpiCatalog } from '../types';
+import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
-import { useEpiAssets } from '../hooks/useEpiAssets';
-import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { cn } from '../lib/utils';
 
 const defaultIcon = new L.Icon({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -23,13 +24,12 @@ const defaultIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'SIGNATURE' | 'SUCCESS';
+type ScanStep = 'SCAN_WORKER' | 'SCAN_EPI' | 'BIOMETRICS' | 'PHOTO_CAPTURE' | 'SUCCESS';
 
 export function Scanner() {
-  const { catalogs } = useEpiAssets();
   const [step, setStep] = useState<ScanStep>('SCAN_WORKER');
   const [worker, setWorker] = useState<Worker | null>(null);
-  const [epis, setEpis] = useState<any[]>([]);
+  const [epis, setEpis] = useState<EpiInventory[]>([]);
   const { 
     loading, 
     error, 
@@ -40,24 +40,16 @@ export function Scanner() {
     confirmAssignment 
   } = useScanner();
   const [biometricsData, setBiometricsData] = useState<{selfieUrl: string, score: number, liveness: boolean} | null>(null);
-  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  
+  const webcamRef = useRef<Webcam>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   
   const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | 'EPI' | null>(null);
   const [manualInputValue, setManualInputValue] = useState('');
 
   // Clean up scanner when component unmounts
-  const groupedEpis = epis.reduce((acc, current) => {
-    const existing = acc.find(item => item.id === current.id);
-    if (existing) {
-      existing.quantity += 1;
-    } else {
-      acc.push({ ...current, quantity: 1 });
-    }
-    return acc;
-  }, [] as (EpiCatalog & { quantity: number })[]);
-
   useEffect(() => {
-  return () => {
+    return () => {
       const el = document.getElementById('qr-reader');
       if (el) el.innerHTML = '';
     };
@@ -142,41 +134,88 @@ export function Scanner() {
     onScanSuccess(manualInputValue.trim());
   };
 
-  const handleSignatureSave = async (dataUrl: string, photoFile?: File) => {
-    if (!worker || epis.length === 0) return;
+  const capturePhoto = useCallback(() => {
+    if (webcamRef.current) {
+      const imageSrc = webcamRef.current.getScreenshot();
+      setCapturedPhoto(imageSrc);
+    }
+  }, [webcamRef]);
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+  };
+
+  const dataUrlToBlob = (dataUrl: string) => {
+    const arr = dataUrl.split(',');
+    const match = arr[0].match(/:(.*?);/);
+    if (!match) throw new Error("Invalid Data URL");
+    const mime = match[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
+    try {
+      const blob = dataUrlToBlob(dataUrl);
+      const { data, error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
+        contentType: blob.type,
+        upsert: true
+      });
+      if (uploadError) {
+         if (uploadError.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');
+         throw uploadError;
+      }
+      const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(path);
+      return publicUrlData.publicUrl;
+    } catch (e) {
+      console.warn(`Storage upload failed for ${path}`, e);
+      throw e;
+    }
+  };
+
+  const handleConfirmPhoto = async () => {
+    if (!capturedPhoto) {
+      setError('Por favor, tire uma foto do colaborador com o EPI.');
+      return;
+    }
+    if (!worker) {
+      setError('Dados do colaborador não encontrados.');
+      return;
+    }
     
     setLoading(true);
-    let uploadedPhotoUrl = '';
-    
-    if (photoFile) {
-      try {
-        const fileExt = photoFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `deliveries/${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('epi-evidence')
-          .upload(filePath, photoFile);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data } = supabase.storage.from('epi-evidence').getPublicUrl(filePath);
-        uploadedPhotoUrl = data.publicUrl;
-      } catch (err) {
-        console.error("Upload error", err);
+    try {
+      // Create a small placeholder for the signature since we are replacing it
+      const canvas = document.createElement('canvas');
+      canvas.width = 1; canvas.height = 1;
+      const emptySignature = canvas.toDataURL('image/png');
+      
+      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, emptySignature);
+      
+      const timestamp = new Date().getTime();
+      
+      // Upload files to storage (parallel)
+      const [photoUrl, pdfUrl, selfieUrl] = await Promise.all([
+        uploadToStorage(capturedPhoto, 'epi-receipts', `evidences/${worker.id}_${timestamp}.jpg`),
+        uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`),
+        biometricsData?.selfieUrl && biometricsData.selfieUrl !== 'bypass' ? uploadToStorage(biometricsData.selfieUrl, 'epi-receipts', `selfies/${worker.id}_${timestamp}.jpg`) : Promise.resolve(null)
+      ]);
+      
+      // Note: we pass the photo evidence URL as the digital_signature_url for backward compatibility
+      const success = await confirmAssignment(worker.id, epis, photoUrl, selfieUrl ?? undefined, biometricsData);
+      
+      if (success) {
+        setStep('SUCCESS');
       }
-    }
-
-    const success = await confirmAssignment(
-      worker.id,
-      epis,
-      dataUrl,
-      uploadedPhotoUrl || undefined,
-      biometricsData
-    );
-    
-    if (success) {
-      setStep('SUCCESS');
+    } catch (err: unknown) {
+      setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,6 +223,7 @@ export function Scanner() {
     setWorker(null);
     setEpis([]);
     setBiometricsData(null);
+    setCapturedPhoto(null);
     setError('');
     setStep('SCAN_WORKER');
   };
@@ -193,7 +233,7 @@ export function Scanner() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Almoxarifado</h1>
-          <p className="text-muted mt-1">Fluxo rápido de entrega e assinatura de EPI.</p>
+          <p className="text-muted mt-1">Fluxo rápido de entrega e evidência de EPI.</p>
         </div>
         <button 
           onClick={resetFlow}
@@ -240,11 +280,11 @@ export function Scanner() {
           <span className="text-[10px] uppercase tracking-wider font-bold">Biometria</span>
         </div>
         
-        <div className={`flex flex-col items-center gap-2 ${step !== 'SIGNATURE' ? 'opacity-50' : ''}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${step === 'SUCCESS' ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${step === 'SIGNATURE' ? 'border-primary text-primary' : ''}`}>
+        <div className={`flex flex-col items-center gap-2 ${step !== 'PHOTO_CAPTURE' ? 'opacity-50' : ''}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${step === 'SUCCESS' ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${step === 'PHOTO_CAPTURE' ? 'border-primary text-primary' : ''}`}>
             {step === 'SUCCESS' ? <Check className="w-5 h-5" /> : '4'}
           </div>
-          <span className="text-[10px] uppercase tracking-wider font-bold">Assinatura</span>
+          <span className="text-[10px] uppercase tracking-wider font-bold">Foto</span>
         </div>
       </div>
 
@@ -285,28 +325,15 @@ export function Scanner() {
                   {manualInputOpen === 'WORKER' ? 'Entrada Manual - Trabalhador' : 'Entrada Manual - Equipamento'}
                 </label>
                 <div className="flex gap-2">
-                  {manualInputOpen === 'WORKER' ? (
-                    <input 
-                      type="text" 
-                      value={manualInputValue}
-                      onChange={(e) => setManualInputValue(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
-                      className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
-                      placeholder="CPF ou Matrícula..."
-                      autoFocus
-                    />
-                  ) : (
-                    <select 
-                      value={manualInputValue}
-                      onChange={e => setManualInputValue(e.target.value)}
-                      className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all cursor-pointer"
-                    >
-                      <option value="">Selecione um EPI...</option>
-                      {catalogs.map(epi => (
-                        <option key={epi.id} value={'EPI-' + epi.id}>{epi.name} (CA: {epi.ca_number})</option>
-                      ))}
-                    </select>
-                  )}
+                  <input 
+                    type="text" 
+                    value={manualInputValue}
+                    onChange={(e) => setManualInputValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') submitManualInput(); }}
+                    className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-foreground transition-all"
+                    placeholder={manualInputOpen === 'WORKER' ? 'CPF ou Matrícula...' : 'Código de Rastreio...'}
+                    autoFocus
+                  />
                   <button 
                     onClick={submitManualInput}
                     className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
@@ -346,26 +373,18 @@ export function Scanner() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {groupedEpis.map((e, i) => (
+                  {epis.map((e, i) => (
                     <div key={i} className="flex justify-between items-center p-3 bg-surface-hover rounded-lg border border-border">
                       <div className="flex items-center gap-3">
                         <Package className="w-5 h-5 text-primary" />
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{e.name}</p>
-                            {e.quantity > 1 && (
-                              <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-xs font-bold">
-                                x{e.quantity}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-muted font-mono">CA: {e.ca_number}</p>
+                          <p className="text-sm font-medium">{e.category}</p>
+                          <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => setEpis(epis.filter(item => item.id !== e.id))}
                         className="p-2 text-muted hover:text-red-500 transition-colors"
-                        title="Remover todos"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -384,7 +403,7 @@ export function Scanner() {
               referencePhotoUrl={worker.reference_photo_url}
               onMatchSuccess={(selfieUrl, score, liveness) => {
                 setBiometricsData({ selfieUrl, score, liveness });
-                setStep('SIGNATURE');
+                setStep('PHOTO_CAPTURE');
               }}
               onMatchFailed={() => {
                 setError(`Validação biométrica REJEITADA para o colaborador ${worker.full_name}. Rosto não cadastrado ou sem correspondência facial.`);
@@ -395,7 +414,7 @@ export function Scanner() {
               <button 
                 onClick={() => {
                   setBiometricsData({ selfieUrl: 'https://via.placeholder.com/300', score: 100, liveness: true });
-                  setStep('SIGNATURE');
+                  setStep('PHOTO_CAPTURE');
                 }}
                 className="text-primary hover:text-primary-dark text-sm font-medium underline underline-offset-4"
               >
@@ -405,7 +424,7 @@ export function Scanner() {
           </div>
         )}
 
-        {step === 'SIGNATURE' && worker && epis.length > 0 && (
+        {step === 'PHOTO_CAPTURE' && worker && epis.length > 0 && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-background border border-border p-4 rounded-lg flex items-start gap-3">
@@ -419,17 +438,12 @@ export function Scanner() {
               
               <div className="bg-background border border-border p-4 rounded-lg flex flex-col gap-2 max-h-[120px] overflow-y-auto">
                 <p className="text-[10px] uppercase text-muted font-bold tracking-wider mb-1 sticky top-0 bg-background">Equipamentos ({epis.length})</p>
-                {groupedEpis.map((e, idx) => (
+                {epis.map((e, idx) => (
                   <div key={idx} className="flex items-center gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0">
                     <Package className="w-4 h-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-xs truncate">{e.name}</p>
-                        <p className="text-[10px] text-muted font-mono">CA: {e.ca_number}</p>
-                      </div>
-                      {e.quantity > 1 && (
-                        <span className="text-xs font-bold text-primary">x{e.quantity}</span>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-xs truncate">{e.category}</p>
+                      <p className="text-[10px] text-muted font-mono">{e.tracking_code}</p>
                     </div>
                   </div>
                 ))}
@@ -462,16 +476,58 @@ export function Scanner() {
               </div>
             )}
             
+            <div className="border border-border rounded-lg bg-background overflow-hidden relative flex flex-col">
+              <div className="p-3 border-b border-border flex justify-between items-center bg-surface-hover">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-muted" />
+                  <span className="text-xs font-bold text-muted uppercase tracking-wider">Foto de Evidência da Entrega</span>
+                </div>
+                {capturedPhoto && (
+                  <button 
+                    onClick={retakePhoto} 
+                    className="text-xs text-muted hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Tirar Novamente
+                  </button>
+                )}
+              </div>
+              
+              <div className="relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden">
+                {!capturedPhoto ? (
+                  <>
+                    <Webcam
+                      audio={false}
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{ facingMode: "environment" }} // Use the back camera preferably
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
+                      <button 
+                        onClick={capturePhoto}
+                        className="bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg border-4 border-background transition-transform active:scale-95"
+                      >
+                        <Camera className="w-6 h-6" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <img src={capturedPhoto} alt="Evidência" className="w-full h-full object-cover" />
+                )}
+              </div>
+            </div>
+
             <div className="text-[10px] text-muted leading-relaxed">
-              Ao assinar, o colaborador declara ter recebido o EPI acima descrito, comprometendo-se a usá-lo exclusivamente para a finalidade a que se destina e zelar pela sua conservação. Uma cópia em PDF (NR-6) será gerada automaticamente.
+              Ao capturar a foto, o gestor declara a entrega dos EPIs descritos ao colaborador. Uma cópia em PDF (NR-6) será gerada automaticamente com os dados da operação.
             </div>
             
             <button
-              onClick={() => setIsSignatureModalOpen(true)}
-              disabled={loading}
+              onClick={handleConfirmPhoto}
+              disabled={loading || !capturedPhoto}
               className="w-full bg-primary hover:bg-primary-dark text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processando...' : 'Assinar e Confirmar Entrega'}
+              {loading ? 'Processando NR-6...' : 'Confirmar Entrega'}
             </button>
           </div>
         )}
@@ -483,7 +539,7 @@ export function Scanner() {
             </div>
             <h2 className="text-2xl font-bold text-foreground">Entrega Registrada</h2>
             <p className="text-muted max-w-sm mx-auto">
-              A Ficha de EPI foi gerada digitalmente com a assinatura do colaborador e vinculada ao banco de dados em conformidade com a NR-6.
+              A Ficha de EPI foi gerada digitalmente com a evidência fotográfica e vinculada ao banco de dados em conformidade com a NR-6.
             </p>
             <div className="pt-8">
               <button
@@ -496,13 +552,6 @@ export function Scanner() {
           </div>
         )}
       </div>
-
-      <SignaturePadModal
-        isOpen={isSignatureModalOpen}
-        onClose={() => setIsSignatureModalOpen(false)}
-        onSave={handleSignatureSave}
-        title="Assinatura do Recebimento"
-      />
     </div>
   );
 }

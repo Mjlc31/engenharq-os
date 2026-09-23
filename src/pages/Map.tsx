@@ -77,9 +77,9 @@ export function MapTracking() {
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
-          .select(`*, catalog:epi_catalog!catalog_id(*), worker:workers(*)`)
+          .select(`*, epi:epi_inventory(*), worker:workers(*)`)
           .is('returned_at', null),
-        supabase.from('epi_catalog').select('*').gt('current_stock', 0),
+        supabase.from('epi_inventory').select('*, catalog:epi_catalog(*)').eq('status', 'AVAILABLE'),
         supabase.from('workers').select('*, site:construction_sites(*)')
       ]);
 
@@ -90,7 +90,7 @@ export function MapTracking() {
       
       setSites(sitesData.data as ConstructionSite[]);
       setAssignments(assignmentsData.data as EpiAssignment[]);
-      setAvailableEpis(episData.data as any[]);
+      setAvailableEpis(episData.data as EpiInventory[]);
       setAllWorkers(workersData.data as Worker[]);
     } catch (err: any) {
       console.error('Error loading map data:', err);
@@ -117,10 +117,11 @@ export function MapTracking() {
       // Filter by category if selected
       const filteredEpis = filterCategory === 'ALL' 
         ? episAtSite 
-        : episAtSite.filter(a => a.catalog?.category.toLowerCase().includes(filterCategory.toLowerCase()));
+        : episAtSite.filter(a => a.epi?.category.toLowerCase().includes(filterCategory.toLowerCase()));
 
       return {
         ...site,
+        workers: workersAtSite,
         epis: filteredEpis,
         totalWorkers: workersAtSite.length,
         activeEpis: episAtSite.length
@@ -131,7 +132,7 @@ export function MapTracking() {
   const categories = useMemo(() => {
     const cats = new Set<string>();
     assignments.forEach(a => {
-      if (a.catalog?.category) cats.add(a.catalog.category);
+      if (a.epi?.category) cats.add(a.epi.category);
     });
     return Array.from(cats);
   }, [assignments]);
@@ -146,7 +147,7 @@ export function MapTracking() {
       expectedReturn.setDate(expectedReturn.getDate() + 180);
 
       const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString() }
+        { epi_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString() }
       ]);
       
       if (!assignError) {
@@ -294,32 +295,59 @@ export function MapTracking() {
               </div>
             </div>
 
-            <div className="p-4 bg-surface flex-1 overflow-y-auto">
-              <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Package className="w-4 h-4" /> Equipamentos Alocados
-              </h3>
-              
-              <div className="space-y-2">
-                {selectedSiteInfo.epis.length === 0 ? (
-                  <p className="text-sm text-zinc-500 italic py-4 text-center border border-dashed border-zinc-800 rounded-lg">
-                    Nenhum equipamento correspondente aos filtros atuais nesta obra.
-                  </p>
-                ) : (
-                  selectedSiteInfo.epis.map(a => (
-                    <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-sm text-foreground">{a.catalog?.category}</span>
-                        <span className="text-[10px] bg-surface-hover text-muted px-2 py-0.5 rounded font-mono border border-border">
-                          {a.catalog?.code}
-                        </span>
+            <div className="p-4 bg-surface flex-1 overflow-y-auto space-y-6">
+              <div>
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Colaboradores ({selectedSiteInfo.totalWorkers})
+                </h3>
+                <div className="space-y-2">
+                  {selectedSiteInfo.workers?.length === 0 ? (
+                    <p className="text-sm text-zinc-500 italic py-4 text-center border border-dashed border-zinc-800 rounded-lg">
+                      Nenhum trabalhador alocado nesta obra.
+                    </p>
+                  ) : (
+                    selectedSiteInfo.workers?.map((w: any) => (
+                      <div key={w.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-bold text-xs shrink-0">
+                          {w.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-sm font-medium text-foreground leading-none mb-1 truncate" title={w.full_name}>{w.full_name}</p>
+                          <p className="text-[10px] text-muted truncate">{w.role || 'Sem cargo'}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted">
-                        <Users className="w-3 h-3" />
-                        <span className="truncate" title={a.worker?.full_name}>{a.worker?.full_name}</span>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Equipamentos Alocados ({selectedSiteInfo.activeEpis})
+                </h3>
+                
+                <div className="space-y-2">
+                  {selectedSiteInfo.epis.length === 0 ? (
+                    <p className="text-sm text-zinc-500 italic py-4 text-center border border-dashed border-zinc-800 rounded-lg">
+                      Nenhum equipamento correspondente aos filtros atuais nesta obra.
+                    </p>
+                  ) : (
+                    selectedSiteInfo.epis.map(a => (
+                      <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-sm text-foreground">{a.epi?.category}</span>
+                          <span className="text-[10px] bg-surface-hover text-muted px-2 py-0.5 rounded font-mono border border-border">
+                            {a.epi?.tracking_code}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted">
+                          <Users className="w-3 h-3" />
+                          <span className="truncate" title={a.worker?.full_name}>{a.worker?.full_name}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
             </div>
             

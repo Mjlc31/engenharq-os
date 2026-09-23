@@ -83,7 +83,7 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
                 {activeAssignments.map(a => (
                   <tr key={a.id} className="border-b border-border/50 hover:bg-surface-hover">
                     <td className="px-4 py-2">{a.catalog?.name}</td>
-                    <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleString('pt-BR')}</td>
                     <td className="px-4 py-2">
                       <button 
                         onClick={() => handleSubstituicao(a.id, a.catalog_id)}

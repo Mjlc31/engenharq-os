@@ -7,9 +7,12 @@ import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { ReturnForm } from '../components/features/operations/ReturnForm';
 import { ReplacementForm } from '../components/features/operations/ReplacementForm';
 import { LossForm } from '../components/features/operations/LossForm';
+import { Eye, Edit, Trash2, Camera, Download } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function Operations() {
   const { epis, catalogs, workers, loading } = useEpiAssets();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('entregas');
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -91,6 +94,7 @@ export function Operations() {
       setSelectedCatalogId('');
       setQuantity(1);
       setObservations('');
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
@@ -118,7 +122,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
       setIsSignatureModalOpen(false);
       setPendingReturn(null);
-      setIsSignatureModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -142,7 +146,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura.' });
       setIsSignatureModalOpen(false);
       setPendingLoss(null);
-      setIsSignatureModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -187,6 +191,7 @@ const photoUrl = await uploadPhoto(photoFile);
 
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
