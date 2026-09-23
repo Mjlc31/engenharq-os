@@ -288,23 +288,18 @@ export function Scanner() {
           <span className="text-[10px] uppercase tracking-wider font-bold">EPI</span>
         </div>
 
-        <div className={`flex flex-col items-center gap-2 ${step !== 'BIOMETRICS' ? 'opacity-50' : ''}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${biometricsData ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${(step === 'BIOMETRICS' && !biometricsData) ? 'border-primary text-primary' : ''}`}>
-            {biometricsData ? <Check className="w-5 h-5" /> : '3'}
-          </div>
-          <span className="text-[10px] uppercase tracking-wider font-bold">Biometria</span>
-        </div>
+        
         
         <div className={`flex flex-col items-center gap-2 ${step !== 'PHOTO_CAPTURE' ? 'opacity-50' : ''}`}>
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border-4 ${step === 'SUCCESS' ? 'bg-primary border-primary text-background' : 'bg-surface border-border text-muted'} ${step === 'PHOTO_CAPTURE' ? 'border-primary text-primary' : ''}`}>
-            {step === 'SUCCESS' ? <Check className="w-5 h-5" /> : '4'}
+            {step === 'SUCCESS' ? <Check className="w-5 h-5" /> : '3'}
           </div>
           <span className="text-[10px] uppercase tracking-wider font-bold">Foto</span>
         </div>
       </div>
 
       <div className="bg-surface border border-border rounded-xl overflow-hidden p-6">
-        {(step === 'SCAN_WORKER' || step === 'SCAN_EPI') && (
+        {(step === 'SCAN_WORKER') && (
           <div className="space-y-6">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-4">
@@ -368,44 +363,11 @@ export function Scanner() {
             {!manualInputOpen && (
               <div className="text-center">
                 <button 
-                  onClick={step === 'SCAN_WORKER' ? handleManualWorker : handleManualEpi}
+                  onClick={handleManualWorker}
                   className="text-primary hover:text-primary-dark text-sm font-medium underline underline-offset-4"
                 >
                   Entrada Manual (Simulação)
                 </button>
-              </div>
-            )}
-
-            {step === 'SCAN_EPI' && (
-              <div className="mt-6 border-t border-border pt-6 animate-in fade-in">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted mb-4">Selecionar do Estoque</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
-                  {catalog.map(item => {
-                    const isAdded = epis.some(e => e.id === item.id);
-                    const isOutOfStock = item.current_stock <= 0;
-                    return (
-                      <button
-                        key={item.id}
-                        disabled={isAdded || isOutOfStock}
-                        onClick={() => {
-                          setEpis(prev => [...prev, item]);
-                        }}
-                        className={`text-left p-3 rounded-lg border ${isAdded ? 'border-primary bg-primary/10' : isOutOfStock ? 'border-border/50 bg-surface/50 opacity-50 cursor-not-allowed' : 'border-border bg-surface hover:border-primary/50 transition-colors'}`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <p className="font-bold text-sm text-foreground line-clamp-1">{item.name}</p>
-                          {isAdded && <CheckCircle2 className="w-4 h-4 text-primary shrink-0 ml-2" />}
-                        </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-xs text-muted font-mono bg-background px-2 py-0.5 rounded">CA: {item.ca_number}</span>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                            {item.current_stock} un
-                          </span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
             )}
 
@@ -444,33 +406,7 @@ export function Scanner() {
           </div>
         )}
 
-        {step === 'BIOMETRICS' && worker && (
-          <div className="space-y-4">
-            <BiometricScanner 
-              workerName={worker.full_name}
-              referencePhotoUrl={worker.reference_photo_url}
-              onMatchSuccess={(selfieUrl, score, liveness) => {
-                setBiometricsData({ selfieUrl, score, liveness });
-                setStep('PHOTO_CAPTURE');
-              }}
-              onMatchFailed={() => {
-                setError(`Validação biométrica REJEITADA para o colaborador ${worker.full_name}. Rosto não cadastrado ou sem correspondência facial.`);
-                setStep('SCAN_WORKER');
-              }}
-            />
-            <div className="text-center mt-6">
-              <button 
-                onClick={() => {
-                  setBiometricsData({ selfieUrl: 'https://via.placeholder.com/300', score: 100, liveness: true });
-                  setStep('PHOTO_CAPTURE');
-                }}
-                className="text-primary hover:text-primary-dark text-sm font-medium underline underline-offset-4"
-              >
-                Pular Biometria (Simulação / Sem Câmera)
-              </button>
-            </div>
-          </div>
-        )}
+        
 
         {step === 'PHOTO_CAPTURE' && worker && epis.length > 0 && (
           <div className="space-y-6">
@@ -567,7 +503,7 @@ export function Scanner() {
             </div>
 
             <div className="text-[10px] text-muted leading-relaxed">
-              Ao capturar a foto, o gestor declara a entrega dos EPIs descritos ao colaborador. Uma cópia em PDF (NR-6) será gerada automaticamente com os dados da operação.
+              Ao capturar a foto, certifique-se de que o colaborador e o(s) EPI(s) em mãos estão visíveis. O gestor declara a entrega dos EPIs descritos. Uma cópia em PDF (NR-6) será gerada automaticamente com a evidência.
             </div>
             
             <button
