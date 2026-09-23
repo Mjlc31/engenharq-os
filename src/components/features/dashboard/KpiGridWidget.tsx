@@ -35,8 +35,8 @@ export function KpiGridWidget({ stats }: KpiGridWidgetProps) {
     },
     {
       title: 'Retenção Média',
-      value: stats.workers,
-      subtitle: 'No canteiro atual',
+      value: `${stats.avgRetentionDays || 0}d`,
+      subtitle: `${stats.workers || 0} colaboradores`,
       subtitleColor: 'text-muted',
       valueColor: 'text-foreground'
     },

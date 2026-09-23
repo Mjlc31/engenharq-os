@@ -34,6 +34,7 @@ export function useDashboard() {
         supabase.from('epi_assignments')
           .select(`
             id,
+            quantity,
             assigned_at,
             returned_at,
             catalog:epi_catalog(name),
@@ -44,6 +45,7 @@ export function useDashboard() {
         supabase.from('epi_assignments')
           .select(`
             id,
+            quantity,
             assigned_at,
             returned_at,
             catalog:epi_catalog(name, lifespan_days),
@@ -93,7 +95,7 @@ export function useDashboard() {
 
       const catalogs = getData(catalogsReq);
       const totalEPIs = catalogs.reduce((acc: number, item: any) => acc + (item.current_stock || 0), 0);
-      const inUseCount = activeAssignments.length;
+      const inUseCount = activeAssignments.reduce((acc: number, a: any) => acc + (a.quantity || 1), 0);
       const caAlerts = catalogs.filter((item: any) => item.ca_validity).map((item: any) => {
         const expDate = new Date(item.ca_validity);
         const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
