@@ -16,6 +16,7 @@ export function LossForm({ workers, setIsSignatureModalOpen, setPendingLoss }: {
     } else {
       setActiveAssignments([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorkerId]);
 
   const loadActiveAssignments = async () => {

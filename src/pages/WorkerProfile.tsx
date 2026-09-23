@@ -210,7 +210,7 @@ export function WorkerProfile() {
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{worker.full_name}</h1>
               {worker.status && (
                 <span className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full ${
-                  worker.status.toLowerCase() === 'ativo' 
+                  worker.status.toLowerCase() === 'active' || worker.status.toLowerCase() === 'ativo' 
                     ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
                     : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
                 }`}>
