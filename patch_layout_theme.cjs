@@ -1,29 +1,39 @@
 const fs = require('fs');
+const path = require('path');
+const file = path.join(process.cwd(), 'src/components/Layout.tsx');
+let content = fs.readFileSync(file, 'utf8');
 
-let c = fs.readFileSync('src/components/Layout.tsx', 'utf8');
+// 1. Add Sun/Moon imports
+content = content.replace("from 'lucide-react';", "Sun, Moon } from 'lucide-react';");
 
-c = c.replace(/import \{ ([^}]+) \} from 'lucide-react';/, "import { $1, Sun, Moon } from 'lucide-react';");
+// 2. Add theme state and effect
+const themeLogic = `
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('engenharq-theme') as 'dark' | 'light') || 'dark';
+  });
 
-c = c.replace(/export function Layout\(\) \{/g, `export function Layout() {
-  const [isLight, setIsLight] = React.useState(() => document.documentElement.classList.contains('light'));
-  
-  const toggleTheme = () => {
-    const newMode = !isLight;
-    setIsLight(newMode);
-    if (newMode) {
+  useEffect(() => {
+    if (theme === 'light') {
       document.documentElement.classList.add('light');
     } else {
       document.documentElement.classList.remove('light');
     }
-  };`);
+    localStorage.setItem('engenharq-theme', theme);
+  }, [theme]);
+`;
+content = content.replace("const [isSidebarOpen, setIsSidebarOpen] = useState(true);", "const [isSidebarOpen, setIsSidebarOpen] = useState(true);\n" + themeLogic);
 
-c = c.replace(/<div className="flex items-center gap-3 md:border-l md:border-border md:pl-6">/g, `<div className="flex items-center gap-3 md:border-l md:border-border md:pl-6">
-            <button 
-              onClick={toggleTheme}
-              className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-full transition-colors"
+// 3. Add button in header
+const buttonHtml = `
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer relative group text-muted hover:text-primary transition-colors"
               title="Alternar Tema"
             >
-              {isLight ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>`);
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+`;
+content = content.replace('<button\n              onClick={signOut}', buttonHtml + '<button\n              onClick={signOut}');
 
-fs.writeFileSync('src/components/Layout.tsx', c);
+fs.writeFileSync(file, content);
+console.log('Layout patched');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import {  ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings , ClipboardList, Activity } from 'lucide-react';
+import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings, ClipboardList, Activity, Sun, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
@@ -9,6 +9,20 @@ export function Layout() {
   const { signOut, user, role } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('engenharq-theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('engenharq-theme', theme);
+  }, [theme]);
+
   // Próxima Vistoria State
   const [nextSiteName, setNextSiteName] = useState<string>('Carregando...');
   const [nextTime, setNextTime] = useState<string>('--:--h');
@@ -89,7 +103,15 @@ export function Layout() {
               <p className="text-xs font-bold truncate max-w-[150px]">{user?.email}</p>
               <p className="text-[10px] text-muted uppercase">Safety Lead • Maceió</p>
             </div>
+            
             <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer relative group text-muted hover:text-primary transition-colors"
+              title="Alternar Tema"
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+<button
               onClick={signOut}
               className="h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer relative group text-muted hover:text-primary transition-colors"
               title="Sign Out"
