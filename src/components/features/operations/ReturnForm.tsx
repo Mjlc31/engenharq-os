@@ -16,6 +16,7 @@ export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn 
     } else {
       setActiveAssignments([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorkerId]);
 
   const loadActiveAssignments = async () => {

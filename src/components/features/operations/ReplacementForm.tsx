@@ -15,6 +15,7 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
     } else {
       setActiveAssignments([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWorkerId]);
 
   const loadActiveAssignments = async () => {

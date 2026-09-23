@@ -320,21 +320,30 @@ CREATE INDEX idx_inventory_transactions_worker_id ON public.inventory_transactio
 CREATE INDEX idx_inventory_transactions_created_by ON public.inventory_transactions(created_by);
 
 -- 13. Atomic RPCs for EPI Assignment and Return
-CREATE OR REPLACE FUNCTION public.assign_epi(p_worker_id UUID, p_epi_id UUID)
+CREATE OR REPLACE FUNCTION public.assign_epi(p_worker_id UUID, p_catalog_id UUID, p_quantity INTEGER DEFAULT 1)
 RETURNS BOOLEAN AS $$
+DECLARE
+  v_current_stock INTEGER;
 BEGIN
-  -- Insert into assignments
-  INSERT INTO public.epi_assignments (epi_id, worker_id, condition_on_delivery)
-  VALUES (p_epi_id, p_worker_id, 'GOOD'::item_condition);
+  IF p_quantity <= 0 THEN
+    RAISE EXCEPTION 'A quantidade deve ser maior que zero.';
+  END IF;
 
-  -- Update inventory status
-  UPDATE public.epi_inventory
-  SET status = 'IN_USE', updated_at = timezone('utc'::text, now())
-  WHERE id = p_epi_id;
+  SELECT current_stock INTO v_current_stock FROM public.epi_catalog WHERE id = p_catalog_id;
+  IF v_current_stock < p_quantity THEN
+    RAISE EXCEPTION 'Estoque insuficiente no catálogo %.', p_catalog_id;
+  END IF;
+
+  FOR i IN 1..p_quantity LOOP
+    INSERT INTO public.epi_assignments (catalog_id, worker_id, condition_on_delivery)
+    VALUES (p_catalog_id, p_worker_id, 'GOOD'::item_condition);
+  END LOOP;
+
+  UPDATE public.epi_catalog
+  SET current_stock = current_stock - p_quantity
+  WHERE id = p_catalog_id;
 
   RETURN TRUE;
-EXCEPTION WHEN OTHERS THEN
-  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -379,39 +388,21 @@ CREATE OR REPLACE FUNCTION public.bulk_assign_epis(p_worker_id UUID, p_assignmen
 RETURNS BOOLEAN AS $$
 DECLARE
   v_assignment JSONB;
-  v_epi_id UUID;
+  v_catalog_id UUID;
+  v_qty INTEGER;
 BEGIN
   FOR v_assignment IN SELECT * FROM jsonb_array_elements(p_assignments)
   LOOP
-    v_epi_id := (v_assignment->>'epi_id')::UUID;
+    v_catalog_id := (v_assignment->>'catalog_id')::UUID;
+    IF v_catalog_id IS NULL THEN
+        v_catalog_id := (v_assignment->>'epi_id')::UUID; -- fallback for old payload
+    END IF;
+    v_qty := COALESCE((v_assignment->>'quantity')::INTEGER, 1);
     
-    INSERT INTO public.epi_assignments (
-      epi_id, 
-      worker_id, 
-      expected_return_date, 
-      digital_signature_url, 
-      audit_selfie_url, 
-      biometric_match_score, 
-      liveness_verified
-    )
-    VALUES (
-      v_epi_id,
-      p_worker_id,
-      (v_assignment->>'expected_return_date')::DATE,
-      v_assignment->>'digital_signature_url',
-      v_assignment->>'audit_selfie_url',
-      (v_assignment->>'biometric_match_score')::DECIMAL,
-      (v_assignment->>'liveness_verified')::BOOLEAN
-    );
-
-    UPDATE public.epi_inventory
-    SET status = 'IN_USE', updated_at = timezone('utc'::text, now())
-    WHERE id = v_epi_id;
+    PERFORM public.assign_epi(p_worker_id, v_catalog_id, v_qty);
   END LOOP;
 
   RETURN TRUE;
-EXCEPTION WHEN OTHERS THEN
-  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -562,10 +553,18 @@ DROP FUNCTION IF EXISTS public.log_inventory_transaction();
 -- 4. Recreate RPC assign_epi
 CREATE OR REPLACE FUNCTION public.assign_epi(p_worker_id UUID, p_catalog_id UUID, p_quantity INTEGER DEFAULT 1)
 RETURNS BOOLEAN AS $$
+DECLARE
+  v_current_stock INTEGER;
 BEGIN
-  -- We don't decrement here because we'll add a trigger on epi_assignments
-  -- Wait, if we use a trigger, we don't need to do it in the RPC!
-  -- But an RPC is cleaner. Let's do it in the RPC.
+  IF p_quantity <= 0 THEN
+    RAISE EXCEPTION 'A quantidade deve ser maior que zero.';
+  END IF;
+
+  SELECT current_stock INTO v_current_stock FROM public.epi_catalog WHERE id = p_catalog_id;
+  IF v_current_stock < p_quantity THEN
+    RAISE EXCEPTION 'Estoque insuficiente no catálogo %.', p_catalog_id;
+  END IF;
+
   FOR i IN 1..p_quantity LOOP
     INSERT INTO public.epi_assignments (catalog_id, worker_id, condition_on_delivery)
     VALUES (p_catalog_id, p_worker_id, 'GOOD'::item_condition);
@@ -576,8 +575,6 @@ BEGIN
   WHERE id = p_catalog_id;
 
   RETURN TRUE;
-EXCEPTION WHEN OTHERS THEN
-  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

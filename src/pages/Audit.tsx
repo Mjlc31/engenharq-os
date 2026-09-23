@@ -29,7 +29,7 @@ export function Audit() {
   useEffect(() => {
     async function loadAudit() {
       setLoading(true);
-      const { data } = await supabase.from('epi_assignments')
+      const { data, error } = await supabase.from('epi_assignments')
         .select(`
           id,
           assigned_at,
