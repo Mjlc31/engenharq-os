@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 
 export function Workers() {
   const navigate = useNavigate();
-  const { workers, sites, loading, error, setError, addWorker, deleteWorker, importCSV, exportCSV } = useWorkers();
+  const { workers, sites, loading, error, setError, addWorker, deleteWorker, importCSV, exportCSV, downloadTemplateCSV } = useWorkers();
   const { role } = useAuth();
   const { toast } = useToast();
 
@@ -33,6 +33,10 @@ export function Workers() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, sectorFilter, statusFilter, roleFilter, siteFilter]);
+
   const uniqueSectors = useMemo(() => {
     return Array.from(new Set(workers.map(w => w.work_sector).filter(Boolean))) as string[];
   }, [workers]);
@@ -44,9 +48,12 @@ export function Workers() {
 
   const filteredWorkers = useMemo(() => {
     return workers.filter(w => {
-      const searchLower = debouncedSearch.toLowerCase();
+      const searchLower = debouncedSearch.toLowerCase().trim();
+      const searchNumbersOnly = searchLower.replace(/\D/g, '');
+      
       const matchSearch = (w.full_name || '').toLowerCase().includes(searchLower) ||
                           (w.cpf || '').toLowerCase().includes(searchLower) ||
+                          (searchNumbersOnly && (w.cpf || '').replace(/\D/g, '').includes(searchNumbersOnly)) ||
                           (w.registration_number || '').toLowerCase().includes(searchLower);
       const matchSector = sectorFilter ? w.work_sector === sectorFilter : true;
       const matchStatus = statusFilter ? w.status === statusFilter : true;
@@ -59,9 +66,16 @@ export function Workers() {
   const totalPages = Math.ceil(filteredWorkers.length / itemsPerPage);
   const paginatedWorkers = filteredWorkers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) importCSV(file);
+    if (file) {
+      try {
+        await importCSV(file);
+        toast({ type: 'success', title: 'Sucesso', message: 'Colaboradores importados com sucesso!' });
+      } catch (err: any) {
+        toast({ type: 'error', title: 'Erro na importação', message: err.message || 'Falha ao importar colaboradores.' });
+      }
+    }
     event.target.value = '';
   };
 
@@ -81,9 +95,12 @@ export function Workers() {
           <p className="text-muted mt-2">Gerencie o cadastro de funcionários</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button onClick={downloadTemplateCSV} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
+            <FileText className="w-4 h-4" /> Baixar Modelo
+          </button>
           <label role="button" tabIndex={0} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm cursor-pointer">
             <Upload className="w-4 h-4" /> Importar
-            <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+            <input type="file" accept=".csv" onChange={handleImportCSV} className="sr-only" />
           </label>
           <button onClick={handleExportCSV} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
             <Download className="w-4 h-4" /> Exportar
@@ -106,7 +123,15 @@ export function Workers() {
               className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:border-primary text-foreground"
             />
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+            <select
+              value={siteFilter}
+              onChange={e => setSiteFilter(e.target.value)}
+              className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="">Todas as obras</option>
+              {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
             <select
               value={sectorFilter}
               onChange={e => setSectorFilter(e.target.value)}
@@ -114,6 +139,14 @@ export function Workers() {
             >
               <option value="">Todos os setores</option>
               {uniqueSectors.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select
+              value={roleFilter}
+              onChange={e => setRoleFilter(e.target.value)}
+              className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+            >
+              <option value="">Todas as funções</option>
+              {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
             <select
               value={statusFilter}
@@ -144,52 +177,61 @@ export function Workers() {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {paginatedWorkers.map(worker => (
-                <tr key={worker.id} className="border-b border-border hover:bg-surface-hover/30 transition-colors">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      {worker.reference_photo_url ? (
-                        <img src={worker.reference_photo_url} alt={worker.full_name} className="w-10 h-10 rounded-full object-cover border border-border" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center">
-                          <UserCircle2 className="w-6 h-6 text-muted" />
-                        </div>
-                      )}
-                      <div>
-                        <div className="font-bold text-foreground">{worker.full_name}</div>
-                        {worker.email && <div className="text-xs text-muted">{worker.email}</div>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-foreground">{worker.registration_number}</td>
-                  <td className="p-4 text-foreground">{worker.cpf}</td>
-                  <td className="p-4 text-foreground">{worker.work_sector || '-'}</td>
-                  <td className="p-4 text-foreground font-medium">{worker.current_role || worker.initial_role || '-'}</td>
-                  <td className="p-4 text-foreground">{(worker.admission_date && !isNaN(new Date(worker.admission_date).getTime())) ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '-'}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
-                      {worker.status === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
-                    </span>
-                  </td>
-                  <td className="p-4 flex justify-end gap-2 relative group">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => navigate(`/workers/${worker.id}`)} className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors" title="Editar Perfil">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => navigate(`/workers/${worker.id}?tab=epi`)} className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="Ver Ficha EPI">
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
-                        <button onClick={() => setDeleteConfirmId(worker.id)} className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-muted">Carregando funcionários...</td>
                 </tr>
-              ))}
-              {paginatedWorkers.length === 0 && (
+              ) : paginatedWorkers.length > 0 ? (
+                paginatedWorkers.map(worker => (
+                  <tr key={worker.id} className="border-b border-border hover:bg-surface-hover/30 transition-colors">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        {worker.reference_photo_url ? (
+                          <img src={worker.reference_photo_url} alt="" className="w-10 h-10 rounded-full object-cover border border-border" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center">
+                            <UserCircle2 className="w-6 h-6 text-muted" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-bold text-foreground">{worker.full_name}</div>
+                          {worker.email && <div className="text-xs text-muted">{worker.email}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-foreground">{worker.registration_number}</td>
+                    <td className="p-4 text-foreground">{worker.cpf}</td>
+                    <td className="p-4 text-foreground">{worker.work_sector || '-'}</td>
+                    <td className="p-4 text-foreground font-medium">{worker.current_role || worker.initial_role || '-'}</td>
+                    <td className="p-4 text-foreground">
+                      {worker.admission_date 
+                        ? worker.admission_date.split('T')[0].split('-').reverse().join('/') 
+                        : '-'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
+                        {worker.status === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
+                      </span>
+                    </td>
+                    <td className="p-4 flex justify-end gap-2 relative group">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => navigate(`/workers/${worker.id}`)} className="p-2 text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors" title="Editar Perfil">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => navigate(`/workers/${worker.id}?tab=epi`)} className="p-2 text-muted hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="Ver Ficha EPI">
+                          <FileText className="w-4 h-4" />
+                        </button>
+                        {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
+                          <button onClick={() => setDeleteConfirmId(worker.id)} className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-muted">Nenhum funcionário encontrado.</td>
                 </tr>
@@ -208,13 +250,13 @@ export function Workers() {
             </select>
           </div>
           <div>
-            Mostrando <span className="font-medium text-foreground">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, filteredWorkers.length)}</span> de <span className="font-medium text-foreground">{filteredWorkers.length}</span> registros
+            Mostrando <span className="font-medium text-foreground">{filteredWorkers.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> a <span className="font-medium text-foreground">{Math.min(currentPage * itemsPerPage, filteredWorkers.length)}</span> de <span className="font-medium text-foreground">{filteredWorkers.length}</span> registros
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-md hover:bg-surface-hover disabled:opacity-50 border border-border">
+            <button aria-label="Página Anterior" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-md hover:bg-surface-hover disabled:opacity-50 border border-border">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="p-1.5 rounded-md hover:bg-surface-hover disabled:opacity-50 border border-border">
+            <button aria-label="Próxima Página" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="p-1.5 rounded-md hover:bg-surface-hover disabled:opacity-50 border border-border">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -225,8 +267,9 @@ export function Workers() {
         <WorkerForm sites={sites} onClose={() => setIsAdding(false)} onSave={async (data) => {
           try {
             await addWorker(data);
+            toast({ type: 'success', title: 'Sucesso', message: 'Colaborador registrado com sucesso!' });
             setIsAdding(false);
-          } catch (e: unknown) {
+          } catch (e: any) {
             console.error(e);
             toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao registrar trabalhador.' });
             throw e;
@@ -245,8 +288,10 @@ export function Workers() {
                 setIsDeleting(true);
                 try {
                   await handleDelete(deleteConfirmId);
-                } catch(e) {
+                  toast({ type: 'success', title: 'Sucesso', message: 'Colaborador excluído com sucesso.' });
+                } catch(e: any) {
                   console.error(e);
+                  toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao excluir colaborador.' });
                 } finally {
                   setIsDeleting(false);
                   setDeleteConfirmId(null);
