@@ -401,7 +401,7 @@ export function Sites() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Código</label>
-                  <input type="text" value={siteCode} onChange={e => setSiteCode(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" placeholder="Ex: OB01" />
+                  <input type="text" value={siteCode} onChange={e => setSiteCode(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} className="w-full bg-background border border-border rounded-md px-3 py-2" placeholder="Ex: OB01" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Status</label>

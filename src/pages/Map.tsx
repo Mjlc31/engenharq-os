@@ -6,6 +6,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import { supabase } from '../lib/supabase';
 import { HardHat, MapPin, Plus, X, AlertCircle, Users, Package, Activity, Navigation2, Filter } from 'lucide-react';
 import { ConstructionSite, EpiAssignment, EpiCatalog, Worker } from '../types';
+import { useToast } from '../components/ui/Toast';
 
 // Fix for default marker icons in leaflet with bundlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,6 +53,7 @@ function MapBounds({ sites }: { sites: any[] }) {
 }
 
 export function MapTracking() {
+  const { toast } = useToast();
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [assignments, setAssignments] = useState<EpiAssignment[]>([]);
   const [availableEpis, setAvailableEpis] = useState<EpiCatalog[]>([]);
@@ -155,6 +157,7 @@ export function MapTracking() {
         if (catalogItem) {
            await supabase.from('epi_catalog').update({ current_stock: Math.max(0, (catalogItem.current_stock || 0) - 1) }).eq('id', selectedEpi);
         }
+        toast({ type: 'success', title: 'Sucesso', message: 'EPI alocado com sucesso!' });
       }
 
       // Reload Data
@@ -165,6 +168,7 @@ export function MapTracking() {
       
     } catch (err) {
       console.error(err);
+      toast({ type: 'error', title: 'Erro', message: 'Erro ao alocar EPI. Tente novamente.' });
     } finally {
       setIsSubmitting(false);
     }
