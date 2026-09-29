@@ -19,8 +19,6 @@ export function WorkerProfile() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   // Edit states
   const [formData, setFormData] = useState<Partial<Worker>>({});
@@ -40,7 +38,6 @@ export function WorkerProfile() {
 
   const loadData = async () => {
     setLoading(true);
-    setError(null);
     try {
       if (!id) return;
 
@@ -62,7 +59,7 @@ export function WorkerProfile() {
       setEpiAssignments(epiRes.data || []);
     } catch (err: unknown) {
       console.error('Erro ao buscar perfil:', err);
-      setError('Erro Supabase: ' + (err instanceof Error ? err.message : JSON.stringify(err)));
+      toast({ type: 'error', title: 'Erro', message: 'Erro Supabase: ' + (err instanceof Error ? err.message : JSON.stringify(err)) });
     } finally {
       setLoading(false);
     }
@@ -79,8 +76,6 @@ export function WorkerProfile() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
-    setSuccess(null);
 
     try {
       const { site, roles, created_at, ...updateData } = formData as Omit<Worker, 'id'> & { id?: string }; // remove nested relations and read-only before update
@@ -92,14 +87,11 @@ export function WorkerProfile() {
 
       if (updateError) throw updateError;
       
-      setSuccess('Perfil atualizado com sucesso!');
+      toast({ type: 'success', title: 'Sucesso', message: 'Perfil atualizado com sucesso!' });
       await loadData();
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err: unknown) {
       console.error('Erro ao atualizar perfil:', err);
-      setError('Falha ao atualizar perfil.');
+      toast({ type: 'error', title: 'Erro', message: 'Falha ao atualizar perfil.' });
     } finally {
       setSaving(false);
     }
@@ -155,12 +147,11 @@ export function WorkerProfile() {
 
       if (sigError) throw sigError;
       
-      setSuccess('Assinatura salva com sucesso!');
+      toast({ type: 'success', title: 'Sucesso', message: 'Assinatura salva com sucesso!' });
       await loadData();
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Erro ao salvar assinatura:', err);
-      setError('Erro ao salvar assinatura digital.');
+      toast({ type: 'error', title: 'Erro', message: 'Erro ao salvar assinatura digital.' });
     }
   };
 
@@ -176,12 +167,6 @@ export function WorkerProfile() {
   if (!worker) {
     return (
       <div className="p-8 text-center text-muted">
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg flex items-center justify-center gap-2 mb-6 mx-auto max-w-lg">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
-          </div>
-        )}
         <p>Trabalhador não encontrado.</p>
         <button onClick={() => navigate('/workers')} className="mt-4 text-primary underline">Voltar para a lista</button>
       </div>
@@ -251,22 +236,6 @@ export function WorkerProfile() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-500/10 border border-green-500/20 text-green-500 px-4 py-3 rounded-lg flex items-center gap-2">
-          <div className="w-5 h-5 shrink-0 flex items-center justify-center rounded-full bg-green-500 text-background">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <p className="text-sm font-medium">{success}</p>
-        </div>
-      )}
-
       {activeTab === 'profile' ? (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Profile Info Form */}
@@ -333,7 +302,7 @@ export function WorkerProfile() {
                   <label className="text-sm font-medium text-muted">Data de Admissão</label>
                   <input
                     type="date"
-                    value={formData.admission_date || ''}
+                    value={formData.admission_date ? formData.admission_date.split('T')[0] : ''}
                     onChange={e => handleChange('admission_date', e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
                   />
@@ -342,7 +311,7 @@ export function WorkerProfile() {
                   <label className="text-sm font-medium text-muted">Data de Nascimento</label>
                   <input
                     type="date"
-                    value={formData.birth_date || ''}
+                    value={formData.birth_date ? formData.birth_date.split('T')[0] : ''}
                     onChange={e => handleChange('birth_date', e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
                   />
