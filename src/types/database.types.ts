@@ -124,14 +124,20 @@ export type Database = {
           assigned_at: string
           audit_selfie_url: string | null
           biometric_match_score: number | null
+          ca_number: string | null
+          catalog_id: string
+          condition_on_delivery:
+            | Database["public"]["Enums"]["item_condition"]
+            | null
           condition_on_return: string | null
           deleted_at: string | null
           digital_signature_url: string | null
-          catalog_id: string
           expected_return_date: string | null
           generated_pdf_url: string | null
           id: string
           liveness_verified: boolean | null
+          quantity: number
+          return_signature_url: string | null
           returned_at: string | null
           worker_id: string
         }
@@ -139,15 +145,20 @@ export type Database = {
           assigned_at?: string
           audit_selfie_url?: string | null
           biometric_match_score?: number | null
+          ca_number?: string | null
+          catalog_id: string
+          condition_on_delivery?:
+            | Database["public"]["Enums"]["item_condition"]
+            | null
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
-          return_signature_url?: string | null
-          catalog_id: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
           liveness_verified?: boolean | null
+          quantity?: number
+          return_signature_url?: string | null
           returned_at?: string | null
           worker_id: string
         }
@@ -155,24 +166,29 @@ export type Database = {
           assigned_at?: string
           audit_selfie_url?: string | null
           biometric_match_score?: number | null
+          ca_number?: string | null
+          catalog_id?: string
+          condition_on_delivery?:
+            | Database["public"]["Enums"]["item_condition"]
+            | null
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
-          return_signature_url?: string | null
-          catalog_id?: string
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
           liveness_verified?: boolean | null
+          quantity?: number
+          return_signature_url?: string | null
           returned_at?: string | null
           worker_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "epi_assignments_epi_id_fkey"
-            columns: ["epi_id"]
+            foreignKeyName: "epi_assignments_catalog_id_fkey"
+            columns: ["catalog_id"]
             isOneToOne: false
-            referencedRelation: "epi_inventory"
+            referencedRelation: "epi_catalog"
             referencedColumns: ["id"]
           },
           {
@@ -241,99 +257,43 @@ export type Database = {
         }
         Relationships: []
       }
-      epi_inventory: {
-        Row: {
-          ca_expiration_date: string | null
-          ca_number: string
-          category: string
-          created_at: string
-          deleted_at: string | null
-          epi_catalog_id: string | null
-          id: string
-          recommended_lifespan_days: number | null
-          size: string | null
-          status: Database["public"]["Enums"]["epi_status"]
-          tracking_code: string
-          updated_at: string
-        }
-        Insert: {
-          ca_expiration_date?: string | null
-          ca_number: string
-          category: string
-          created_at?: string
-          deleted_at?: string | null
-          epi_catalog_id?: string | null
-          id?: string
-          recommended_lifespan_days?: number | null
-          size?: string | null
-          status?: Database["public"]["Enums"]["epi_status"]
-          tracking_code: string
-          updated_at?: string
-        }
-        Update: {
-          ca_expiration_date?: string | null
-          ca_number?: string
-          category?: string
-          created_at?: string
-          deleted_at?: string | null
-          epi_catalog_id?: string | null
-          id?: string
-          recommended_lifespan_days?: number | null
-          size?: string | null
-          status?: Database["public"]["Enums"]["epi_status"]
-          tracking_code?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "epi_inventory_epi_catalog_id_fkey"
-            columns: ["epi_catalog_id"]
-            isOneToOne: false
-            referencedRelation: "epi_catalog"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       inventory_transactions: {
         Row: {
+          catalog_id: string
           created_at: string
           created_by: string | null
-          catalog_id: string
           id: string
-          new_status: Database["public"]["Enums"]["epi_status"] | null
           notes: string | null
-          previous_status: Database["public"]["Enums"]["epi_status"] | null
+          quantity_change: number | null
           transaction_type: string
           worker_id: string | null
         }
         Insert: {
+          catalog_id: string
           created_at?: string
           created_by?: string | null
-          catalog_id: string
           id?: string
-          new_status?: Database["public"]["Enums"]["epi_status"] | null
           notes?: string | null
-          previous_status?: Database["public"]["Enums"]["epi_status"] | null
+          quantity_change?: number | null
           transaction_type: string
           worker_id?: string | null
         }
         Update: {
+          catalog_id?: string
           created_at?: string
           created_by?: string | null
-          catalog_id?: string
           id?: string
-          new_status?: Database["public"]["Enums"]["epi_status"] | null
           notes?: string | null
-          previous_status?: Database["public"]["Enums"]["epi_status"] | null
+          quantity_change?: number | null
           transaction_type?: string
           worker_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "inventory_transactions_epi_id_fkey"
-            columns: ["epi_id"]
+            foreignKeyName: "inventory_transactions_catalog_id_fkey"
+            columns: ["catalog_id"]
             isOneToOne: false
-            referencedRelation: "epi_inventory"
+            referencedRelation: "epi_catalog"
             referencedColumns: ["id"]
           },
           {
@@ -344,6 +304,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          default_expiration_alert_days: number | null
+          epi_declaration_text: string | null
+          epi_legal_base_text: string | null
+          epi_terms_text: string | null
+          id: string
+          logo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          default_expiration_alert_days?: number | null
+          epi_declaration_text?: string | null
+          epi_legal_base_text?: string | null
+          epi_terms_text?: string | null
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          default_expiration_alert_days?: number | null
+          epi_declaration_text?: string | null
+          epi_legal_base_text?: string | null
+          epi_terms_text?: string | null
+          id?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       users: {
         Row: {
@@ -525,7 +521,7 @@ export type Database = {
     }
     Functions: {
       assign_epi: {
-        Args: { p_catalog_id: string; p_worker_id: string; p_quantity?: number }
+        Args: { p_catalog_id: string; p_quantity?: number; p_worker_id: string }
         Returns: boolean
       }
       bulk_assign_epis: {
@@ -534,7 +530,7 @@ export type Database = {
       }
       checkout_epi: {
         Args: {
-          p_catalog_id: string
+          p_epi_id: string
           p_expected_return_date?: string
           p_worker_id: string
         }
@@ -546,18 +542,31 @@ export type Database = {
           alert_type: string
           assignment_id: string
           ca_number: string
-          days_remaining: number
           catalog_id: string
+          days_remaining: number
           epi_name: string
           worker_id: string
           worker_name: string
         }[]
       }
       is_valid_cpf: { Args: { cpf: string }; Returns: boolean }
-      return_epi: { Args: { p_assignment_id: string, p_condition?: string }; Returns: boolean }
+      return_epi: {
+        Args: {
+          p_assignment_id: string
+          p_condition?: Database["public"]["Enums"]["item_condition"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       epi_status: "AVAILABLE" | "IN_USE" | "MAINTENANCE" | "DISCARDED"
+      item_condition: "GOOD" | "DAMAGED" | "LOST"
+      operation_type:
+        | "DELIVERY"
+        | "RETURN"
+        | "REPLACEMENT"
+        | "LOSS"
+        | "STOCK_ADJUSTMENT"
       user_role: "ADMIN" | "SAFETY_ENGINEER" | "SITE_MANAGER"
     }
     CompositeTypes: {
@@ -687,6 +696,14 @@ export const Constants = {
   public: {
     Enums: {
       epi_status: ["AVAILABLE", "IN_USE", "MAINTENANCE", "DISCARDED"],
+      item_condition: ["GOOD", "DAMAGED", "LOST"],
+      operation_type: [
+        "DELIVERY",
+        "RETURN",
+        "REPLACEMENT",
+        "LOSS",
+        "STOCK_ADJUSTMENT",
+      ],
       user_role: ["ADMIN", "SAFETY_ENGINEER", "SITE_MANAGER"],
     },
   },
