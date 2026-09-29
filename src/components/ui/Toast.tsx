@@ -65,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div className="flex-1 overflow-hidden">
               <h3 className="text-sm font-medium text-foreground">{t.title}</h3>
               {t.message && (
-                <p className="mt-1 text-xs text-muted leading-relaxed truncate">{t.message}</p>
+                <p className="mt-1 text-xs text-muted leading-relaxed">{t.message}</p>
               )}
             </div>
             
