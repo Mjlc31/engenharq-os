@@ -9,6 +9,41 @@ interface WorkerFormProps {
   onSave: (workerData: any) => Promise<void>;
 }
 
+const applyCpfMask = (value: string) => {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    .replace(/(-\d{2})\d+?$/, '$1');
+};
+
+const isValidCPF = (cpf: string) => {
+  const cleanCpf = cpf.replace(/\D/g, '');
+  if (cleanCpf.length !== 11) return false;
+  if (/^(\d)\1+$/.test(cleanCpf)) return false;
+
+  let sum = 0;
+  let remainder;
+  
+  for (let i = 1; i <= 9; i++) {
+    sum = sum + parseInt(cleanCpf.substring(i - 1, i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCpf.substring(9, 10))) return false;
+
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum = sum + parseInt(cleanCpf.substring(i - 1, i)) * (12 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(cleanCpf.substring(10, 11))) return false;
+
+  return true;
+};
+
 export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
@@ -40,6 +75,12 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    if (!isValidCPF(cpf)) {
+      setIsSubmitting(false);
+      throw new Error('CPF Inválido. Por favor verifique os números digitados.');
+    }
+
     await onSave({
       full_name: fullName,
       cpf,
@@ -94,7 +135,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">CPF *</label>
-              <input required type="text" value={cpf} onChange={e => setCpf(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="000.000.000-00" />
+              <input required type="text" value={cpf} onChange={e => setCpf(applyCpfMask(e.target.value))} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="000.000.000-00" />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Matrícula *</label>
