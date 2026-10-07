@@ -4,6 +4,7 @@ import { Plus, Search, Upload, Download, Edit2, HardHat, ChevronLeft, ChevronRig
 import { useNavigate } from 'react-router-dom';
 import { useWorkers } from '../hooks/useWorkers';
 import { WorkerForm } from '../components/features/workers/WorkerForm';
+import { BulkImportModal } from '../components/features/workers/BulkImportModal';
 import { Worker } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../components/AuthProvider';
@@ -15,6 +16,7 @@ export function Workers() {
   const { role } = useAuth();
   const { toast } = useToast();
 
+  const [isImporting, setIsImporting] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
