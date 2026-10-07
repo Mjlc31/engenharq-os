@@ -54,6 +54,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const [initialRole, setInitialRole] = useState('');
   const [admissionDate, setAdmissionDate] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [asoDate, setAsoDate] = useState('');
   const [workSector, setWorkSector] = useState('');
   const [uniformSize, setUniformSize] = useState('');
   const [bootSize, setBootSize] = useState('');
@@ -78,7 +79,8 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
 
     if (!isValidCPF(cpf)) {
       setIsSubmitting(false);
-      throw new Error('CPF Inválido. Por favor verifique os números digitados.');
+      window.alert('CPF Inválido. Por favor verifique os números digitados.');
+      return;
     }
 
     await onSave({
@@ -97,7 +99,8 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
       boot_size: bootSize || null,
       apt_for_height_and_confined_space: aptForHeight,
       phone_contact: phoneContact || null,
-      reference_photo_url: referencePhotoUrl || null
+      reference_photo_url: referencePhotoUrl || null,
+      aso_date: asoDate || null
     });
     setIsSubmitting(false);
   };
@@ -143,7 +146,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Data de Admissão</label>
               <input type="date" value={admissionDate} onChange={e => setAdmissionDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
@@ -151,6 +154,10 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Data de Nascimento</label>
               <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted mb-1">Data do ASO</label>
+              <input type="date" value={asoDate} onChange={e => setAsoDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
           </div>
 

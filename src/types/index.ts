@@ -55,6 +55,7 @@ export interface Worker {
   reference_photo_url?: string | null;
   facial_descriptor?: number[];
   status?: string | null;
+  aso_date?: string | null;
   created_at: string;
   site?: ConstructionSite;
   roles?: WorkerRole[];
