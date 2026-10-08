@@ -50,9 +50,13 @@ export function PredictiveAlertsWidget({ lifespanAlerts, loading }: PredictiveAl
                 className="bg-background border border-border/60 p-3 rounded-lg flex items-start gap-3 hover:border-border transition-colors"
               >
                 {alert.severity === 'CRITICAL' ? <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" /> : <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
-                <div>
+                <div className="w-full min-w-0">
                   <p className={`text-xs font-bold ${alert.severity === 'CRITICAL' ? 'text-red-400' : 'text-amber-400'}`}>{alert.message}</p>
-                  <p className="text-xs font-medium text-foreground mt-1 truncate">{alert.epi?.tracking_code} • {alert.epi?.category}</p>
+                  {alert.type === 'ASO_EXPIRATION' ? (
+                     <p className="text-xs font-medium text-foreground mt-1 truncate">Exame Ocupacional (ASO)</p>
+                  ) : (
+                     <p className="text-xs font-medium text-foreground mt-1 truncate">{alert.epi?.name} {alert.epi?.ca_number ? `(CA: ${alert.epi.ca_number})` : ''}</p>
+                  )}
                   <p className="text-[10px] text-muted font-mono mt-0.5 truncate">{alert.worker?.full_name}</p>
                 </div>
               </motion.div>
