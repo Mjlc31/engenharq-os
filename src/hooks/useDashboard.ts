@@ -12,7 +12,7 @@ export interface DashboardMovement {
 
 export interface DashboardAlert {
   id: string;
-  type: 'CA_EXPIRATION' | 'LIFESPAN';
+  type: 'CA_EXPIRATION' | 'LIFESPAN' | 'ASO_EXPIRATION';
   severity: 'CRITICAL' | 'WARNING';
   message: string;
   epi: { name: string; ca_validity?: string } | undefined;
@@ -29,29 +29,17 @@ export function useDashboard() {
         movementsReq,
         activeAssignmentsReq
       ] = await Promise.allSettled([
-        supabase.from('epi_catalog').select('current_stock, ca_number, ca_validity, status, name, id'),
-        supabase.from('workers').select('*', { count: 'exact', head: true }).neq('status', 'INACTIVE'),
+        supabase.from('epi_catalog').select('current_stock, ca_number, ca_validity, status, name, id').is('deleted_at', null),
+        supabase.from('workers').select('id, full_name, aso_date', { count: 'exact' }).is('deleted_at', null).neq('status', 'INACTIVE'),
         supabase.from('epi_assignments')
-          .select(`
-            id,
-            quantity,
-            assigned_at,
-            returned_at,
-            catalog:epi_catalog(name),
-            worker:workers(full_name)
-          `)
-          .order('assigned_at', { ascending: false })
+          .select()
+          .is('deleted_at', null)
+          .is('deleted_at', null).order('assigned_at', { ascending: false })
           .limit(10),
         supabase.from('epi_assignments')
-          .select(`
-            id,
-            quantity,
-            assigned_at,
-            returned_at,
-            catalog:epi_catalog(name, lifespan_days),
-            worker:workers(full_name)
-          `)
-          .is('returned_at', null)
+          .select()
+          .is('deleted_at', null)
+          .is('deleted_at', null).is('returned_at', null)
       ]);
 
       const getCount = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.count || 0 : 0;
@@ -112,7 +100,25 @@ export function useDashboard() {
         return null;
       }).filter(Boolean) as DashboardAlert[];
 
-      const allAlerts = [...lifespanAlerts, ...caAlerts].sort((a, b) => {
+      const workers = getData(workersReq);
+      const asoAlerts = workers.filter((w: any) => w.aso_date).map((w: any) => {
+        const asoDate = new Date(w.aso_date);
+        const expDate = new Date(asoDate.getTime() + (365 * 24 * 60 * 60 * 1000)); // 1 year validity
+        const daysUntilExpiry = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysUntilExpiry <= 30) {
+          return {
+            id: `aso-${w.id}`,
+            type: 'ASO_EXPIRATION' as const,
+            severity: daysUntilExpiry <= 0 ? 'CRITICAL' as const : 'WARNING' as const,
+            message: daysUntilExpiry <= 0 ? 'ASO Vencido' : `ASO vence em ${daysUntilExpiry} dias`,
+            epi: undefined,
+            worker: { full_name: w.full_name }
+          } as DashboardAlert;
+        }
+        return null;
+      }).filter(Boolean) as DashboardAlert[];
+
+      const allAlerts = [...lifespanAlerts, ...caAlerts, ...asoAlerts].sort((a, b) => {
         if (a.severity === 'CRITICAL' && b.severity !== 'CRITICAL') return -1;
         if (a.severity !== 'CRITICAL' && b.severity === 'CRITICAL') return 1;
         return 0;
