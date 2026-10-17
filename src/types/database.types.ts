@@ -83,6 +83,7 @@ export type Database = {
           name: string
           start_date: string | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
           address?: string | null
@@ -101,6 +102,7 @@ export type Database = {
           name: string
           start_date?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
           address?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           name?: string
           start_date?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -127,6 +130,7 @@ export type Database = {
           applied_at: string
           applied_by: string | null
           content_html: string
+          created_at: string
           id: string
           pdf_url: string | null
           title: string
@@ -137,6 +141,7 @@ export type Database = {
           applied_at?: string
           applied_by?: string | null
           content_html: string
+          created_at?: string
           id?: string
           pdf_url?: string | null
           title: string
@@ -147,6 +152,7 @@ export type Database = {
           applied_at?: string
           applied_by?: string | null
           content_html?: string
+          created_at?: string
           id?: string
           pdf_url?: string | null
           title?: string
@@ -270,6 +276,7 @@ export type Database = {
           id: string
           image_url: string | null
           lifespan_days: number | null
+          min_stock: number | null
           minimum_stock: number | null
           model: string | null
           name: string
@@ -277,6 +284,7 @@ export type Database = {
           recommended_lifespan_days: number | null
           status: string | null
           unit_price: number
+          updated_at: string | null
         }
         Insert: {
           brand?: string | null
@@ -294,6 +302,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           lifespan_days?: number | null
+          min_stock?: number | null
           minimum_stock?: number | null
           model?: string | null
           name: string
@@ -301,6 +310,7 @@ export type Database = {
           recommended_lifespan_days?: number | null
           status?: string | null
           unit_price?: number
+          updated_at?: string | null
         }
         Update: {
           brand?: string | null
@@ -318,6 +328,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           lifespan_days?: number | null
+          min_stock?: number | null
           minimum_stock?: number | null
           model?: string | null
           name?: string
@@ -325,6 +336,7 @@ export type Database = {
           recommended_lifespan_days?: number | null
           status?: string | null
           unit_price?: number
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -836,7 +848,9 @@ export type Database = {
           reference_photo_url: string | null
           registration_number: string
           status: string | null
+          termination_date: string | null
           uniform_size: string | null
+          updated_at: string | null
           work_sector: string | null
         }
         Insert: {
@@ -862,7 +876,9 @@ export type Database = {
           reference_photo_url?: string | null
           registration_number: string
           status?: string | null
+          termination_date?: string | null
           uniform_size?: string | null
+          updated_at?: string | null
           work_sector?: string | null
         }
         Update: {
@@ -888,7 +904,9 @@ export type Database = {
           reference_photo_url?: string | null
           registration_number?: string
           status?: string | null
+          termination_date?: string | null
           uniform_size?: string | null
+          updated_at?: string | null
           work_sector?: string | null
         }
         Relationships: [
