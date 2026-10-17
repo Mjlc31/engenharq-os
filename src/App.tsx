@@ -16,6 +16,7 @@ const Sites = React.lazy(() => import('./pages/Sites').then(m => ({ default: m.S
 const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m => ({ default: m.WorkerProfile })));
 const Operations = React.lazy(() => import('./pages/Operations').then(m => ({ default: m.Operations })));
 const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const FichaEpi = React.lazy(() => import('./pages/FichaEpi').then(m => ({ default: m.FichaEpi })));
 const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Trainings = React.lazy(() => import('./pages/Trainings').then(m => ({ default: m.Trainings })));
 const Aso = React.lazy(() => import('./pages/Aso').then(m => ({ default: m.Aso })));
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="operations" element={<Operations />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="ficha-epi" element={<FichaEpi />} />
               <Route path="trainings" element={<Trainings />} />
               <Route path="aso" element={<Aso />} />
             </Route>

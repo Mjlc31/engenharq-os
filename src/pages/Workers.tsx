@@ -58,7 +58,9 @@ export function Workers() {
                           (searchNumbersOnly && (w.cpf || '').replace(/\D/g, '').includes(searchNumbersOnly)) ||
                           (w.registration_number || '').toLowerCase().includes(searchLower);
       const matchSector = sectorFilter ? w.work_sector === sectorFilter : true;
-      const matchStatus = statusFilter ? w.status === statusFilter : true;
+      const matchStatus = statusFilter 
+        ? (statusFilter === 'ACTIVE' ? ((w.status || 'ACTIVE') === 'ACTIVE') : w.status === statusFilter) 
+        : true;
       const matchRole = roleFilter ? (w.current_role === roleFilter || w.initial_role === roleFilter) : true;
       const matchSite = siteFilter ? w.current_site_id === siteFilter : true;
       return matchSearch && matchSector && matchStatus && matchRole && matchSite;
@@ -204,9 +206,17 @@ export function Workers() {
                         : '-'}
                     </td>
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${(worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
-                        {worker.status === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full ${
+                        (worker.status || 'ACTIVE') === 'ACTIVE'
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          : worker.status === 'VACATION'
+                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          (worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : worker.status === 'VACATION' ? 'bg-blue-400' : 'bg-rose-400'
+                        }`}></span>
+                        {(worker.status || 'ACTIVE') === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo / Demitido' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
                       </span>
                     </td>
                     <td className="p-4 flex justify-end gap-2 relative group">

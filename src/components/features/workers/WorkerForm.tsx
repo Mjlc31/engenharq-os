@@ -50,6 +50,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const [registration, setRegistration] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('ACTIVE');
+  const [terminationDate, setTerminationDate] = useState('');
   const [siteId, setSiteId] = useState('');
   const [initialRole, setInitialRole] = useState('');
   const [admissionDate, setAdmissionDate] = useState('');
@@ -143,6 +144,40 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Matrícula *</label>
               <input required type="text" value={registration} onChange={e => setRegistration(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-surface border border-border rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-muted mb-1">Status do Colaborador *</label>
+              <select 
+                value={status} 
+                onChange={e => setStatus(e.target.value)} 
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground font-semibold"
+              >
+                <option value="ACTIVE">Ativo (Em Atividade)</option>
+                <option value="INACTIVE">Inativo (Demitido / Desligado)</option>
+                <option value="DISMISSED">Desligado</option>
+                <option value="VACATION">Férias</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted mb-1">
+                {status === 'INACTIVE' || status === 'DISMISSED' ? 'Data de Demissão / Desligamento' : 'Situação Contratual'}
+              </label>
+              {status === 'INACTIVE' || status === 'DISMISSED' ? (
+                <input 
+                  type="date" 
+                  value={terminationDate} 
+                  onChange={e => setTerminationDate(e.target.value)} 
+                  className="w-full bg-background border border-rose-500/50 rounded-md px-3 py-2 text-foreground" 
+                />
+              ) : (
+                <div className="text-xs text-emerald-500 font-semibold px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Colaborador com contrato ativo
+                </div>
+              )}
             </div>
           </div>
 
