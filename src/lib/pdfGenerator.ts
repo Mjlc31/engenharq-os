@@ -25,18 +25,32 @@ export const generateEpiReceiptPDF = async (
 export const generateEpiRecordPdf = async (
   worker: Worker | any, 
   epiAssignments: EpiAssignment[] | any[],
-  mode: 'download' | 'preview' = 'download'
+  mode: 'download' | 'preview' = 'download',
+  customConfig?: { firstRowY?: number; rowHeight?: number; headerY?: number; sigOffsetY?: number }
 ): Promise<Blob | void> => {
   try {
     const templateResponse = await fetch('/ficha_epi_template.pdf');
     const existingPdfBytes = await templateResponse.arrayBuffer();
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
+    let savedOffsets: any = {};
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('nr6_layout_offsets') : null;
+      if (raw) savedOffsets = JSON.parse(raw);
+    } catch {
+      savedOffsets = {};
+    }
+
+    const headerY = customConfig?.headerY ?? savedOffsets.headerY ?? 722;
+    const firstRowY = customConfig?.firstRowY ?? savedOffsets.firstRowY ?? 377;
+    const rowHeight = customConfig?.rowHeight ?? savedOffsets.rowHeight ?? 22;
+    const sigOffsetY = customConfig?.sigOffsetY ?? savedOffsets.sigOffsetY ?? 4;
+
     const HEADER = {
-      nameX: 72, nameY: 722,
-      matX: 458, matY: 722,
-      funcX: 75, funcY: 708,
-      admX: 430, admY: 708
+      nameX: 72, nameY: headerY,
+      matX: 458, matY: headerY,
+      funcX: 75, funcY: headerY - 14,
+      admX: 430, admY: headerY - 14
     };
 
     const COL = {
@@ -51,8 +65,8 @@ export const generateEpiRecordPdf = async (
     };
 
     const TABLE = {
-      firstRowY: 377, // Lowered baseline from 386 to perfectly vertically center the text
-      rowHeight: 22,
+      firstRowY: firstRowY,
+      rowHeight: rowHeight,
       maxRows: 17
     };
 
@@ -129,8 +143,8 @@ export const generateEpiRecordPdf = async (
           }
 
           const imgDims = image.scaleToFit(95, 18);
-          // currentY is baseline (377). Cell middle is baseline + 4.
-          const cellCenterY = currentY + 4;
+          // currentY is baseline. Cell middle is baseline + sigOffsetY.
+          const cellCenterY = currentY + sigOffsetY;
           const cellCenterX = 281 + (103 / 2);
           currentPage.drawImage(image, {
             x: cellCenterX - (imgDims.width / 2),
@@ -160,8 +174,7 @@ export const generateEpiRecordPdf = async (
             image = await pdfDoc.embedJpg(imageBytes);
           }
           const imgDims = image.scaleToFit(50, 18);
-          // currentY is baseline (377). Cell middle is baseline + 4.
-          const cellCenterY = currentY + 4;
+          const cellCenterY = currentY + sigOffsetY;
           const cellCenterXDev = 440 + (58 / 2);
           currentPage.drawImage(image, {
             x: cellCenterXDev - (imgDims.width / 2),
@@ -605,6 +618,147 @@ export const generateDisciplinaryPdf = async (
     const link = document.createElement('a');
     link.href = url;
     link.download = `Medida_Disciplinar_${(record.worker.registration_number || 'DOC').replace(/[^a-zA-Z0-9]/g, '')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  return blob;
+};
+
+export const generateManagementReportPdf = async (
+  reportTitle: string,
+  filterDescription: string,
+  columns: { key: string; label: string; width?: number; align?: 'left' | 'center' | 'right' }[],
+  data: any[],
+  mode: 'download' | 'preview' = 'download'
+): Promise<Blob> => {
+  const isLandscape = columns.length > 5;
+  const doc = new jsPDF({
+    orientation: isLandscape ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentWidth = pageWidth - (margin * 2);
+
+  // Corporate Header
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(margin, 12, contentWidth, 20, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('ENGENHARQ CONSTRUÇÃO & ENGENHARIA', margin + 6, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(reportTitle.toUpperCase(), margin + 6, 26);
+  doc.text(`EMISSÃO: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - margin - 6, 26, { align: 'right' });
+
+  // Filters Subtitle Box
+  let y = 36;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`FILTROS APLICADOS:`, margin + 4, y + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(filterDescription || 'Geral (Todos os registros)', margin + 35, y + 5);
+
+  doc.text(`TOTAL DE REGISTROS: ${data.length}`, pageWidth - margin - 4, y + 5, { align: 'right' });
+
+  // Table Setup
+  y = 52;
+  const colWidth = contentWidth / columns.length;
+
+  // Header
+  doc.setFillColor(30, 41, 59);
+  doc.rect(margin, y, contentWidth, 7, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+
+  columns.forEach((col, idx) => {
+    const colX = margin + (idx * colWidth);
+    const textX = col.align === 'center' ? colX + (colWidth / 2) : col.align === 'right' ? colX + colWidth - 2 : colX + 2;
+    doc.text(col.label, textX, y + 4.8, { align: col.align || 'left' });
+  });
+
+  y += 7;
+
+  // Rows
+  data.forEach((row, rowIndex) => {
+    if (y > pageHeight - 20) {
+      doc.addPage();
+      y = 15;
+
+      // Repeat Table Header
+      doc.setFillColor(30, 41, 59);
+      doc.rect(margin, y, contentWidth, 7, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+
+      columns.forEach((col, idx) => {
+        const colX = margin + (idx * colWidth);
+        const textX = col.align === 'center' ? colX + (colWidth / 2) : col.align === 'right' ? colX + colWidth - 2 : colX + 2;
+        doc.text(col.label, textX, y + 4.8, { align: col.align || 'left' });
+      });
+
+      y += 7;
+    }
+
+    if (rowIndex % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, 6, 'F');
+    }
+
+    doc.setDrawColor(241, 245, 249);
+    doc.line(margin, y + 6, margin + contentWidth, y + 6);
+
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+
+    columns.forEach((col, idx) => {
+      const colX = margin + (idx * colWidth);
+      const textX = col.align === 'center' ? colX + (colWidth / 2) : col.align === 'right' ? colX + colWidth - 2 : colX + 2;
+      const rawVal = row[col.key] !== null && row[col.key] !== undefined ? String(row[col.key]) : '-';
+      const truncated = rawVal.length > 25 ? rawVal.substring(0, 23) + '...' : rawVal;
+      doc.text(truncated, textX, y + 4.2, { align: col.align || 'left' });
+    });
+
+    y += 6;
+  });
+
+  // Footer on each page
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(6);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`EngenharQ OS • ${reportTitle} • Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 6, { align: 'center' });
+  }
+
+  const blob = doc.output('blob');
+  if (mode === 'preview') {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } else {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reportTitle.toLowerCase().replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

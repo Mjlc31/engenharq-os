@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse } from 'lucide-react';
+import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse, History } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
@@ -79,9 +79,10 @@ export function Layout() {
     { name: 'Treinamentos (NR)', href: '/trainings', icon: GraduationCap, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Controle de ASO', href: '/aso', icon: HeartPulse, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Painel de Relatórios', href: '/reports', icon: ClipboardList, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Ficha de EPI', href: '/ficha-epi', icon: FileBarChart, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Empresa / Obras', href: '/sites', icon: Building2, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Imprimir QR Codes', href: '/tags', icon: Printer, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
-    { name: 'Auditoria NR-6', href: '/audit', icon: FileBarChart, roles: ['ADMIN', 'SAFETY_ENGINEER'] },
+    { name: 'Auditoria', href: '/audit', icon: History, roles: ['ADMIN', 'SAFETY_ENGINEER'] },
   ].filter(item => item.roles.includes(role || 'SITE_MANAGER'));
 
   return (
@@ -238,7 +239,7 @@ export function Layout() {
               <span>Relatórios</span>
               {openSections['Relatórios'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
-            {openSections['Relatórios'] && navigation.filter(item => ['Auditoria NR-6', 'Imprimir QR Codes', 'Painel de Relatórios'].includes(item.name)).map(item => {
+            {openSections['Relatórios'] && navigation.filter(item => ['Painel de Relatórios', 'Ficha de EPI', 'Imprimir QR Codes'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link
@@ -265,6 +266,19 @@ export function Layout() {
             >
               <Settings className="w-4 h-4" />
               Configurações
+            </NavLink>
+            <NavLink
+              to="/audit"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-medium shadow-md shadow-primary/20'
+                    : 'text-muted hover:bg-surface hover:text-foreground'
+                }`
+              }
+            >
+              <History className="w-4 h-4" />
+              Auditoria
             </NavLink>
 
             <div className="text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1">Sistema</div>

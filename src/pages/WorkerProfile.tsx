@@ -273,15 +273,15 @@ export function WorkerProfile() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{worker.full_name}</h1>
-              {worker.status && (
-                <span className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full ${
-                  worker.status.toLowerCase() === 'active' || worker.status.toLowerCase() === 'ativo' 
-                    ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
-                    : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
-                }`}>
-                  {worker.status}
-                </span>
-              )}
+              <span className={`px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider rounded-full ${
+                (worker.status || 'ACTIVE') === 'ACTIVE' 
+                  ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+                  : worker.status === 'VACATION'
+                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}>
+                {(worker.status || 'ACTIVE') === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo / Demitido' : worker.status === 'DISMISSED' ? 'Desligado' : worker.status === 'VACATION' ? 'Férias' : worker.status}
+              </span>
             </div>
             <p className="text-muted mt-1">
               Matrícula: {worker.registration_number} • CPF: {worker.cpf}
@@ -405,6 +405,19 @@ export function WorkerProfile() {
                     onChange={e => handleChange('registration_number', e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted">Status do Colaborador *</label>
+                  <select
+                    value={formData.status || 'ACTIVE'}
+                    onChange={e => handleChange('status', e.target.value)}
+                    className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary font-semibold"
+                  >
+                    <option value="ACTIVE">Ativo (Em Atividade)</option>
+                    <option value="INACTIVE">Inativo / Demitido</option>
+                    <option value="DISMISSED">Desligado</option>
+                    <option value="VACATION">Férias</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Obra Atual</label>
