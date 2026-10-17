@@ -7,6 +7,7 @@ import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { ReturnForm } from '../components/features/operations/ReturnForm';
 import { ReplacementForm } from '../components/features/operations/ReplacementForm';
 import { LossForm } from '../components/features/operations/LossForm';
+import { TransferTab } from '../components/features/operations/TransferTab';
 import { Eye, Edit, Trash2, Camera, Download } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -72,7 +73,7 @@ export function Operations() {
       const assignmentsToInsert = Array(quantity).fill(null).map(() => ({
         worker_id: selectedWorkerId,
         catalog_id: selectedCatalogId,
-        condition_on_delivery: 'GOOD',
+        condition_on_delivery: 'GOOD' as const,
         digital_signature_url: signatureDataUrl,
         audit_selfie_url: photoUrl
       }));
@@ -91,7 +92,7 @@ export function Operations() {
       setQuantity(1);
       setObservations('');
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
       setSubmitting(false);
@@ -126,7 +127,7 @@ export function Operations() {
       setIsSignatureModalOpen(false);
       setPendingReturn(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -148,7 +149,7 @@ export function Operations() {
       setIsSignatureModalOpen(false);
       setPendingLoss(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -175,7 +176,7 @@ export function Operations() {
       const { error: assignError } = await supabase.from('epi_assignments').insert({
         worker_id: pendingReplacement.workerId,
         catalog_id: pendingReplacement.newEpiId,
-        condition_on_delivery: 'GOOD',
+        condition_on_delivery: 'GOOD' as const,
         digital_signature_url: signatureDataUrl,
         audit_selfie_url: photoUrl
       });
@@ -190,7 +191,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setSubmitting(false);
@@ -205,20 +206,29 @@ export function Operations() {
         <p className="text-muted mt-2">Central de Movimentações: Entregas, Devoluções e Extravios.</p>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
-        {['entregas', 'devolucoes', 'substituicoes', 'extravios', 'estoque'].map((tab) => (
+      <div className="flex gap-2 border-b border-border overflow-x-auto">
+        {[
+          { id: 'entregas', label: 'Entregas' },
+          { id: 'transferencias', label: 'Transferências por Obra' },
+          { id: 'devolucoes', label: 'Devoluções' },
+          { id: 'substituicoes', label: 'Substituições' },
+          { id: 'extravios', label: 'Extravios' },
+          { id: 'estoque', label: 'Estoque' }
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 font-medium text-sm transition-colors relative ${activeTab === tab ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 font-medium text-sm transition-colors whitespace-nowrap relative ${activeTab === tab.id ? 'text-primary' : 'text-muted hover:text-foreground'}`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+            {tab.label}
+            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
           </button>
         ))}
       </div>
 
       <div className="bg-surface border border-border rounded-xl p-6">
+        {activeTab === 'transferencias' && <TransferTab catalogs={catalogs} />}
+
         {activeTab === 'entregas' && (
           <div className="max-w-3xl">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><ArrowRightLeft className="w-5 h-5" /> Nova Entrega de EPI</h2>
@@ -302,11 +312,11 @@ export function Operations() {
             <SignaturePadModal
         isOpen={isSignatureModalOpen}
         onClose={() => { setIsSignatureModalOpen(false); setPendingReplacement(null); setPendingReturn(null); setPendingLoss(null); }}
-        onSave={(sig, photo) => {
-          if (pendingReplacement) return processReplacement(sig, photo);
-          if (pendingReturn) return processReturn(sig, photo);
-          if (pendingLoss) return processLoss(sig, photo);
-          return processEntrega(sig, photo);
+        onSave={(dataUrl) => {
+          if (pendingReplacement) return processReplacement(dataUrl);
+          if (pendingReturn) return processReturn(dataUrl);
+          if (pendingLoss) return processLoss(dataUrl);
+          return processEntrega(dataUrl);
         }}
         title={pendingReturn ? "Assinatura de Devolução" : pendingLoss ? "Assinatura de Extravio" : "Assinatura da Nova Entrega"}
         description={pendingLoss ? "Declaro para os devidos fins que perdi/extraviei o Equipamento de Proteção Individual (EPI) sob minha responsabilidade, assumindo as consequências legais e administrativas conforme política da empresa." : undefined}

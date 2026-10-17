@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -19,6 +19,7 @@ export type Database = {
           address: string | null
           cnpj: string
           created_at: string
+          deleted_at: string | null
           email: string | null
           id: string
           legal_name: string
@@ -34,6 +35,7 @@ export type Database = {
           address?: string | null
           cnpj: string
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           legal_name: string
@@ -49,6 +51,7 @@ export type Database = {
           address?: string | null
           cnpj?: string
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           legal_name?: string
@@ -119,6 +122,47 @@ export type Database = {
         }
         Relationships: []
       }
+      disciplinary_records: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          content_html: string
+          id: string
+          pdf_url: string | null
+          title: string
+          type: Database["public"]["Enums"]["disciplinary_type"]
+          worker_id: string
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          content_html: string
+          id?: string
+          pdf_url?: string | null
+          title: string
+          type: Database["public"]["Enums"]["disciplinary_type"]
+          worker_id: string
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          content_html?: string
+          id?: string
+          pdf_url?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["disciplinary_type"]
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disciplinary_records_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       epi_assignments: {
         Row: {
           assigned_at: string
@@ -132,6 +176,7 @@ export type Database = {
           condition_on_return: string | null
           deleted_at: string | null
           digital_signature_url: string | null
+          evidence_type: string | null
           expected_return_date: string | null
           generated_pdf_url: string | null
           id: string
@@ -139,6 +184,8 @@ export type Database = {
           quantity: number
           return_signature_url: string | null
           returned_at: string | null
+          tracking_code: string | null
+          unit_price_at_delivery: number
           worker_id: string
         }
         Insert: {
@@ -153,6 +200,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
+          evidence_type?: string | null
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
@@ -160,6 +208,8 @@ export type Database = {
           quantity?: number
           return_signature_url?: string | null
           returned_at?: string | null
+          tracking_code?: string | null
+          unit_price_at_delivery?: number
           worker_id: string
         }
         Update: {
@@ -174,6 +224,7 @@ export type Database = {
           condition_on_return?: string | null
           deleted_at?: string | null
           digital_signature_url?: string | null
+          evidence_type?: string | null
           expected_return_date?: string | null
           generated_pdf_url?: string | null
           id?: string
@@ -181,6 +232,8 @@ export type Database = {
           quantity?: number
           return_signature_url?: string | null
           returned_at?: string | null
+          tracking_code?: string | null
+          unit_price_at_delivery?: number
           worker_id?: string
         }
         Relationships: [
@@ -209,7 +262,11 @@ export type Database = {
           code: string | null
           created_at: string
           current_stock: number | null
+          deleted_at: string | null
           description: string | null
+          discard_notes: string | null
+          discard_reason: string | null
+          discarded_at: string | null
           id: string
           image_url: string | null
           lifespan_days: number | null
@@ -217,7 +274,9 @@ export type Database = {
           model: string | null
           name: string
           observations: string | null
+          recommended_lifespan_days: number | null
           status: string | null
+          unit_price: number
         }
         Insert: {
           brand?: string | null
@@ -227,7 +286,11 @@ export type Database = {
           code?: string | null
           created_at?: string
           current_stock?: number | null
+          deleted_at?: string | null
           description?: string | null
+          discard_notes?: string | null
+          discard_reason?: string | null
+          discarded_at?: string | null
           id?: string
           image_url?: string | null
           lifespan_days?: number | null
@@ -235,7 +298,9 @@ export type Database = {
           model?: string | null
           name: string
           observations?: string | null
+          recommended_lifespan_days?: number | null
           status?: string | null
+          unit_price?: number
         }
         Update: {
           brand?: string | null
@@ -245,7 +310,11 @@ export type Database = {
           code?: string | null
           created_at?: string
           current_stock?: number | null
+          deleted_at?: string | null
           description?: string | null
+          discard_notes?: string | null
+          discard_reason?: string | null
+          discarded_at?: string | null
           id?: string
           image_url?: string | null
           lifespan_days?: number | null
@@ -253,9 +322,71 @@ export type Database = {
           model?: string | null
           name?: string
           observations?: string | null
+          recommended_lifespan_days?: number | null
           status?: string | null
+          unit_price?: number
         }
         Relationships: []
+      }
+      epi_purchases: {
+        Row: {
+          arrival_date: string
+          catalog_id: string
+          created_at: string | null
+          id: string
+          invoice_number: string | null
+          notes: string | null
+          quantity: number
+          registered_by: string | null
+          site_id: string | null
+          supplier: string | null
+          total_price: number | null
+          unit_price: number
+        }
+        Insert: {
+          arrival_date?: string
+          catalog_id: string
+          created_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          quantity: number
+          registered_by?: string | null
+          site_id?: string | null
+          supplier?: string | null
+          total_price?: number | null
+          unit_price: number
+        }
+        Update: {
+          arrival_date?: string
+          catalog_id?: string
+          created_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          notes?: string | null
+          quantity?: number
+          registered_by?: string | null
+          site_id?: string | null
+          supplier?: string | null
+          total_price?: number | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epi_purchases_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "epi_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "epi_purchases_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_transactions: {
         Row: {
@@ -305,6 +436,118 @@ export type Database = {
           },
         ]
       }
+      site_inventory: {
+        Row: {
+          catalog_id: string
+          id: string
+          quantity: number
+          site_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          catalog_id: string
+          id?: string
+          quantity?: number
+          site_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          catalog_id?: string
+          id?: string
+          quantity?: number
+          site_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_inventory_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "epi_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_inventory_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_transfers: {
+        Row: {
+          catalog_id: string
+          created_at: string | null
+          destination_site_id: string
+          id: string
+          notes: string | null
+          origin_site_id: string
+          quantity: number
+          received_at: string | null
+          receiver_name: string | null
+          receiver_user_id: string | null
+          sender_name: string
+          sender_user_id: string | null
+          sent_at: string
+          status: Database["public"]["Enums"]["transfer_status"]
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string | null
+          destination_site_id: string
+          id?: string
+          notes?: string | null
+          origin_site_id: string
+          quantity: number
+          received_at?: string | null
+          receiver_name?: string | null
+          receiver_user_id?: string | null
+          sender_name: string
+          sender_user_id?: string | null
+          sent_at?: string
+          status?: Database["public"]["Enums"]["transfer_status"]
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string | null
+          destination_site_id?: string
+          id?: string
+          notes?: string | null
+          origin_site_id?: string
+          quantity?: number
+          received_at?: string | null
+          receiver_name?: string | null
+          receiver_user_id?: string | null
+          sender_name?: string
+          sender_user_id?: string | null
+          sent_at?: string
+          status?: Database["public"]["Enums"]["transfer_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_transfers_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "epi_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_transfers_destination_site_id_fkey"
+            columns: ["destination_site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_transfers_origin_site_id_fkey"
+            columns: ["origin_site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_settings: {
         Row: {
           company_name: string | null
@@ -341,6 +584,33 @@ export type Database = {
         }
         Relationships: []
       }
+      training_catalog: {
+        Row: {
+          created_at: string | null
+          default_validity_months: number
+          id: string
+          nr_code: string
+          title: string
+          workload_hours: number
+        }
+        Insert: {
+          created_at?: string | null
+          default_validity_months?: number
+          id?: string
+          nr_code: string
+          title: string
+          workload_hours?: number
+        }
+        Update: {
+          created_at?: string | null
+          default_validity_months?: number
+          id?: string
+          nr_code?: string
+          title?: string
+          workload_hours?: number
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string
@@ -348,6 +618,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          permissions: Json
           role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
@@ -356,6 +627,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          permissions?: Json
           role?: Database["public"]["Enums"]["user_role"]
         }
         Update: {
@@ -364,9 +636,60 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          permissions?: Json
           role?: Database["public"]["Enums"]["user_role"]
         }
         Relationships: []
+      }
+      worker_asos: {
+        Row: {
+          created_at: string | null
+          doctor_name: string | null
+          document_url: string | null
+          fit_for_confined_space: boolean
+          fit_for_height: boolean
+          id: string
+          issued_at: string
+          type: Database["public"]["Enums"]["aso_type"]
+          valid_until: string
+          validity_years: number
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          doctor_name?: string | null
+          document_url?: string | null
+          fit_for_confined_space?: boolean
+          fit_for_height?: boolean
+          id?: string
+          issued_at: string
+          type: Database["public"]["Enums"]["aso_type"]
+          valid_until: string
+          validity_years: number
+          worker_id: string
+        }
+        Update: {
+          created_at?: string | null
+          doctor_name?: string | null
+          document_url?: string | null
+          fit_for_confined_space?: boolean
+          fit_for_height?: boolean
+          id?: string
+          issued_at?: string
+          type?: Database["public"]["Enums"]["aso_type"]
+          valid_until?: string
+          validity_years?: number
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_asos_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       worker_roles: {
         Row: {
@@ -438,10 +761,64 @@ export type Database = {
           },
         ]
       }
+      worker_trainings: {
+        Row: {
+          completed_at: string
+          created_at: string | null
+          id: string
+          instructor_name: string
+          notes: string | null
+          photos_urls: Json
+          training_id: string
+          valid_until: string
+          worker_id: string
+        }
+        Insert: {
+          completed_at: string
+          created_at?: string | null
+          id?: string
+          instructor_name: string
+          notes?: string | null
+          photos_urls?: Json
+          training_id: string
+          valid_until: string
+          worker_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string | null
+          id?: string
+          instructor_name?: string
+          notes?: string | null
+          photos_urls?: Json
+          training_id?: string
+          valid_until?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_trainings_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "training_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_trainings_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workers: {
         Row: {
           admission_date: string | null
+          apt_for_confined_space: boolean
+          apt_for_height: boolean
           apt_for_height_and_confined_space: boolean | null
+          aso_date: string | null
           birth_date: string | null
           boot_size: string | null
           cpf: string
@@ -449,6 +826,7 @@ export type Database = {
           current_role: string | null
           current_site_id: string | null
           deleted_at: string | null
+          department: string | null
           email: string | null
           facial_descriptor: Json | null
           full_name: string
@@ -463,7 +841,10 @@ export type Database = {
         }
         Insert: {
           admission_date?: string | null
+          apt_for_confined_space?: boolean
+          apt_for_height?: boolean
           apt_for_height_and_confined_space?: boolean | null
+          aso_date?: string | null
           birth_date?: string | null
           boot_size?: string | null
           cpf: string
@@ -471,6 +852,7 @@ export type Database = {
           current_role?: string | null
           current_site_id?: string | null
           deleted_at?: string | null
+          department?: string | null
           email?: string | null
           facial_descriptor?: Json | null
           full_name: string
@@ -485,7 +867,10 @@ export type Database = {
         }
         Update: {
           admission_date?: string | null
+          apt_for_confined_space?: boolean
+          apt_for_height?: boolean
           apt_for_height_and_confined_space?: boolean | null
+          aso_date?: string | null
           birth_date?: string | null
           boot_size?: string | null
           cpf?: string
@@ -493,6 +878,7 @@ export type Database = {
           current_role?: string | null
           current_site_id?: string | null
           deleted_at?: string | null
+          department?: string | null
           email?: string | null
           facial_descriptor?: Json | null
           full_name?: string
@@ -536,6 +922,15 @@ export type Database = {
         }
         Returns: string
       }
+      discard_epi: {
+        Args: {
+          p_catalog_id: string
+          p_notes?: string
+          p_quantity: number
+          p_reason: string
+        }
+        Returns: boolean
+      }
       get_dashboard_alerts: {
         Args: never
         Returns: {
@@ -557,8 +952,39 @@ export type Database = {
         }
         Returns: boolean
       }
+      transfer_epi_receive: {
+        Args: {
+          p_receiver_id: string
+          p_receiver_name: string
+          p_transfer_id: string
+        }
+        Returns: boolean
+      }
+      transfer_epi_send: {
+        Args: {
+          p_catalog_id: string
+          p_destination_site_id: string
+          p_notes?: string
+          p_origin_site_id: string
+          p_quantity: number
+          p_sender_id: string
+          p_sender_name: string
+        }
+        Returns: string
+      }
     }
     Enums: {
+      aso_type:
+        | "ADMISSIONAL"
+        | "PERIODICO"
+        | "RETORNO_TRABALHO"
+        | "MUDANCA_FUNCAO"
+        | "DEMISSIONAL"
+      disciplinary_type:
+        | "ORIENTACAO_SEGURANCA"
+        | "ADVERTENCIA_VERBAL"
+        | "ADVERTENCIA_ESCRITA"
+        | "PERSONALIZADO"
       epi_status: "AVAILABLE" | "IN_USE" | "MAINTENANCE" | "DISCARDED"
       item_condition: "GOOD" | "DAMAGED" | "LOST"
       operation_type:
@@ -567,6 +993,7 @@ export type Database = {
         | "REPLACEMENT"
         | "LOSS"
         | "STOCK_ADJUSTMENT"
+      transfer_status: "EM_TRANSITO" | "RECEBIDO" | "CANCELADO"
       user_role: "ADMIN" | "SAFETY_ENGINEER" | "SITE_MANAGER"
     }
     CompositeTypes: {
@@ -695,6 +1122,19 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      aso_type: [
+        "ADMISSIONAL",
+        "PERIODICO",
+        "RETORNO_TRABALHO",
+        "MUDANCA_FUNCAO",
+        "DEMISSIONAL",
+      ],
+      disciplinary_type: [
+        "ORIENTACAO_SEGURANCA",
+        "ADVERTENCIA_VERBAL",
+        "ADVERTENCIA_ESCRITA",
+        "PERSONALIZADO",
+      ],
       epi_status: ["AVAILABLE", "IN_USE", "MAINTENANCE", "DISCARDED"],
       item_condition: ["GOOD", "DAMAGED", "LOST"],
       operation_type: [
@@ -704,8 +1144,8 @@ export const Constants = {
         "LOSS",
         "STOCK_ADJUSTMENT",
       ],
+      transfer_status: ["EM_TRANSITO", "RECEBIDO", "CANCELADO"],
       user_role: ["ADMIN", "SAFETY_ENGINEER", "SITE_MANAGER"],
     },
   },
 } as const
-

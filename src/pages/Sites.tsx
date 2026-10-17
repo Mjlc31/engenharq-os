@@ -178,18 +178,18 @@ export function Sites() {
         toast({ type: 'success', title: 'Sucesso', message: 'Obra registrada.' });
       }
       resetSiteForm();
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
 
   const handleDeleteSite = async (id: string) => {
     try {
-      const { error } = await supabase.from('construction_sites').delete().eq('id', id);
+      const { error } = await supabase.from('construction_sites').update({ deleted_at: new Date().toISOString() }).eq('id', id);
       if (error) throw error;
       toast({ type: 'success', title: 'Sucesso', message: 'Obra excluída.' });
       fetchSites();
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: 'Falha ao excluir.' });
     }
   };

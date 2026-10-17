@@ -119,7 +119,7 @@ export function MapTracking() {
       // Filter by category if selected
       const filteredEpis = filterCategory === 'ALL' 
         ? episAtSite 
-        : episAtSite.filter(a => a.epi?.category.toLowerCase().includes(filterCategory.toLowerCase()));
+        : episAtSite.filter(a => a.catalog?.category.toLowerCase().includes(filterCategory.toLowerCase()));
 
       return {
         ...site,
@@ -134,7 +134,7 @@ export function MapTracking() {
   const categories = useMemo(() => {
     const cats = new Set<string>();
     assignments.forEach(a => {
-      if (a.epi?.category) cats.add(a.epi.category);
+      if (a.catalog?.category) cats.add(a.catalog.category);
     });
     return Array.from(cats);
   }, [assignments]);
@@ -342,9 +342,9 @@ export function MapTracking() {
                     selectedSiteInfo.epis.map(a => (
                       <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
                         <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium text-sm text-foreground">{a.epi?.category}</span>
+                          <span className="font-medium text-sm text-foreground">{a.catalog?.category}</span>
                           <span className="text-xs text-muted">
-                            {a.epi?.name} - CA: {a.epi?.ca_number || 'N/A'}
+                            {a.catalog?.name} - CA: {a.catalog?.ca_number || 'N/A'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted">

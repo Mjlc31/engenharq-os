@@ -14,8 +14,8 @@ export function useEpiAssets() {
     queryFn: async () => {
       const [workersData, catalogsData] = await Promise.all([
         
-        supabase.from('workers').select('*').order('full_name', { ascending: true }),
-        supabase.from('epi_catalog').select('*').order('name', { ascending: true })
+        supabase.from('workers').select('*').is('deleted_at', null).order('full_name', { ascending: true }),
+        supabase.from('epi_catalog').select('*').is('deleted_at', null).order('name', { ascending: true })
       ]);
       
       
@@ -46,7 +46,7 @@ export function useEpiAssets() {
     const tracking_code = `${prefix}${nextNum.toString().padStart(2, '0')}`;
     
     try {
-      const { error: insertError } = await supabase.from('epi_inventory').insert([
+      const { error: insertError } = await supabase.from('epi_catalog').insert([
         { category, tracking_code, ca_number: caNumber, status: 'AVAILABLE' }
       ]);
       if (insertError) throw insertError;
@@ -101,8 +101,20 @@ export function useEpiAssets() {
         if (updateError) throw updateError;
       } else {
         const payloadWithStock = { ...payload, current_stock: initialStock || 0 };
-        const { error: insertError } = await supabase.from('epi_catalog').insert([payloadWithStock as any]);
+        const { data: newCat, error: insertError } = await supabase.from('epi_catalog').insert([payloadWithStock as any]).select().single();
         if (insertError) throw insertError;
+
+        // Se houver estoque inicial, registrar no histórico de compras
+        if (newCat && initialStock && initialStock > 0) {
+          await supabase.from('epi_purchases').insert({
+            catalog_id: newCat.id,
+            quantity: initialStock,
+            unit_price: payload.unit_price || 0,
+            invoice_number: 'INICIAL',
+            supplier: 'ESTOQUE INICIAL',
+            notes: 'Cadastro inicial de modelo com lote.'
+          });
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
@@ -114,7 +126,7 @@ export function useEpiAssets() {
   const deleteCatalog = async (id: string) => {
     setError(null);
     try {
-      const { error: deleteError } = await supabase.from('epi_catalog').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('epi_catalog').update({ deleted_at: new Date().toISOString() }).eq('id', id);
       if (deleteError) throw deleteError;
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
@@ -147,7 +159,7 @@ export function useEpiAssets() {
               throw new Error('Nenhum dado válido encontrado no CSV.');
             }
 
-            const { error: insertError } = await supabase.from('epi_inventory').insert(newEpis);
+            const { error: insertError } = await supabase.from('epi_catalog').insert(newEpis);
             if (insertError) throw insertError;
             
             await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
