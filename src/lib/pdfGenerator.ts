@@ -1,266 +1,615 @@
-import jsPDF from 'jspdf';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { format } from 'date-fns';
-import { Worker, EpiAssignment } from '../types';
 import { supabase } from './supabase';
+import jsPDF from 'jspdf';
+import { Worker, EpiAssignment } from '../types';
 
-export async function generateEpiRecordPdf(worker: Worker, epiAssignments: EpiAssignment[], mode: 'preview' | 'download' = 'download') {
-  // Fetch system settings
-  const { data } = await supabase
-    .from('system_settings')
-    .select('*')
-    .limit(1)
-    .single();
+export const generateEpiReceiptPDF = async (
+  assignment: any,
+  worker: any,
+  epi: any,
+  company: any,
+  deliveryPhotoUrl?: string
+) => {
+  const doc = new jsPDF();
+  doc.setFontSize(20);
+  doc.text('Recibo de EPI', 105, 20, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text(`Funcionário: ${worker.name}`, 20, 40);
+  doc.text(`CPF: ${worker.cpf || 'Não informado'}`, 20, 50);
+  doc.text(`EPI: ${epi.name}`, 20, 60);
+  doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 70);
+  return doc.output('blob');
+};
+
+export const generateEpiRecordPdf = async (
+  worker: Worker | any, 
+  epiAssignments: EpiAssignment[] | any[],
+  mode: 'download' | 'preview' = 'download'
+): Promise<Blob | void> => {
+  try {
+    const templateResponse = await fetch('/ficha_epi_template.pdf');
+    const existingPdfBytes = await templateResponse.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+    const HEADER = {
+      nameX: 72, nameY: 722,
+      matX: 458, matY: 722,
+      funcX: 75, funcY: 708,
+      admX: 430, admY: 708
+    };
+
+    const COL = {
+      qt: 45,
+      epiName: 70,
+      ca: 200,
+      dataEnt: 233,
+      assEnt: 332,
+      dataDev: 394,
+      assDev: 469,
+      assRec: 529
+    };
+
+    const TABLE = {
+      firstRowY: 377, // Lowered baseline from 386 to perfectly vertically center the text
+      rowHeight: 22,
+      maxRows: 17
+    };
+
+    let currentPage = pdfDoc.getPages()[0];
+    let currentRow = 0;
     
-  const settings = data as any;
+    // Sort ascending by assigned_at so oldest is at top
+    const assignments = [...epiAssignments].sort((a, b) => 
+      new Date(a.assigned_at || 0).getTime() - new Date(b.assigned_at || 0).getTime()
+    );
 
+    const workerName = worker.name || worker.full_name || '';
+    const workerMat = worker.id || worker.mat || '';
+    const workerRole = worker.role || worker.department || '';
+
+    currentPage.drawText(workerName.toUpperCase(), { x: HEADER.nameX, y: HEADER.nameY, size: 10 });
+    currentPage.drawText(workerMat.slice(0, 8).toUpperCase(), { x: HEADER.matX, y: HEADER.matY, size: 10 });
+    
+    if (workerRole) {
+      currentPage.drawText(workerRole.toUpperCase(), { x: HEADER.funcX, y: HEADER.funcY, size: 10 });
+    }
+    
+    if (worker.admission_date) {
+      currentPage.drawRectangle({ x: 420, y: 704, width: 70, height: 12, color: rgb(1, 1, 1) });
+      currentPage.drawText(format(new Date(worker.admission_date), 'dd/MM/yyyy'), { x: HEADER.admX, y: HEADER.admY, size: 10 });
+    }
+
+    const impressaoStamp = `Impresso em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`;
+
+    for (let i = 0; i < assignments.length; i++) {
+      const assignment = assignments[i];
+      if (currentRow >= TABLE.maxRows) {
+        // Stamp the current page before moving to next
+        currentPage.drawText(impressaoStamp, { x: 430, y: 15, size: 8 });
+        
+        currentRow = 0;
+        currentPage = pdfDoc.addPage();
+      }
+
+      const currentY = TABLE.firstRowY - (currentRow * TABLE.rowHeight);
+      
+      const catalog = assignment.catalog || assignment.epi?.catalog || {};
+      const epiName = catalog.name || 'EPI Desconhecido';
+      const caNumber = catalog.ca_number || assignment.epi?.ca_number || '';
+      const isUnif = catalog.category?.toLowerCase().includes('uniforme');
+      
+      currentPage.drawText('1', { x: COL.qt, y: currentY, size: 8 });
+      let textName = `${isUnif ? '[UNIF]' : '[EPI]'} ${epiName}`;
+      if (textName.length > 28) textName = textName.substring(0, 26) + '...';
+      currentPage.drawText(textName, { x: COL.epiName, y: currentY, size: 8 });
+      
+      if (caNumber) {
+        currentPage.drawText(caNumber.toString(), { x: COL.ca, y: currentY, size: 8 });
+      }
+
+      if (assignment.assigned_at) {
+        currentPage.drawRectangle({ x: 222, y: currentY - 5, width: 58, height: 15, color: rgb(1, 1, 1) });
+        currentPage.drawText(format(new Date(assignment.assigned_at), 'dd/MM/yy'), { x: COL.dataEnt, y: currentY, size: 8 });
+      }
+
+      if (assignment.digital_signature_url) {
+        try {
+          // It's a public URL, fetch it directly
+          const response = await fetch(assignment.digital_signature_url);
+          const imageBytes = await response.arrayBuffer();
+          let image;
+          
+          // detect type by extension or content type
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('png') || assignment.digital_signature_url.toLowerCase().endsWith('.png')) {
+            image = await pdfDoc.embedPng(imageBytes);
+          } else {
+            image = await pdfDoc.embedJpg(imageBytes);
+          }
+
+          const imgDims = image.scaleToFit(95, 18);
+          // currentY is baseline (377). Cell middle is baseline + 4.
+          const cellCenterY = currentY + 4;
+          const cellCenterX = 281 + (103 / 2);
+          currentPage.drawImage(image, {
+            x: cellCenterX - (imgDims.width / 2),
+            y: cellCenterY - (imgDims.height / 2),
+            width: imgDims.width,
+            height: imgDims.height,
+          });
+        } catch (e) {
+          console.error("Error loading delivery photo/signature:", e);
+        }
+      }
+
+      if (assignment.returned_at) {
+        currentPage.drawRectangle({ x: 385, y: currentY - 5, width: 54, height: 15, color: rgb(1, 1, 1) });
+        currentPage.drawText(format(new Date(assignment.returned_at), 'dd/MM/yy'), { x: COL.dataDev, y: currentY, size: 8 });
+      }
+      
+      if (assignment.return_photo_url) {
+        try {
+          const response = await fetch(assignment.return_photo_url);
+          const imageBytes = await response.arrayBuffer();
+          let image;
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('png') || assignment.return_photo_url.toLowerCase().endsWith('.png')) {
+            image = await pdfDoc.embedPng(imageBytes);
+          } else {
+            image = await pdfDoc.embedJpg(imageBytes);
+          }
+          const imgDims = image.scaleToFit(50, 18);
+          // currentY is baseline (377). Cell middle is baseline + 4.
+          const cellCenterY = currentY + 4;
+          const cellCenterXDev = 440 + (58 / 2);
+          currentPage.drawImage(image, {
+            x: cellCenterXDev - (imgDims.width / 2),
+            y: cellCenterY - (imgDims.height / 2),
+            width: imgDims.width,
+            height: imgDims.height,
+          });
+        } catch (e) {
+          console.error("Error loading return photo:", e);
+        }
+      }
+
+      currentRow++;
+    }
+
+    // Stamp the final page
+    currentPage.drawText(impressaoStamp, { x: 430, y: 15, size: 8 });
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    
+    if (mode === 'preview') {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Ficha_EPI_${workerMat.slice(0,8)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    
+    return blob;
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
+  }
+};
+
+export const generateSelectiveLostChargePdf = async (
+  worker: any,
+  assignments: any[],
+  siteName?: string,
+  mode: 'download' | 'preview' = 'download'
+): Promise<Blob> => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4'
   });
 
-  // Fonts and Setup
-  doc.setFont('helvetica');
-  
-  // Header Box
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(10, 10, 190, 20);
-  doc.line(50, 10, 50, 30);
-  
-  // Logo
-  if (settings?.logo_url) {
-    try {
-      doc.addImage(settings.logo_url, 'PNG', 12, 12, 36, 16);
-    } catch (e) {
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(230, 81, 0); // Orange
-      doc.text(settings?.company_name || 'EngenharQ', 30, 21, { align: 'center' });
-    }
-  } else {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(230, 81, 0); // Orange
-    doc.text(settings?.company_name || 'EngenharQ', 30, 21, { align: 'center' });
-  }
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentWidth = pageWidth - (margin * 2);
 
-  // Title
-  doc.setTextColor(0);
-  doc.setFontSize(14);
+  // Brand Header
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(margin, 12, contentWidth, 22, 'F');
+  
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text('Ficha de Registro de Equipamentos de', 125, 18, { align: 'center' });
-  doc.text('Proteção Individual – EPI\'s', 125, 25, { align: 'center' });
-  
-  // Worker Info Box
-  doc.rect(10, 32, 190, 14);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Nome:', 12, 38);
-  doc.line(24, 38.5, 110, 38.5);
-  doc.text(worker.full_name || '', 25, 37.5);
-  
-  doc.text('Nº MATRÍCULA:', 115, 38);
-  doc.line(143, 38.5, 195, 38.5);
-  doc.text(worker.registration_number || '', 144, 37.5);
-  
-  doc.text('Função:', 12, 44);
-  doc.line(26, 44.5, 110, 44.5);
-  doc.text(worker.current_role || worker.initial_role || '', 27, 43.5);
-
-  const formattedAdmission = worker.admission_date ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : '';
-  doc.text('Data de Admissão:', 115, 44);
-  doc.line(146, 44.5, 195, 44.5);
-  doc.text(formattedAdmission, 147, 43.5);
-
-  // Declaration Section
-  doc.rect(10, 48, 190, 85);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('DECLARAÇÃO DE RECEBIMENTO', 105, 53, { align: 'center' });
-  doc.line(10, 55, 200, 55); // Horizontal line
+  doc.setFontSize(13);
+  doc.text('ENGENHARQ OS • GESTÃO DE SEGURANÇA E EPIS', margin + 6, 20);
   
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  
-  const declText1 = "Declaro para todos os fins de direito que recebi gratuitamente, após\norientação de uso e aplicação os Equipamentos de Proteção Individual a\nutilizar durante a realização de minhas atividades.";
-  doc.text(doc.splitTextToSize(declText1, 90), 12, 59);
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225); // slate-300
+  doc.text('RELATÓRIO DE EXTRAVIO / CAUTELA SELETIVA DE COBRANÇA', margin + 6, 26);
+  doc.text(`EMISSÃO: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth - margin - 6, 26, { align: 'right' });
 
-  const declText2 = "Declaro, ainda, ter ciência de que:\na) Os EPIs deverão ser utilizados, unicamente para a finalidade a qual se\n   destinam;\nb) Qualquer alteração que os tornem parcial ou totalmente\n   inadequados para uso deverá ser por mim comunicada.\nc) A Falta do uso, por mim, dos EPIs fornecidos pela ENGENHARQ LTDA\n   constitui ato faltoso sujeito às sanções disciplinares previstas na\n   legislação e no Regulamento interno, aplicáveis ao assunto, inclusive\n   à demissão por justa causa.\nd) Responsabilizar-me-ei, integralmente, pela guarda e conservação dos\n   EPIs que me forem entregues. Em caso de perda ou extravio ou\n   inutilização proposital comprometo-me a ressarcir a empresa\n   conforme previsto no parágrafo 1º do artigo 462 da CLT, inclusive no\n   que couber a título de indenização por rescisão de contrato de\n   trabalho, a importância correspondente ao valor do material.";
-  doc.text(doc.splitTextToSize(declText2, 90), 12, 70);
-  
-  const baseLegalText = "Base Legal:\n\nNR 1 (aprovada pela portaria MTE 3214, de 08/06/78):\na) Cumprir disposições legais e regulamentares sobre segurança e medicina do trabalho\n   inclusive de ordens de Serviço expedidas pelo empregador;\nb) Submeter-se aos exames médicos previstos nas NR;\nc) Colaborar com a empresa na aplicação das NR; e\nd) Usar o equipamento de proteção individual fornecido pelo empregador.\n\nNR 6 (aprovada pela portaria MTB nº 3214, de 08/06/78).\nItem 6.6.1 – Cabe ao trabalhador, quanto ao EPI:\na) Usar o fornecido pela organização;\nb) Utilizar apenas para a finalidade a que se destina;\nc) Responsabilizar-se pela limpeza, guarda e conservação;\nd) Comunicar à organização quando extraviado, danificado ou qualquer alteração que o\n   torne impróprio para o uso; e\ne) Cumprir as determinações do empregador sobre o uso adequado.\n\nFinalmente, declaro que estou de acordo com todos os termos presentes, razão pela\nqual assino, nesta data, por livre e espontânea vontade.";
-  doc.text(doc.splitTextToSize(baseLegalText, 90), 105, 59);
+  // Worker Box
+  let y = 38;
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'FD');
 
-  doc.setFontSize(8);
-  doc.line(70, 128, 90, 128);
-  doc.text('Data', 80, 131, { align: 'center' });
-  doc.line(100, 128, 160, 128);
-  doc.text('Assinatura do Empregado', 130, 131, { align: 'center' });
-
-  // Table Headers
-  const startY = 137;
-  doc.rect(10, startY, 190, 14);
-  
+  doc.setTextColor(30, 41, 59); // slate-800
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('RECEBIMENTO DO EPI', 72.5, startY + 5, { align: 'center' });
-  doc.text('DEVOLUÇÃO DO EPI', 167.5, startY + 5, { align: 'center' });
-  
-  doc.line(10, startY + 7, 200, startY + 7); // horizontal line for sub-headers
-  doc.line(135, startY, 135, startY + 14); // vertical middle split
+  doc.text('DADOS DO COLABORADOR E LOTAÇÃO', margin + 4, y + 6);
 
-  // Sub headers
-  const cols = [18, 70, 86, 102, 135, 151, 175];
-  cols.forEach(x => {
-    doc.line(x, startY + 7, x, startY + 14);
-  });
-
-  doc.setFontSize(7);
-  doc.text('QT.', 14, startY + 11.5, { align: 'center' });
-  doc.text('UNIFORME/EPI', 44, startY + 11.5, { align: 'center' });
-  doc.text('C.A.', 78, startY + 11.5, { align: 'center' });
-  doc.text('DATA', 94, startY + 11.5, { align: 'center' });
-  doc.text('ASSINATURA DO\nEMPREGADO', 118.5, startY + 10, { align: 'center' });
-  
-  doc.text('DATA', 143, startY + 11.5, { align: 'center' });
-  doc.text('ASSINATURA DO\nEMPREGADO', 163, startY + 10, { align: 'center' });
-  doc.text('ASSINATURA DO\nRECEBEDOR', 187.5, startY + 10, { align: 'center' });
-  
-  // Table rows
-  let currentY = startY + 14;
-  const rowHeight = 7;
-  const maxRows = Math.floor((287 - currentY) / rowHeight); // fill rest of page, 287 is max printable Y
-  
   doc.setFont('helvetica', 'normal');
-  
-  // Ensure we iterate enough to draw empty lines if needed
-  const totalRows = Math.max(maxRows, epiAssignments?.length || 0);
+  doc.setFontSize(8);
+  doc.text('Nome Completo:', margin + 4, y + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(worker.full_name || worker.name || 'N/A'), margin + 30, y + 12);
 
-  for (let i = 0; i < totalRows; i++) {
-    if (currentY + rowHeight > 287) {
+  doc.setFont('helvetica', 'normal');
+  doc.text('CPF:', margin + 4, y + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(worker.cpf || 'N/A'), margin + 30, y + 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('Matrícula:', margin + 4, y + 24);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(worker.registration_number || worker.mat || 'N/A'), margin + 30, y + 24);
+
+  // Column 2
+  const col2X = margin + (contentWidth / 2);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Cargo / Função:', col2X, y + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(worker.current_role || worker.initial_role || worker.role || 'N/A'), col2X + 26, y + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('Obra Vinculada:', col2X, y + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(siteName || worker.site?.name || 'Obra Central'), col2X + 26, y + 18);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('Admissão:', col2X, y + 24);
+  doc.setFont('helvetica', 'bold');
+  doc.text(worker.admission_date ? format(new Date(worker.admission_date), 'dd/MM/yyyy') : 'N/A', col2X + 26, y + 24);
+
+  // Table Header
+  y = 68;
+  doc.setFillColor(30, 41, 59); // slate-800
+  doc.rect(margin, y, contentWidth, 7, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+
+  const cols = [
+    { label: 'ITEM / DESCRIÇÃO DO EPI', x: margin + 3, align: 'left' as const },
+    { label: 'C.A.', x: margin + 68, align: 'center' as const },
+    { label: 'DATA ENTREGA', x: margin + 92, align: 'center' as const },
+    { label: 'STATUS', x: margin + 116, align: 'center' as const },
+    { label: 'QTD', x: margin + 138, align: 'center' as const },
+    { label: 'VALOR UNIT.', x: margin + 158, align: 'right' as const },
+    { label: 'SUBTOTAL (R$)', x: margin + contentWidth - 4, align: 'right' as const },
+  ];
+
+  cols.forEach(c => doc.text(c.label, c.x, y + 4.8, { align: c.align }));
+
+  y += 7;
+  let totalAmount = 0;
+  let totalQty = 0;
+
+  assignments.forEach((assignment, index) => {
+    if (y > pageHeight - 65) {
       doc.addPage();
-      currentY = 20;
-      doc.rect(10, currentY, 190, 14);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.text('RECEBIMENTO DO EPI', 72.5, currentY + 5, { align: 'center' });
-      doc.text('DEVOLUÇÃO DO EPI', 167.5, currentY + 5, { align: 'center' });
-      doc.line(10, currentY + 7, 200, currentY + 7);
-      doc.line(135, currentY, 135, currentY + 14);
-      cols.forEach(x => doc.line(x, currentY + 7, x, currentY + 14));
-      doc.setFontSize(7);
-      doc.text('QT.', 14, currentY + 11.5, { align: 'center' });
-      doc.text('UNIFORME/EPI', 44, currentY + 11.5, { align: 'center' });
-      doc.text('C.A.', 78, currentY + 11.5, { align: 'center' });
-      doc.text('DATA', 94, currentY + 11.5, { align: 'center' });
-      doc.text('ASSINATURA DO\nEMPREGADO', 118.5, currentY + 10, { align: 'center' });
-      doc.text('DATA', 143, currentY + 11.5, { align: 'center' });
-      doc.text('ASSINATURA DO\nEMPREGADO', 163, currentY + 10, { align: 'center' });
-      doc.text('ASSINATURA DO\nRECEBEDOR', 187.5, currentY + 10, { align: 'center' });
-      currentY += 14;
-      doc.setFont('helvetica', 'normal');
+      y = 15;
     }
 
-    doc.rect(10, currentY, 190, rowHeight);
-    cols.forEach(x => {
-      doc.line(x, currentY, x, currentY + rowHeight);
-    });
-    
-    if (epiAssignments && epiAssignments[i]) {
-      const assignment = epiAssignments[i];
-      const catalog = assignment.epi?.catalog;
-      
-      doc.text('1', 14, currentY + 4.5, { align: 'center' });
-      
-      if (catalog?.name) {
-        const prefix = catalog.category?.toLowerCase().includes('uniforme') ? '[UNIF]' : '[EPI]';
-        const itemName = `${prefix} ${catalog.name} (Cód: ${assignment.epi?.tracking_code || '-'})`;
-        let text = itemName;
-        if (text.length > 28) text = text.substring(0, 26) + '...';
-        doc.text(text, 19, currentY + 4.5);
-      }
-      
-      if (catalog?.ca_number) {
-        doc.text(catalog.ca_number, 78, currentY + 4.5, { align: 'center' });
-      }
-      
-      if (assignment.assigned_at) {
-        doc.text(format(new Date(assignment.assigned_at), 'dd/MM/yy'), 94, currentY + 4.5, { align: 'center' });
-      }
-      
-      if (assignment.digital_signature_url) {
-        try {
-          doc.addImage(assignment.digital_signature_url, 'PNG', 105, currentY + 0.5, 25, 6);
-        } catch (e) {
-          doc.setFont('Courier', 'italic');
-          doc.setFontSize(6);
-          doc.text('Assinado', 118.5, currentY + 4.5, { align: 'center' });
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-        }
-      }
-
-      if (assignment.returned_at) {
-        doc.text(format(new Date(assignment.returned_at), 'dd/MM/yy'), 143, currentY + 4.5, { align: 'center' });
-      }
+    const isEven = index % 2 === 0;
+    if (isEven) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, 6.5, 'F');
     }
-    
-    currentY += rowHeight;
-  }
 
-  if (mode === 'preview') {
-    const pdfBlob = doc.output('blob');
-    const blobUrl = URL.createObjectURL(pdfBlob);
-    window.open(blobUrl, '_blank');
-  } else {
-    doc.save(`Ficha_EPI_${worker.registration_number || worker.id}.pdf`);
-  }
-}
+    doc.setDrawColor(241, 245, 249);
+    doc.line(margin, y + 6.5, margin + contentWidth, y + 6.5);
 
-export const generateEpiReceiptPDF = async (
-  worker: any, 
-  epis: any[], 
-  signatureDataUrl: string
-): Promise<string> => {
-  const doc = new jsPDF();
-  
-  doc.setFontSize(20);
-  doc.setTextColor(229, 46, 45); 
-  doc.text('EngenharQ OS', 20, 20);
-  
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Ficha de Entrega de Equipamento de Proteção Individual (EPI)', 20, 30);
-  
-  doc.setFontSize(11);
-  doc.text(`Colaborador: ${worker.full_name}`, 20, 45);
-  doc.text(`CPF: ${worker.cpf}`, 20, 52);
-  doc.text(`Matrícula: ${worker.registration_number}`, 20, 59);
-  doc.text(`Obra Alocada: ${worker.site?.name || 'Não alocado'}`, 20, 66);
-  
-  doc.text('Equipamentos Entregues:', 20, 80);
-  
-  let y = 87;
-  epis.forEach((item, idx) => {
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.text(`${idx + 1}. [EPI/UNIF] ${item.category} (CA: ${item.ca_number || '-'}) - Cód: ${item.tracking_code}`, 20, y);
-    y += 7;
+    const catalog = assignment.catalog || {};
+    const name = catalog.name || 'EPI Não especificado';
+    const ca = catalog.ca_number || '-';
+    const dateEnt = assignment.assigned_at ? format(new Date(assignment.assigned_at), 'dd/MM/yyyy') : '-';
+    const status = assignment.returned_at ? 'Devolvido' : 'Em Posse / Cobrado';
+    const qty = 1;
+    const unitVal = Number(assignment.unit_price_at_delivery ?? catalog.unit_price ?? 0);
+    const subtotal = qty * unitVal;
+
+    totalQty += qty;
+    totalAmount += subtotal;
+
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+
+    const shortName = name.length > 36 ? name.substring(0, 34) + '...' : name;
+    doc.text(shortName, margin + 3, y + 4.5);
+    doc.text(String(ca), margin + 68, y + 4.5, { align: 'center' });
+    doc.text(dateEnt, margin + 92, y + 4.5, { align: 'center' });
+    doc.text(status, margin + 116, y + 4.5, { align: 'center' });
+    doc.text(String(qty), margin + 138, y + 4.5, { align: 'center' });
+    doc.text(`R$ ${unitVal.toFixed(2)}`, margin + 158, y + 4.5, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`R$ ${subtotal.toFixed(2)}`, margin + contentWidth - 4, y + 4.5, { align: 'right' });
+
+    y += 6.5;
   });
+
+  // Total Summary Box
+  y += 3;
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, y, contentWidth, 11, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`TOTAL DE ITENS: ${totalQty} unid.`, margin + 5, y + 7);
+  doc.setTextColor(180, 83, 9); // amber-700
+  doc.text(`VALOR TOTAL COBRADO / EXTRAVIADO: R$ ${totalAmount.toFixed(2)}`, margin + contentWidth - 5, y + 7, { align: 'right' });
+
+  // Declaratory Legal Term
+  y += 16;
+  doc.setFillColor(254, 252, 232); // amber-50
+  doc.setDrawColor(253, 224, 71); // amber-300
+  doc.roundedRect(margin, y, contentWidth, 24, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(113, 63, 18); // amber-900
+  doc.text('TERMO DE CIÊNCIA E AUTORIZAÇÃO DE DESCONTO (CLT ART. 462, § 1º & NR-06)', margin + 4, y + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(113, 63, 18);
+  const legalText = `Declaro que retirei sob minha responsabilidade os Equipamentos de Proteção Individual listados acima. Comprometo-me a zelar pela sua guarda e conservação, comunicando imediatamente qualquer alteração que os torne impróprios para uso. Em caso de extravio, perda culposa, dano por negligência ou não devolução dos mesmos ao término do contrato de trabalho, autorizo expressamente a empresa a descontar em minha folha de pagamento ou rescisão contratual o valor total acima apurado (R$ ${totalAmount.toFixed(2)}), com fundamento no Artigo 462, § 1º da CLT e Item 6.6.1 da Norma Regulamentadora NR-06 do Ministério do Trabalho e Emprego.`;
   
-  const today = new Date();
-  doc.text(`Data de Entrega: ${today.toLocaleDateString()}`, 20, y + 10);
-  
-  const termText = `Declaro ter recebido os EPIs acima descritos, comprometendo-me a usá-los exclusivamente para a finalidade a que se destinam e zelar pela sua conservação, sob pena de responder por danos causados aos equipamentos, além de me submeter às normas de segurança da empresa.`;
-  const splitTerm = doc.splitTextToSize(termText, 170);
-  doc.text(splitTerm, 20, y + 25);
-  
-  doc.addImage(signatureDataUrl, 'PNG', 60, y + 55, 90, 30);
-  doc.line(60, y + 85, 150, y + 85);
-  doc.text('Assinatura do Colaborador', 80, y + 90);
-  
-  return doc.output('datauristring');
+  const splitLegal = doc.splitTextToSize(legalText, contentWidth - 8);
+  doc.text(splitLegal, margin + 4, y + 9.5);
+
+  // Signatures
+  y += 30;
+  if (y > pageHeight - 35) {
+    doc.addPage();
+    y = 30;
+  }
+
+  const sigWidth = 75;
+  const sigLeftX = margin + 8;
+  const sigRightX = pageWidth - margin - sigWidth - 8;
+
+  doc.setDrawColor(71, 85, 105);
+  doc.line(sigLeftX, y + 12, sigLeftX + sigWidth, y + 12);
+  doc.line(sigRightX, y + 12, sigRightX + sigWidth, y + 12);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`${worker.full_name || 'COLABORADOR'}`, sigLeftX + (sigWidth / 2), y + 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text(`CPF: ${worker.cpf || '-'} • Matrícula: ${worker.registration_number || '-'}`, sigLeftX + (sigWidth / 2), y + 19.5, { align: 'center' });
+  doc.text('Assinatura do Colaborador', sigLeftX + (sigWidth / 2), y + 23, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('ENGENHARQ OS / SEGURANÇA DO TRABALHO', sigRightX + (sigWidth / 2), y + 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text('Responsável Técnico / Almoxarifado', sigRightX + (sigWidth / 2), y + 19.5, { align: 'center' });
+  doc.text('Assinatura do Emitente', sigRightX + (sigWidth / 2), y + 23, { align: 'center' });
+
+  // Document Footer
+  doc.setTextColor(148, 163, 184);
+  doc.setFontSize(6);
+  doc.text(`EngenharQ OS v2.4 • Documento emitido em ${format(new Date(), 'dd/MM/yyyy HH:mm:ss')} • Autenticidade verificável via SGEPI`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+
+  const blob = doc.output('blob');
+  if (mode === 'preview') {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } else {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Relatorio_Extravio_${(worker.registration_number || worker.cpf || 'EPI').replace(/[^a-zA-Z0-9]/g, '')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  return blob;
+};
+
+export const generateDisciplinaryPdf = async (
+  record: {
+    worker: any;
+    type: string;
+    title: string;
+    content_html: string;
+    applied_by_name?: string;
+    site_name?: string;
+    witnesses?: string[];
+  },
+  mode: 'download' | 'preview' = 'download'
+): Promise<Blob> => {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const contentWidth = pageWidth - (margin * 2);
+
+  let headerTitle = 'TERMO DE MEDIDA DISCIPLINAR';
+  if (record.type === 'ORIENTACAO_SEGURANCA') headerTitle = 'TERMO DE ORIENTAÇÃO DE SEGURANÇA DO TRABALHO';
+  else if (record.type === 'ADVERTENCIA_VERBAL') headerTitle = 'REGISTRO FORMAL DE ADVERTÊNCIA VERBAL';
+  else if (record.type === 'ADVERTENCIA_ESCRITA') headerTitle = 'COMUNICADO DE ADVERTÊNCIA DISCIPLINAR ESCRITA';
+  else if (record.title) headerTitle = record.title.toUpperCase();
+
+  // Top Bar
+  doc.setFillColor(15, 23, 42);
+  doc.rect(margin, 12, contentWidth, 22, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('ENGENHARQ CONSTRUÇÃO & ENGENHARIA', margin + 6, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(headerTitle, margin + 6, 26);
+  doc.text(`DATA: ${format(new Date(), 'dd/MM/yyyy')}`, pageWidth - margin - 6, 26, { align: 'right' });
+
+  // Worker Info Box
+  let y = 38;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'FD');
+
+  doc.setTextColor(30, 41, 59);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text('IDENTIFICAÇÃO DO COLABORADOR', margin + 4, y + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Colaborador:', margin + 4, y + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(record.worker.full_name || 'N/A'), margin + 26, y + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('CPF:', margin + 4, y + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(record.worker.cpf || 'N/A'), margin + 26, y + 18);
+
+  const col2X = margin + (contentWidth / 2);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Matrícula:', col2X, y + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(record.worker.registration_number || 'N/A'), col2X + 22, y + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text('Função:', col2X, y + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(String(record.worker.current_role || record.worker.initial_role || 'N/A'), col2X + 22, y + 18);
+
+  // Content Box
+  y = 66;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text('DESCRIÇÃO DOS FATOS E FUNDAMENTAÇÃO LEGAL', margin, y);
+
+  y += 5;
+  const cleanContent = (record.content_html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+
+  const textLines = doc.splitTextToSize(cleanContent, contentWidth);
+  doc.text(textLines, margin, y);
+
+  y += (textLines.length * 4.2) + 12;
+
+  if (y > pageHeight - 65) {
+    doc.addPage();
+    y = 20;
+  }
+
+  // Legal note
+  doc.setFillColor(241, 245, 249);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, y, contentWidth, 16, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  const legalNote = "Fica o colaborador ciente de que a reincidência em condutas que violem os procedimentos internos e normas regulamentadoras de segurança do trabalho poderá ensejar a aplicação de penalidades mais severas, inclusive a rescisão do contrato de trabalho por justa causa, nos termos do Artigo 482 da Consolidação das Leis do Trabalho (CLT).";
+  const noteLines = doc.splitTextToSize(legalNote, contentWidth - 8);
+  doc.text(noteLines, margin + 4, y + 5);
+
+  y += 24;
+  if (y > pageHeight - 45) {
+    doc.addPage();
+    y = 25;
+  }
+
+  // Signatures
+  const sigWidth = 72;
+  const leftX = margin + 5;
+  const rightX = pageWidth - margin - sigWidth - 5;
+
+  doc.setDrawColor(71, 85, 105);
+  doc.line(leftX, y + 12, leftX + sigWidth, y + 12);
+  doc.line(rightX, y + 12, rightX + sigWidth, y + 12);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(String(record.worker.full_name || 'COLABORADOR'), leftX + (sigWidth / 2), y + 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text('Assinatura do Colaborador (Ciência)', leftX + (sigWidth / 2), y + 20, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text(String(record.applied_by_name || 'ENGENHARQ OS / LIDERANÇA'), rightX + (sigWidth / 2), y + 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text('Empregador / Técnico de Segurança', rightX + (sigWidth / 2), y + 20, { align: 'center' });
+
+  // Witnesses
+  y += 28;
+  if (y < pageHeight - 25) {
+    doc.line(leftX, y + 10, leftX + sigWidth, y + 10);
+    doc.line(rightX, y + 10, rightX + sigWidth, y + 10);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('Testemunha 1 (Nome e CPF)', leftX + (sigWidth / 2), y + 14, { align: 'center' });
+    doc.text('Testemunha 2 (Nome e CPF)', rightX + (sigWidth / 2), y + 14, { align: 'center' });
+  }
+
+  const blob = doc.output('blob');
+  if (mode === 'preview') {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  } else {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Medida_Disciplinar_${(record.worker.registration_number || 'DOC').replace(/[^a-zA-Z0-9]/g, '')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  return blob;
 };

@@ -14,7 +14,7 @@ export function useEpiInventory() {
     setError(null);
     try {
       const { data, error: fetchError } = await supabase
-        .from('epi_inventory')
+        .from('epi_catalog')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -33,7 +33,7 @@ export function useEpiInventory() {
 
   const addEpi = async (epiData: Partial<EpiInventory>) => {
     try {
-      const { error: insertError } = await supabase.from('epi_inventory').insert([epiData as any]);
+      const { error: insertError } = await supabase.from('epi_catalog').insert([epiData as any]);
       if (insertError) throw insertError;
       toast({ type: 'success', title: 'Sucesso', message: 'Equipamento registrado com sucesso.' });
       await fetchEpis();

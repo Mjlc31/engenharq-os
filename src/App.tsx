@@ -17,6 +17,8 @@ const WorkerProfile = React.lazy(() => import('./pages/WorkerProfile').then(m =>
 const Operations = React.lazy(() => import('./pages/Operations').then(m => ({ default: m.Operations })));
 const Reports = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Trainings = React.lazy(() => import('./pages/Trainings').then(m => ({ default: m.Trainings })));
+const Aso = React.lazy(() => import('./pages/Aso').then(m => ({ default: m.Aso })));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 
@@ -51,6 +53,8 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="operations" element={<Operations />} />
               <Route path="reports" element={<Reports />} />
+              <Route path="trainings" element={<Trainings />} />
+              <Route path="aso" element={<Aso />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

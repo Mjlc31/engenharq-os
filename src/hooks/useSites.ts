@@ -16,6 +16,7 @@ export function useSites() {
       const { data, error: fetchError } = await supabase
         .from('construction_sites')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;

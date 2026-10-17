@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, Download, FileSpreadsheet, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Upload, Download, FileSpreadsheet, AlertTriangle, Loader2, HelpCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
-import { useToast } from '../../../hooks/useToast';
+import { useToast } from '../../ui/Toast';
+import { useSites } from '../../../hooks/useSites';
 
 interface BulkImportModalProps {
   onClose: () => void;
@@ -13,23 +14,19 @@ interface BulkImportModalProps {
 export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showManual, setShowManual] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { sites } = useSites();
 
   const handleDownloadTemplate = () => {
-    const ws_data = [
-      ['full_name', 'cpf', 'registration_number', 'site_id', 'current_role', 'status', 'aso_date'],
-      ['João Silva', '12345678909', 'MAT001', siteId || 'COLAR_ID_DA_OBRA_AQUI', 'Pedreiro', 'ACTIVE', '2023-10-01']
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    
-    // Auto-size columns
-    ws['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 40 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Colaboradores");
-    XLSX.writeFile(wb, "Modelo_Importacao_Colaboradores.xlsx");
+    const link = document.createElement('a');
+    link.href = '/modelo_colaboradores.xlsm';
+    link.download = 'Controle_de_ASO_EngenharQ.xlsm';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const processFile = async () => {
@@ -49,32 +46,76 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
         throw new Error('A planilha está vazia.');
       }
 
-      const workersToInsert = [];
+      const workersToInsert: any[] = [];
       const validationErrors: string[] = [];
+      
+      const siteMap = new Map(sites.map(s => [s.name.toLowerCase().trim(), s.id]));
 
       rows.forEach((row, index) => {
-        const rowNum = index + 2; // +1 for 0-index, +1 for header
+        const rowNum = index + 2; 
         
-        if (!row.full_name) validationErrors.push(`Linha ${rowNum}: 'full_name' é obrigatório.`);
-        if (!row.cpf) validationErrors.push(`Linha ${rowNum}: 'cpf' é obrigatório.`);
-        if (!row.site_id) validationErrors.push(`Linha ${rowNum}: 'site_id' é obrigatório.`);
+        if (!row['NOME']) validationErrors.push(`Linha ${rowNum}: 'NOME' é obrigatório.`);
+        if (!row['CPF']) validationErrors.push(`Linha ${rowNum}: 'CPF' é obrigatório.`);
+        if (!row['OBRA']) validationErrors.push(`Linha ${rowNum}: 'OBRA' é obrigatório.`);
         
-        let cpfClean = String(row.cpf || '').replace(/\D/g, '');
+        const cpfClean = String(row['CPF'] || '').replace(/\D/g, '');
         
         if (cpfClean && cpfClean.length !== 11) {
-          validationErrors.push(`Linha ${rowNum}: CPF inválido (${row.cpf}).`);
+          validationErrors.push(`Linha ${rowNum}: CPF inválido (${row['CPF']}).`);
+        }
+        
+        const obraName = String(row['OBRA'] || '').toLowerCase().trim();
+        const siteId = siteMap.get(obraName);
+        if (row['OBRA'] && !siteId) {
+          validationErrors.push(`Linha ${rowNum}: Obra '${row['OBRA']}' não encontrada no sistema. Cadastre a obra primeiro com este exato nome.`);
         }
 
         if (validationErrors.length === 0) {
+          let apt = null;
+          if (row['APTIDÃO ALTURA / ESPAÇO CONFINADO']) {
+             const val = String(row['APTIDÃO ALTURA / ESPAÇO CONFINADO']).toUpperCase();
+             if (val.includes('APTO') && !val.includes('INAPTO')) apt = true;
+             else if (val.includes('INAPTO')) apt = false;
+          }
+          
+          const parseDate = (val: any) => {
+            if (!val) return null;
+            if (typeof val === 'number') {
+              const date = new Date(Math.round((val - 25569)*86400*1000));
+              return date.toISOString().split('T')[0];
+            }
+            if (typeof val === 'string') {
+              // Verifica se está no formato DD/MM/YYYY
+              const parts = val.split('/');
+              if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+              }
+              try {
+                const d = new Date(val);
+                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+              } catch {
+                // ignore invalid date parsing
+              }
+            }
+            return null;
+          };
+
           workersToInsert.push({
-            full_name: String(row.full_name),
+            full_name: String(row['NOME']),
             cpf: cpfClean,
-            registration_number: String(row.registration_number || `GERADO-${Date.now()}-${index}`),
-            current_site_id: String(row.site_id),
-            initial_role: row.current_role ? String(row.current_role) : null,
-            current_role: row.current_role ? String(row.current_role) : null,
-            status: String(row.status || 'ACTIVE').toUpperCase(),
-            aso_date: row.aso_date ? new Date(row.aso_date).toISOString().split('T')[0] : null
+            registration_number: String(row['MAT.'] || `GERADO-${Date.now()}-${index}`),
+            current_site_id: siteId,
+            initial_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']) : null,
+            current_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']) : null,
+            work_sector: row['SETOR'] ? String(row['SETOR']) : null,
+            admission_date: parseDate(row['ADMISSÃO']),
+            birth_date: parseDate(row['DATA DE NASCIMENTO']),
+            aso_date: parseDate(row['DATA DO ASO']),
+            phone_contact: row['CONTATO TELEFÔNICO'] ? String(row['CONTATO TELEFÔNICO']) : null,
+            uniform_size: row['TAMANHO DE FARDAMENTO'] ? String(row['TAMANHO DE FARDAMENTO']) : null,
+            boot_size: row['Nº DE BOTA'] ? String(row['Nº DE BOTA']) : null,
+            apt_for_height_and_confined_space: apt,
+            status: 'ACTIVE'
           });
         }
       });
@@ -125,14 +166,12 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
               >
                 <Download className="w-4 h-4" /> Baixar Modelo XLSX
               </button>
-              <a 
-                href="/Spreadsheet_Import_Guide.pdf" 
-                target="_blank"
-                rel="noreferrer"
+              <button 
+                onClick={() => setShowManual(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-surface hover:bg-surface-hover border border-border text-foreground rounded-md font-medium text-sm transition-colors"
               >
-                <FileSpreadsheet className="w-4 h-4" /> Manual de Preenchimento
-              </a>
+                <HelpCircle className="w-4 h-4" /> Instruções de Preenchimento
+              </button>
             </div>
           </div>
 
@@ -192,6 +231,69 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
           </button>
         </div>
       </div>
+      {showManual && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
+              <h2 className="text-xl font-bold text-foreground flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary"/> Manual de Preenchimento da Planilha</h2>
+              <button onClick={() => setShowManual(false)} className="p-2 hover:bg-surface-hover rounded-full transition-colors text-muted hover:text-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-foreground">
+              <p>Siga estas regras estritamente para garantir que o sistema importe centenas de funcionários sem erros. O sistema processa os dados de forma automatizada baseada nestes padrões.</p>
+              
+              <div className="space-y-4">
+                <div className="bg-surface-hover/30 p-4 rounded-lg border border-border/50">
+                  <h3 className="font-bold text-base mb-2">1. Dados Obrigatórios</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li><strong className="text-foreground">NOME:</strong> Nome completo do colaborador.</li>
+                    <li><strong className="text-foreground">CPF:</strong> Obrigatório. Pode conter pontos e traços ou apenas números. O sistema limpará os caracteres especiais. (Ex: <span className="font-mono bg-background px-1 rounded">123.456.789-00</span>).</li>
+                    <li><strong className="text-foreground">OBRA:</strong> O nome da obra digitado na planilha <strong className="text-red-500">DEVE SER EXATAMENTE IGUAL</strong> ao nome da obra cadastrada no sistema. Se digitar diferente, o sistema bloqueará a importação desta linha.</li>
+                  </ul>
+                </div>
+
+                <div className="bg-surface-hover/30 p-4 rounded-lg border border-border/50">
+                  <h3 className="font-bold text-base mb-2">2. Formato de Datas (MUITO IMPORTANTE)</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li>Colunas: <strong className="text-foreground">ADMISSÃO, DATA DE NASCIMENTO, DATA DO ASO</strong></li>
+                    <li>O Excel pode enviar a data como "Texto" ou como "Data". O nosso sistema aceita ambos.</li>
+                    <li>Se for digitar manualmente como texto, use ESTRITAMENTE o padrão brasileiro: <span className="font-mono bg-background px-1 text-primary font-bold rounded">DD/MM/AAAA</span> (Ex: 25/01/2024).</li>
+                  </ul>
+                </div>
+
+                <div className="bg-surface-hover/30 p-4 rounded-lg border border-border/50">
+                  <h3 className="font-bold text-base mb-2">3. Mapeamento de Booleans (Sim/Não)</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li>Coluna: <strong className="text-foreground">APTIDÃO ALTURA / ESPAÇO CONFINADO</strong></li>
+                    <li>Para indicar que o funcionário está apto, digite a palavra <strong className="text-emerald-500 font-bold">APTO</strong>.</li>
+                    <li>Para indicar que não está apto, digite a palavra <strong className="text-red-500 font-bold">INAPTO</strong>.</li>
+                    <li>Qualquer outra palavra será ignorada e o campo ficará vazio.</li>
+                  </ul>
+                </div>
+
+                <div className="bg-surface-hover/30 p-4 rounded-lg border border-border/50">
+                  <h3 className="font-bold text-base mb-2">4. Campos Opcionais</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li><strong className="text-foreground">MAT.:</strong> Matrícula. Se deixar em branco, o sistema vai gerar uma matrícula automática para não quebrar o cadastro.</li>
+                    <li><strong className="text-foreground">SETOR, FUNÇÃO, TAMANHO, BOTA, TELEFONE:</strong> Podem ficar em branco.</li>
+                  </ul>
+                </div>
+                
+                <div className="bg-amber-500/10 p-4 rounded-lg border border-amber-500/20 text-amber-600">
+                  <strong className="block mb-1">⚠️ Dica de Ouro:</strong>
+                  Evite deixar linhas totalmente em branco no meio da planilha. Após preencher, baixe o arquivo em <strong>.xlsm</strong> ou <strong>.xlsx</strong> e suba no sistema.
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border flex justify-end">
+              <button onClick={() => setShowManual(false)} className="px-6 py-2 bg-primary text-background font-bold rounded-md hover:bg-primary-dark transition-colors">
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

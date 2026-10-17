@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Worker, WorkerRole, ConstructionSite, EpiAssignment } from '../types';
+import { Worker, WorkerRole, ConstructionSite, EpiAssignment, DisciplinaryType } from '../types';
 import { useToast } from '../components/ui/Toast';
-import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat } from 'lucide-react';
-import { generateEpiRecordPdf } from '../lib/pdfGenerator';
+import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat, ShieldAlert, ShieldCheck, AlertTriangle, FileText, X } from 'lucide-react';
+import { generateEpiRecordPdf, generateDisciplinaryPdf } from '../lib/pdfGenerator';
+import { disciplinaryService } from '../services/disciplinaryService';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
+import { format } from 'date-fns';
 
 export function WorkerProfile() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +17,7 @@ export function WorkerProfile() {
   const [roles, setRoles] = useState<WorkerRole[]>([]);
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [epiAssignments, setEpiAssignments] = useState<EpiAssignment[]>([]);
+  const [disciplinaryRecords, setDisciplinaryRecords] = useState<any[]>([]);
   
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -29,7 +32,17 @@ export function WorkerProfile() {
   const [newRoleStartDate, setNewRoleStartDate] = useState('');
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'profile' | 'epi'>(searchParams.get('tab') === 'epi' ? 'epi' : 'profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'epi' | 'disciplinary'>(
+    searchParams.get('tab') === 'epi' ? 'epi' : searchParams.get('tab') === 'disciplinary' ? 'disciplinary' : 'profile'
+  );
+
+  // Disciplinary Modal state
+  const [isDisciplinaryModalOpen, setIsDisciplinaryModalOpen] = useState(false);
+  const [disciplinaryType, setDisciplinaryType] = useState<DisciplinaryType>('ORIENTACAO_SEGURANCA');
+  const [disciplinaryTitle, setDisciplinaryTitle] = useState('');
+  const [disciplinaryContent, setDisciplinaryContent] = useState('');
+  const [appliedByName, setAppliedByName] = useState('Engenharia de Segurança');
+  const [savingDisciplinary, setSavingDisciplinary] = useState(false);
 
   // Signature state
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -41,11 +54,12 @@ export function WorkerProfile() {
     try {
       if (!id) return;
 
-      const [workerRes, rolesRes, sitesRes, epiRes] = await Promise.all([
+      const [workerRes, rolesRes, sitesRes, epiRes, discRes] = await Promise.all([
         supabase.from('workers').select('*, site:construction_sites(*)').eq('id', id).single(),
         supabase.from('worker_roles_history').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name'),
-        supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).order('assigned_at', { ascending: false })
+        supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).order('assigned_at', { ascending: false }),
+        disciplinaryService.fetchRecords(id).catch(() => [])
       ]);
 
       if (workerRes.error) throw workerRes.error;
@@ -57,11 +71,77 @@ export function WorkerProfile() {
       setRoles(rolesRes.data as WorkerRole[]);
       setSites(sitesRes.data as ConstructionSite[]);
       setEpiAssignments(epiRes.data || []);
+      setDisciplinaryRecords(discRes || []);
     } catch (err: unknown) {
       console.error('Erro ao buscar perfil:', err);
       toast({ type: 'error', title: 'Erro', message: 'Erro Supabase: ' + (err instanceof Error ? err.message : JSON.stringify(err)) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openDisciplinaryModal = (type: DisciplinaryType) => {
+    if (!worker) return;
+    const today = format(new Date(), 'dd/MM/yyyy');
+    const nome = worker.full_name || '';
+    const cpf = worker.cpf || '';
+    const mat = worker.registration_number || '';
+    const funcao = worker.current_role || worker.initial_role || '';
+    const obra = worker.site?.name || 'Obra Geral';
+
+    let title = '';
+    let content = '';
+
+    if (type === 'ORIENTACAO_SEGURANCA') {
+      title = 'Termo de Orientação e Conscientização de Segurança do Trabalho';
+      content = `Em ${today}, o(a) colaborador(a) ${nome}, portador(a) do CPF nº ${cpf}, matrícula nº ${mat}, ocupante da função de ${funcao}, foi devidamente orientado(a) e instruído(a) sobre as normas de segurança do trabalho e a obrigatoriedade do uso correto e contínuo dos Equipamentos de Proteção Individual (EPIs), em atendimento à NR-06 e NR-18 do Ministério do Trabalho e Emprego.\n\nO(a) colaborador(a) declara estar ciente das diretrizes e compromete-se a zelar por sua integridade física e a de seus colegas de trabalho.`;
+    } else if (type === 'ADVERTENCIA_VERBAL') {
+      title = 'Registro Formal de Advertência Verbal';
+      content = `Fica advertido(a) verbalmente em ${today} o(a) colaborador(a) ${nome}, portador(a) do CPF nº ${cpf}, matrícula nº ${mat}, ocupante da função de ${funcao}, lotado(a) na ${obra}, pelo descumprimento dos procedimentos e normas de segurança do trabalho da empresa (ex: ausência ou uso incorreto de EPI no canteiro de obras).\n\nFica o(a) mesmo(a) ciente de que a reincidência nesta ou em outras condutas imprudentes ensejará a aplicação de sanções disciplinares mais severas, tais como advertência escrita, suspensão disciplinar e até rescisão do contrato de trabalho por justa causa com fundamento no Artigo 482 da CLT.`;
+    } else if (type === 'ADVERTENCIA_ESCRITA') {
+      title = 'Comunicado Formal de Advertência Disciplinar Escrita';
+      content = `Vimos pela presente aplicar-lhe formalmente ADVERTÊNCIA DISCIPLINAR ESCRITA em ${today}, em virtude do não cumprimento do dever legal e contratual de utilizar e conservar adequadamente os Equipamentos de Proteção Individual (EPIs) fornecidos pela empresa, em inobservância ao Artigo 158, inciso II da Consolidação das Leis do Trabalho (CLT) e item 6.6.2 da NR-06.\n\nReiteramos que a persistência em condutas semelhantes será considerada ato de indisciplina ou insubordinação, ensejando a rescisão motivada do contrato de trabalho por justa causa, nos termos do Artigo 482, alínea 'h' da CLT.`;
+    } else {
+      title = 'Relatório de Ocorrência Disciplinar';
+      content = `Em ${today}, na unidade/obra ${obra}, registra-se a seguinte ocorrência disciplinar envolvendo o(a) colaborador(a) ${nome}, CPF nº ${cpf}, matrícula nº ${mat}, função ${funcao}:\n\n[Descreva detalhadamente a ocorrência, local, circunstâncias e medidas adotadas]`;
+    }
+
+    setDisciplinaryType(type);
+    setDisciplinaryTitle(title);
+    setDisciplinaryContent(content);
+    setIsDisciplinaryModalOpen(true);
+  };
+
+  const handleSaveDisciplinary = async () => {
+    if (!worker) return;
+    setSavingDisciplinary(true);
+    try {
+      await disciplinaryService.createRecord({
+        worker_id: worker.id,
+        type: disciplinaryType,
+        title: disciplinaryTitle,
+        content_html: disciplinaryContent,
+        applied_by: appliedByName || undefined
+      });
+
+      toast({ type: 'success', title: 'Sucesso', message: 'Medida disciplinar salva e PDF gerado!' });
+      
+      await generateDisciplinaryPdf({
+        worker,
+        type: disciplinaryType,
+        title: disciplinaryTitle,
+        content_html: disciplinaryContent,
+        applied_by_name: appliedByName || 'Engenharia de Segurança',
+        site_name: worker.site?.name
+      }, 'download');
+
+      setIsDisciplinaryModalOpen(false);
+      const updated = await disciplinaryService.fetchRecords(worker.id);
+      setDisciplinaryRecords(updated);
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar medida disciplinar.' });
+    } finally {
+      setSavingDisciplinary(false);
     }
   };
 
@@ -218,21 +298,71 @@ export function WorkerProfile() {
         </div>
       </div>
 
+      {/* Barra de Ações Disciplinares */}
+      <div className="bg-surface border border-border rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
+          <ShieldAlert className="w-5 h-5 text-amber-500" />
+          <span>Medidas Disciplinares & Segurança:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => openDisciplinaryModal('ORIENTACAO_SEGURANCA')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Orientação de Segurança
+          </button>
+          <button
+            onClick={() => openDisciplinaryModal('ADVERTENCIA_VERBAL')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            Advertência Verbal
+          </button>
+          <button
+            onClick={() => openDisciplinaryModal('ADVERTENCIA_ESCRITA')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Advertência Escrita
+          </button>
+          <button
+            onClick={() => openDisciplinaryModal('PERSONALIZADO')}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-border bg-surface-hover text-foreground hover:bg-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-primary" />
+            Personalizar Relatório
+          </button>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-4 border-b border-border">
         <button
           onClick={() => setActiveTab('profile')}
-          className={`pb-3 font-medium text-sm transition-colors relative ${activeTab === 'profile' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer ${activeTab === 'profile' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Dados e Cargos
           {activeTab === 'profile' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('epi')}
-          className={`pb-3 font-medium text-sm transition-colors relative ${activeTab === 'epi' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer ${activeTab === 'epi' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Ficha de EPI
           {activeTab === 'epi' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('disciplinary')}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer flex items-center gap-1.5 ${activeTab === 'disciplinary' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+        >
+          Medidas Disciplinares
+          {disciplinaryRecords.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full">
+              {disciplinaryRecords.length}
+            </span>
+          )}
+          {activeTab === 'disciplinary' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
         </button>
       </div>
 
@@ -504,7 +634,7 @@ export function WorkerProfile() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'epi' ? (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
@@ -586,6 +716,174 @@ export function WorkerProfile() {
               </table>
               </div>
             )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-medium text-foreground">Histórico Disciplinar e Termos Formais</h3>
+              <p className="text-sm text-muted">Acompanhe as advertências, orientações de segurança e termos legais registrados.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openDisciplinaryModal('ORIENTACAO_SEGURANCA')}
+                className="bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Orientação
+              </button>
+              <button
+                onClick={() => openDisciplinaryModal('ADVERTENCIA_ESCRITA')}
+                className="bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> Advertência
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            {disciplinaryRecords.length === 0 ? (
+              <div className="p-12 text-center text-muted">
+                <ShieldCheck className="w-12 h-12 text-emerald-500/40 mx-auto mb-3" />
+                <p className="text-foreground font-medium">Nenhum registro disciplinar para este colaborador.</p>
+                <p className="text-xs text-muted mt-1">Utilize a barra de ferramentas acima para registrar orientações ou advertências se necessário.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {disciplinaryRecords.map((record) => {
+                  const isOrientacao = record.type === 'ORIENTACAO_SEGURANCA';
+                  const isVerbal = record.type === 'ADVERTENCIA_VERBAL';
+                  const isEscrita = record.type === 'ADVERTENCIA_ESCRITA';
+
+                  return (
+                    <div key={record.id} className="p-4 hover:bg-surface-hover/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            isOrientacao
+                              ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              : isVerbal
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : isEscrita
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
+                          }`}>
+                            {isOrientacao ? 'Orientação' : isVerbal ? 'Advertência Verbal' : isEscrita ? 'Advertência Escrita' : 'Personalizado'}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {record.applied_at ? format(new Date(record.applied_at), 'dd/MM/yyyy HH:mm') : '-'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground">{record.title}</h4>
+                        <p className="text-xs text-muted line-clamp-2 max-w-2xl">
+                          {(record.content_html || '').replace(/<[^>]+>/g, '')}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => generateDisciplinaryPdf({
+                            worker,
+                            type: record.type,
+                            title: record.title,
+                            content_html: record.content_html,
+                            applied_by_name: 'Engenharia de Segurança',
+                            site_name: worker.site?.name
+                          }, 'download')}
+                          className="bg-surface hover:bg-surface-hover text-primary border border-primary/30 text-xs font-semibold py-1.5 px-3 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" /> Baixar Termo (PDF)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Registro Disciplinar */}
+      {isDisciplinaryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-foreground text-base">Registrar Medida Disciplinar / Segurança</h3>
+              </div>
+              <button
+                onClick={() => setIsDisciplinaryModalOpen(false)}
+                className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 flex-1">
+              <div className="bg-background border border-border rounded-lg p-3 text-xs grid grid-cols-2 gap-2">
+                <div><span className="text-muted">Colaborador:</span> <strong className="text-foreground">{worker.full_name}</strong></div>
+                <div><span className="text-muted">CPF:</span> <strong className="text-foreground">{worker.cpf}</strong></div>
+                <div><span className="text-muted">Matrícula:</span> <strong className="text-foreground">{worker.registration_number}</strong></div>
+                <div><span className="text-muted">Função:</span> <strong className="text-foreground">{worker.current_role || worker.initial_role || 'Geral'}</strong></div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Título do Documento</label>
+                <input
+                  type="text"
+                  value={disciplinaryTitle}
+                  onChange={e => setDisciplinaryTitle(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-medium"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Texto Formal / Fatos / Fundamentação Jurídica</label>
+                <textarea
+                  rows={8}
+                  value={disciplinaryContent}
+                  onChange={e => setDisciplinaryContent(e.target.value)}
+                  className="w-full bg-background border border-border rounded p-3 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs leading-relaxed"
+                />
+                <p className="text-[11px] text-muted">Você pode personalizar os fatos e circunstâncias acima antes de salvar e emitir.</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Responsável Técnico / Aplicador</label>
+                <input
+                  type="text"
+                  value={appliedByName}
+                  onChange={e => setAppliedByName(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                  placeholder="Nome do Técnico de Segurança ou Engenheiro"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border flex items-center justify-end gap-3 bg-surface-hover/20">
+              <button
+                type="button"
+                onClick={() => setIsDisciplinaryModalOpen(false)}
+                className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={savingDisciplinary || !disciplinaryTitle || !disciplinaryContent}
+                onClick={handleSaveDisciplinary}
+                className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+              >
+                {savingDisciplinary ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Salvar & Gerar Termo (PDF)
+              </button>
+            </div>
           </div>
         </div>
       )}

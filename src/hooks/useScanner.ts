@@ -97,7 +97,7 @@ export function useScanner() {
           audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,
           biometric_match_score: biometricsData?.score,
           liveness_verified: biometricsData?.liveness,
-          condition_on_delivery: 'GOOD'
+          condition_on_delivery: 'GOOD' as const
         };
       });
 

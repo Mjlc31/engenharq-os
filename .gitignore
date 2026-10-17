@@ -9,3 +9,19 @@ coverage/
 
 gh.zip
 gh_ext/
+
+# Diagnostic scratch files & test outputs
+*.pdf
+!public/ficha_epi_template.pdf
+*.png
+*.bak
+*.patch
+test_*.js
+measure*.js
+convert_pdf.js
+screenshot_*.js
+serve_*.js
+fix_*.cjs
+update_*.cjs
+*.xlsm
+!public/modelo_colaboradores.xlsm

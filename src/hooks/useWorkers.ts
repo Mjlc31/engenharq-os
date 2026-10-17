@@ -13,8 +13,8 @@ export function useWorkers() {
     queryKey: ['workers-sites'],
     queryFn: async () => {
       const [workersData, sitesData] = await Promise.all([
-        supabase.from('workers').select('*, site:construction_sites(*)').order('created_at', { ascending: false }),
-        supabase.from('construction_sites').select('*').order('name')
+        supabase.from('workers').select('*, site:construction_sites(*)').is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('construction_sites').select('*').is('deleted_at', null).order('name')
       ]);
       
       if (workersData.error) throw workersData.error;
@@ -204,7 +204,7 @@ export function useWorkers() {
 
   const deleteWorkerMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error: deleteError } = await supabase.from('workers').delete().eq('id', id);
+      const { error: deleteError } = await supabase.from('workers').update({ deleted_at: new Date().toISOString() }).eq('id', id);
       if (deleteError) throw deleteError;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workers-sites'] }),

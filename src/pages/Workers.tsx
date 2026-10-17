@@ -97,15 +97,8 @@ export function Workers() {
           <p className="text-muted mt-2">Gerencie o cadastro de funcionários</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={downloadTemplateCSV} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
-            <FileText className="w-4 h-4" /> Baixar Modelo
-          </button>
-          <label role="button" tabIndex={0} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm cursor-pointer">
-            <Upload className="w-4 h-4" /> Importar
-            <input type="file" accept=".csv" onChange={handleImportCSV} className="sr-only" />
-          </label>
-          <button onClick={handleExportCSV} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
-            <Download className="w-4 h-4" /> Exportar
+          <button onClick={() => setIsImporting(true)} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
+            <Upload className="w-4 h-4" /> Importação em Massa
           </button>
           <button onClick={() => setIsAdding(true)} className="bg-primary text-primary-foreground font-medium py-2 px-4 rounded-md transition-all flex items-center gap-2 text-sm hover:opacity-90">
             <Plus className="w-4 h-4" /> Novo Funcionário
@@ -304,6 +297,16 @@ export function Workers() {
             </div>
           </div>
         </div>
+      )}
+
+      {isImporting && (
+        <BulkImportModal
+          onClose={() => setIsImporting(false)}
+          onSuccess={() => {
+            setIsImporting(false);
+            window.location.reload(); // Simple reload to refetch workers
+          }}
+        />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings, ClipboardList, Activity, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, ChevronDown, ChevronRight, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
@@ -61,6 +61,7 @@ export function Layout() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Cadastros: false,
     Operações: false,
+    SST: true,
     Relatórios: false,
   });
 
@@ -75,6 +76,8 @@ export function Layout() {
     { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Colaboradores', href: '/workers', icon: Users, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Painel de Operações', href: '/operations', icon: Activity, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Treinamentos (NR)', href: '/trainings', icon: GraduationCap, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
+    { name: 'Controle de ASO', href: '/aso', icon: HeartPulse, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Painel de Relatórios', href: '/reports', icon: ClipboardList, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Empresa / Obras', href: '/sites', icon: Building2, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
     { name: 'Imprimir QR Codes', href: '/tags', icon: Printer, roles: ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'] },
@@ -192,6 +195,28 @@ export function Layout() {
               {openSections['Operações'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </button>
             {openSections['Operações'] && navigation.filter(item => ['Almoxarifado (Scan)', 'Mapa de Ativos', 'Painel de Operações'].includes(item.name)).map(item => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
+                >
+                  <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
+                  {item.name}
+                </Link>
+              );
+            })}
+
+            <button 
+              onClick={() => toggleSection('SST')}
+              className="flex items-center justify-between w-full text-[10px] font-bold text-muted uppercase tracking-widest px-3 mt-4 mb-1 hover:text-foreground transition-colors focus:outline-none"
+            >
+              <span>Saúde e Segurança (SST)</span>
+              {openSections['SST'] ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+            {openSections['SST'] && navigation.filter(item => ['Treinamentos (NR)', 'Controle de ASO'].includes(item.name)).map(item => {
               const isActive = location.pathname === item.href;
               return (
                 <Link

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useWorkers } from '../hooks/useWorkers';
-import { FileText, Download, Filter, Users, Package, Clock, AlertTriangle, CalendarRange, Search, BarChart3, X, Eye } from 'lucide-react';
-import { generateEpiRecordPdf } from '../lib/pdfGenerator';
+import { FileText, Download, Filter, Users, Package, Clock, AlertTriangle, CalendarRange, Search, BarChart3, X, Eye, CheckSquare, Square, Receipt } from 'lucide-react';
+import { generateEpiRecordPdf, generateSelectiveLostChargePdf } from '../lib/pdfGenerator';
 import { supabase } from '../lib/supabase';
 import Papa from 'papaparse';
 import { useToast } from '../components/ui/Toast';
-import { addDays, isAfter, isBefore, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { addDays, isAfter, isBefore, startOfDay, endOfDay, parseISO, format } from 'date-fns';
 
 export function Reports() {
   const { workers, sites } = useWorkers();
@@ -14,9 +14,14 @@ export function Reports() {
   const [siteFilter, setSiteFilter] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   
-  // Ficha NR-6 Viewer State
+  // Ficha NR-6 & Selective Report State
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
+  const [workerSearchTerm, setWorkerSearchTerm] = useState('');
+  const [workerAssignments, setWorkerAssignments] = useState<any[]>([]);
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<string[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [isGeneratingFicha, setIsGeneratingFicha] = useState(false);
+  const [isGeneratingSelective, setIsGeneratingSelective] = useState(false);
 
   const [showDaysModal, setShowDaysModal] = useState(false);
   const [daysValue, setDaysValue] = useState<number>(30);
@@ -74,7 +79,7 @@ export function Reports() {
           const today = startOfDay(new Date());
           const limitDate = endOfDay(addDays(today, days));
 
-          filteredData = filteredData.filter((e: unknown) => {
+          filteredData = filteredData.filter((e: any) => {
             if (type === 'expiring') {
               const validityStr = e.catalog?.ca_validity;
               if (!validityStr) return false;
@@ -90,7 +95,7 @@ export function Reports() {
           });
         }
 
-        dataToExport = filteredData.map((e: unknown) => {
+        dataToExport = filteredData.map((e: any) => {
           const expDate = e.catalog?.ca_validity ? new Date(e.catalog.ca_validity).toLocaleDateString() : 'N/A';
           return {
             Codigo_Rastreio: e.tracking_code,
@@ -118,7 +123,7 @@ export function Reports() {
       link.click();
       document.body.removeChild(link);
       toast({ type: 'success', title: 'Relatório Gerado', message: 'O download foi iniciado com sucesso.' });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
@@ -140,26 +145,84 @@ export function Reports() {
   };
 
 
-  const fetchFichaData = async () => {
+  const handleSelectWorker = async (workerId: string) => {
+    setSelectedWorkerId(workerId);
+    setSelectedAssignmentIds([]);
+    if (!workerId) {
+      setWorkerAssignments([]);
+      return;
+    }
+    setLoadingAssignments(true);
+    try {
+      const { data, error } = await supabase
+        .from('epi_assignments')
+        .select('*, catalog:epi_catalog!catalog_id(*)')
+        .eq('worker_id', workerId)
+        .order('assigned_at', { ascending: false });
+
+      if (error) throw error;
+      setWorkerAssignments(data || []);
+      // Auto-select all by default
+      setSelectedAssignmentIds((data || []).map(a => a.id));
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message });
+    } finally {
+      setLoadingAssignments(false);
+    }
+  };
+
+  const toggleSelectAssignment = (id: string) => {
+    setSelectedAssignmentIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllAssignments = () => {
+    if (selectedAssignmentIds.length === workerAssignments.length) {
+      setSelectedAssignmentIds([]);
+    } else {
+      setSelectedAssignmentIds(workerAssignments.map(a => a.id));
+    }
+  };
+
+  const selectedAssignmentsList = workerAssignments.filter(a => selectedAssignmentIds.includes(a.id));
+  const selectedTotalAmount = selectedAssignmentsList.reduce((acc, a) => {
+    const unitPrice = Number(a.unit_price_at_delivery ?? a.catalog?.unit_price ?? 0);
+    return acc + unitPrice;
+  }, 0);
+
+  const handleGenerateSelectiveReport = async (mode: 'download' | 'preview' = 'download') => {
     const worker = workers.find(w => w.id === selectedWorkerId);
-    if (!worker) throw new Error("Trabalhador não encontrado.");
+    if (!worker) {
+      toast({ type: 'error', title: 'Atenção', message: 'Selecione um colaborador primeiro.' });
+      return;
+    }
+    if (selectedAssignmentsList.length === 0) {
+      toast({ type: 'error', title: 'Atenção', message: 'Selecione ao menos um item de EPI para o relatório.' });
+      return;
+    }
 
-    const { data: assignments } = await supabase
-      .from('epi_assignments')
-      .select('*, catalog:epi_catalog!catalog_id(*)')
-      .eq('worker_id', worker.id)
-      .order('assigned_at', { ascending: false });
-
-    return { worker, assignments: assignments || [] };
+    setIsGeneratingSelective(true);
+    try {
+      const site = sites.find(s => s.id === worker.current_site_id);
+      await generateSelectiveLostChargePdf(worker, selectedAssignmentsList, site?.name, mode);
+      if (mode === 'download') {
+        toast({ type: 'success', title: 'Sucesso', message: 'Relatório de extravio/cobrança gerado com sucesso!' });
+      }
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message });
+    } finally {
+      setIsGeneratingSelective(false);
+    }
   };
 
   const handlePreviewFicha = async () => {
-    if (!selectedWorkerId) return;
+    const worker = workers.find(w => w.id === selectedWorkerId);
+    if (!worker) return;
     setIsGeneratingFicha(true);
     try {
-      const { worker, assignments } = await fetchFichaData();
-      await generateEpiRecordPdf(worker, assignments, 'preview');
-    } catch (err: unknown) {
+      await generateEpiRecordPdf(worker, workerAssignments, 'preview');
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setIsGeneratingFicha(false);
@@ -167,18 +230,29 @@ export function Reports() {
   };
 
   const handleDownloadFicha = async () => {
-    if (!selectedWorkerId) return;
+    const worker = workers.find(w => w.id === selectedWorkerId);
+    if (!worker) return;
     setIsGeneratingFicha(true);
     try {
-      const { worker, assignments } = await fetchFichaData();
-      await generateEpiRecordPdf(worker, assignments, 'download');
+      await generateEpiRecordPdf(worker, workerAssignments, 'download');
       toast({ type: 'success', title: 'PDF Gerado', message: 'Download da Ficha de EPI iniciado.' });
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
       setIsGeneratingFicha(false);
     }
   };
+
+  const filteredWorkers = workers.filter(w => {
+    const term = workerSearchTerm.toLowerCase().trim();
+    if (!term) return true;
+    const nameMatch = w.full_name?.toLowerCase().includes(term);
+    const matMatch = w.registration_number?.toLowerCase().includes(term);
+    const cpfMatch = w.cpf?.toLowerCase().includes(term);
+    return nameMatch || matMatch || cpfMatch;
+  });
+
+  const selectedWorkerObj = workers.find(w => w.id === selectedWorkerId);
 
   const reportCards = [
     { id: 'workers', title: 'Relatório de Funcionários', icon: Users, desc: 'Lista de funcionários ativos e inativos com seus EPIs', color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -226,48 +300,212 @@ export function Reports() {
         </div>
       </div>
       
-      {/* Ficha NR-6 Generator */}
-      <div className="bg-surface border border-border rounded-xl p-6 mt-8">
-        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
-          <FileText className="w-6 h-6 text-primary" /> Ficha de EPI (NR-6)
-        </h2>
-        <p className="text-sm text-muted mb-6">Selecione o trabalhador para visualizar ou baixar o documento formal (PDF).</p>
+      {/* Ficha NR-6 & Cautela Seletiva Generator */}
+      <div className="bg-surface border border-border rounded-xl p-6 mt-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2 text-foreground">
+              <FileText className="w-6 h-6 text-primary" /> Ficha de EPI (NR-6) & Cautela Seletiva de Extravio
+            </h2>
+            <p className="text-sm text-muted">
+              Busque o colaborador por Nome ou Matrícula, selecione os itens desejados e emita o relatório formal ou a ficha de entrega completa.
+            </p>
+          </div>
+          {selectedWorkerObj && (
+            <div className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface-hover border border-border flex items-center gap-2">
+              <span className="text-muted">Obra Atual:</span>
+              <span className="text-primary">{sites.find(s => s.id === selectedWorkerObj.current_site_id)?.name || 'Central'}</span>
+            </div>
+          )}
+        </div>
         
-        <div className="flex flex-col md:flex-row items-end gap-4">
-          <div className="flex-1 w-full space-y-2">
-            <label className="text-sm font-medium text-foreground">Trabalhador</label>
+        {/* Filtro duplo: Busca textual + Seletor */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted">Filtrar Colaborador (Nome, Matrícula ou CPF)</label>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
-              <select 
-                value={selectedWorkerId} 
-                onChange={e => setSelectedWorkerId(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md"
-              >
-                <option value="">Selecione um funcionário...</option>
-                {workers.map(w => (
-                  <option key={w.id} value={w.id}>{w.full_name} (Mat: {w.registration_number})</option>
-                ))}
-              </select>
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
+              <input
+                type="text"
+                placeholder="Ex: Arthur, 12345, 080..."
+                value={workerSearchTerm}
+                onChange={e => setWorkerSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-primary"
+              />
             </div>
           </div>
-          
-          <div className="flex gap-2 w-full md:w-auto">
-            <button 
-              onClick={handlePreviewFicha}
-              disabled={!selectedWorkerId || isGeneratingFicha}
-              className="flex-1 md:flex-none px-5 py-2 bg-surface border border-border text-foreground font-bold rounded-md hover:bg-surface-hover disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted">Selecione o Colaborador ({filteredWorkers.length} encontrados)</label>
+            <select 
+              value={selectedWorkerId} 
+              onChange={e => handleSelectWorker(e.target.value)}
+              className="w-full px-4 py-2 bg-background border border-border rounded-md text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
             >
-              <Eye className="w-4 h-4" /> Visualizar
-            </button>
-            <button 
-              onClick={handleDownloadFicha}
-              disabled={!selectedWorkerId || isGeneratingFicha}
-              className="flex-1 md:flex-none px-5 py-2 bg-primary text-background font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-            >
-              {isGeneratingFicha ? 'Gerando...' : <><Download className="w-4 h-4" /> Baixar PDF</>}
-            </button>
+              <option value="">Selecione um funcionário...</option>
+              {filteredWorkers.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.full_name} — Mat: {w.registration_number} (CPF: {w.cpf})
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+
+        {/* Tabela de Itens do Colaborador para Seleção */}
+        {selectedWorkerId && (
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-background/50 p-3 rounded-lg border border-border">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSelectAllAssignments}
+                  disabled={workerAssignments.length === 0}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {selectedAssignmentIds.length === workerAssignments.length && workerAssignments.length > 0 ? (
+                    <CheckSquare className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Square className="w-4 h-4 text-muted" />
+                  )}
+                  Selecionar Todos ({workerAssignments.length})
+                </button>
+                <span className="text-xs text-muted">
+                  • <strong>{selectedAssignmentIds.length}</strong> de {workerAssignments.length} itens marcados
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Subtotal Acumulado:</span>
+                <span className="text-sm font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
+                  R$ {selectedTotalAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {loadingAssignments ? (
+              <div className="p-8 text-center text-muted flex items-center justify-center gap-2 text-sm">
+                <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                Carregando histórico de entregas...
+              </div>
+            ) : workerAssignments.length === 0 ? (
+              <div className="p-8 text-center text-muted text-sm bg-background/20 rounded-lg border border-dashed border-border">
+                Nenhum EPI registrado ou entregue para este colaborador.
+              </div>
+            ) : (
+              <div className="border border-border rounded-lg overflow-x-auto max-h-64 overflow-y-auto">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead className="bg-surface-hover text-muted uppercase font-semibold sticky top-0 z-10">
+                    <tr>
+                      <th className="w-10 px-4 py-2.5 text-center">Sel.</th>
+                      <th className="px-4 py-2.5">Item / EPI</th>
+                      <th className="px-4 py-2.5">C.A.</th>
+                      <th className="px-4 py-2.5">Data Entrega</th>
+                      <th className="px-4 py-2.5">Status</th>
+                      <th className="px-4 py-2.5 text-right">Valor Unit.</th>
+                      <th className="px-4 py-2.5 text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {workerAssignments.map((assignment) => {
+                      const isSelected = selectedAssignmentIds.includes(assignment.id);
+                      const unitVal = Number(assignment.unit_price_at_delivery ?? assignment.catalog?.unit_price ?? 0);
+                      const isReturned = !!assignment.returned_at;
+
+                      return (
+                        <tr
+                          key={assignment.id}
+                          onClick={() => toggleSelectAssignment(assignment.id)}
+                          className={`hover:bg-surface-hover/50 cursor-pointer transition-colors ${
+                            isSelected ? 'bg-primary/5' : ''
+                          }`}
+                        >
+                          <td className="px-4 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectAssignment(assignment.id)}
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-4 py-2.5 font-medium text-foreground">
+                            {assignment.catalog?.name || 'EPI Não Identificado'}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-muted">
+                            {assignment.catalog?.ca_number || '-'}
+                          </td>
+                          <td className="px-4 py-2.5 text-muted">
+                            {assignment.assigned_at ? format(new Date(assignment.assigned_at), 'dd/MM/yyyy') : '-'}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isReturned ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                Devolvido
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                Em Posse
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-muted">
+                            R$ {unitVal.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold text-foreground">
+                            R$ {unitVal.toFixed(2)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Ações de Emissão de Relatórios */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={selectedAssignmentIds.length === 0 || isGeneratingSelective}
+                  onClick={() => handleGenerateSelectiveReport('download')}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-md text-xs transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer shadow-sm"
+                  title="Gera termo de extravio/cobrança com termo de ciência CLT art. 462"
+                >
+                  <Receipt className="w-4 h-4" />
+                  {isGeneratingSelective ? 'Gerando...' : `Gerar Relatório de Extravio / Cobrança (${selectedAssignmentIds.length} itens)`}
+                </button>
+                <button
+                  type="button"
+                  disabled={selectedAssignmentIds.length === 0 || isGeneratingSelective}
+                  onClick={() => handleGenerateSelectiveReport('preview')}
+                  className="px-3 py-2 bg-surface hover:bg-surface-hover border border-border text-foreground font-semibold rounded-md text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Prévia Cautela
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button 
+                  type="button"
+                  onClick={handlePreviewFicha}
+                  disabled={!selectedWorkerId || isGeneratingFicha}
+                  className="px-3 py-2 bg-surface border border-border text-foreground font-semibold rounded-md text-xs hover:bg-surface-hover disabled:opacity-50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Prévia Ficha NR-6
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleDownloadFicha}
+                  disabled={!selectedWorkerId || isGeneratingFicha}
+                  className="px-4 py-2 bg-primary text-background font-bold rounded-md text-xs hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                >
+                  {isGeneratingFicha ? 'Gerando...' : <><Download className="w-4 h-4" /> Baixar Ficha NR-6 (PDF)</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Report Cards Grid */}

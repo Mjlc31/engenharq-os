@@ -27,6 +27,7 @@ export function useCompany() {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
+        .is('deleted_at', null)
         .limit(1)
         .maybeSingle();
 

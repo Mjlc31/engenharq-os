@@ -3,11 +3,13 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import Webcam from 'react-webcam';
 import { supabase } from '../lib/supabase';
 import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
-import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw } from 'lucide-react';
+import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw, PenTool } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
+import { SignaturePad } from '../components/scanner/SignaturePad';
+import SignatureCanvas from 'react-signature-canvas';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -40,6 +42,8 @@ export function Scanner() {
   
   const webcamRef = useRef<Webcam>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [evidenceMode, setEvidenceMode] = useState<'photo' | 'signature'>('photo');
+  const signaturePadRef = useRef<SignatureCanvas>(null);
   
   const [manualInputOpen, setManualInputOpen] = useState<'WORKER' | null>(null);
   const [manualInputValue, setManualInputValue] = useState('');
@@ -175,8 +179,13 @@ export function Scanner() {
   };
 
   const handleConfirmPhoto = async () => {
-    if (!capturedPhoto) {
-      setError('Por favor, tire uma foto do colaborador com o EPI.');
+    if (evidenceMode === 'photo' && !capturedPhoto) {
+      setError('Por favor, tire uma foto da evidência de entrega.');
+      return;
+    }
+    const signatureUrlData = evidenceMode === 'signature' ? signaturePadRef.current?.toDataURL() : null;
+    if (evidenceMode === 'signature' && (!signatureUrlData || signaturePadRef.current?.isEmpty())) {
+      setError('Por favor, colete a assinatura do colaborador.');
       return;
     }
     if (!worker) {
@@ -186,18 +195,14 @@ export function Scanner() {
     
     setLoading(true);
     try {
-      // Create a small placeholder for the signature since we are replacing it
-      const canvas = document.createElement('canvas');
-      canvas.width = 1; canvas.height = 1;
-      const emptySignature = canvas.toDataURL('image/png');
-      
-      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, emptySignature);
+      const evidenceUrlToUpload = evidenceMode === 'photo' ? capturedPhoto! : signatureUrlData!;
+      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, evidenceUrlToUpload);
       
       const timestamp = new Date().getTime();
       
       // Upload files to storage (parallel)
       const [photoUrl, ] = await Promise.all([
-        uploadToStorage(capturedPhoto, 'epi-receipts', `evidences/${worker.id}_${timestamp}.jpg`),
+        uploadToStorage(evidenceUrlToUpload, 'epi-receipts', `evidences/${worker.id}_${timestamp}.png`),
         uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`)
       ]);
       
@@ -282,7 +287,7 @@ export function Scanner() {
           <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step === 'SUCCESS' ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'PHOTO_CAPTURE' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
             {step === 'SUCCESS' ? <Check className="w-4 h-4" /> : '3'}
           </div>
-          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'PHOTO_CAPTURE' || step === 'SUCCESS' ? 'text-foreground' : 'text-muted'}`}>Foto</span>
+          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'PHOTO_CAPTURE' || step === 'SUCCESS' ? 'text-foreground' : 'text-muted'}`}>Evidência</span>
         </div>
       </div>
 
@@ -539,6 +544,23 @@ export function Scanner() {
               </div>
             )}
             
+            <div className="flex gap-2 bg-surface p-1 rounded-lg border border-border">
+              <button 
+                onClick={() => setEvidenceMode('photo')} 
+                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'photo' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
+              >
+                <Camera className="w-4 h-4" /> Tirar Foto
+              </button>
+              <button 
+                onClick={() => setEvidenceMode('signature')} 
+                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'signature' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
+              >
+                <PenTool className="w-4 h-4" /> Assinatura Digital
+              </button>
+            </div>
+
+            {evidenceMode === 'photo' ? (
+            <>
             <div className="border border-border rounded-lg bg-background overflow-hidden relative flex flex-col">
               <div className="p-3 border-b border-border flex justify-between items-center bg-surface-hover">
                 <div className="flex items-center gap-2">
@@ -584,10 +606,14 @@ export function Scanner() {
             <div className="text-[10px] text-muted leading-relaxed text-center px-4">
               Ao capturar a foto, certifique-se de que o <strong>colaborador e o(s) EPI(s) em mãos estão visíveis</strong>. Esta imagem serve como declaração e evidência da entrega dos equipamentos, substituindo a assinatura física.
             </div>
+            </>
+            ) : (
+              <SignaturePad ref={signaturePadRef} onClear={() => signaturePadRef.current?.clear()} />
+            )}
             
             <button
               onClick={handleConfirmPhoto}
-              disabled={loading || !capturedPhoto}
+              disabled={loading || (evidenceMode === 'photo' && !capturedPhoto)}
               className="w-full bg-primary hover:bg-primary-dark text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processando NR-6...' : 'Confirmar Entrega'}
