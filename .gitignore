@@ -14,7 +14,9 @@ gh_ext/
 *.pdf
 !public/ficha_epi_template.pdf
 *.png
-!public/ficha_epi_template_bg.png
+!public/*.png
+!public/favicon.ico
+!public/favicon.svg
 *.bak
 *.patch
 test_*.js
