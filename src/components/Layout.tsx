@@ -90,12 +90,16 @@ export function Layout() {
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 md:px-8 relative z-20">
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-primary text-background font-black">
-            EQ
-          </div>
-          <h1 className="text-lg font-bold tracking-tight uppercase">
-            Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden lg:inline-block">v2.4.0</span>
-          </h1>
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <img 
+              src="/icon-192.png" 
+              alt="EngenharQ Logo" 
+              className="h-8 w-8 object-contain transition-transform group-hover:scale-105" 
+            />
+            <h1 className="text-lg font-bold tracking-tight uppercase">
+              Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden lg:inline-block">v2.4.0</span>
+            </h1>
+          </Link>
         </div>
         <div className="flex items-center gap-4 md:gap-6">
           <div className="hidden md:flex items-center gap-2">
