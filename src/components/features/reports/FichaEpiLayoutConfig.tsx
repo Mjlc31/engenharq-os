@@ -18,7 +18,9 @@ import {
   HelpCircle,
   ZoomIn,
   ZoomOut,
-  Maximize2
+  Maximize2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -32,7 +34,7 @@ export interface LayoutOffsets {
 const DEFAULT_OFFSETS: LayoutOffsets = {
   firstRowY: 377,
   rowHeight: 22,
-  headerY: 722,
+  headerY: 725.5,
   sigOffsetY: 4
 };
 
@@ -52,6 +54,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [previewPage, setPreviewPage] = useState<number>(0);
 
   // Layout Calibration Offsets
   const [offsets, setOffsets] = useState<LayoutOffsets>(() => {
@@ -72,6 +75,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
 
   // Load assignments when worker changes
   useEffect(() => {
+    setPreviewPage(0);
     if (!selectedWorkerId) {
       setWorkerAssignments([]);
       return;
@@ -99,6 +103,13 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
   }, [selectedWorkerId, toast]);
 
   const selectedWorker = workers.find(w => w.id === selectedWorkerId);
+
+  // Chronological sort matching PDF generator
+  const sortedAssignments = [...workerAssignments].sort((a, b) => 
+    new Date(a.assigned_at || 0).getTime() - new Date(b.assigned_at || 0).getTime()
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedAssignments.length / 16));
+  const currentAssignments = sortedAssignments.slice(previewPage * 16, (previewPage + 1) * 16);
 
   const filteredWorkers = workers.filter(w => {
     if (!workerSearchTerm) return true;
@@ -503,7 +514,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
         <div className="lg:col-span-8 flex flex-col gap-3">
           <div className="bg-surface rounded-xl border border-border p-4 shadow-sm flex flex-col min-h-[640px]">
             {/* Preview Toolbar */}
-            <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-foreground">
                   Pré-visualização
@@ -515,40 +526,67 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                 )}
               </div>
 
-              {/* Zoom Controls */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setZoomLevel(prev => Math.max(70, prev - 10))}
-                  className="p-1.5 rounded-md hover:bg-surface-hover text-muted hover:text-foreground transition-colors"
-                  title="Diminuir Zoom"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-mono text-muted px-1">{zoomLevel}%</span>
-                <button
-                  onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))}
-                  className="p-1.5 rounded-md hover:bg-surface-hover text-muted hover:text-foreground transition-colors"
-                  title="Aumentar Zoom"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setZoomLevel(100)}
-                  className="p-1.5 rounded-md hover:bg-surface-hover text-muted hover:text-foreground transition-colors ml-1"
-                  title="Ajustar à tela"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
+              <div className="flex items-center gap-3">
+                {/* Pagination Controls when worker is selected and totalPages > 1 */}
+                {selectedWorker && totalPages > 1 && (
+                  <div className="flex items-center gap-1.5 bg-background border border-border px-2 py-1 rounded-lg text-xs shadow-sm">
+                    <button
+                      disabled={previewPage === 0}
+                      onClick={() => setPreviewPage(p => Math.max(0, p - 1))}
+                      className="p-1 rounded hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-foreground"
+                      title="Página Anterior"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-semibold text-foreground text-[11px] px-1 select-none">
+                      Folha {previewPage + 1} de {totalPages} ({sortedAssignments.length} itens)
+                    </span>
+                    <button
+                      disabled={previewPage >= totalPages - 1}
+                      onClick={() => setPreviewPage(p => Math.min(totalPages - 1, p + 1))}
+                      className="p-1 rounded hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-foreground"
+                      title="Próxima Página"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg">
+                  <button
+                    onClick={() => setZoomLevel(prev => Math.max(70, prev - 10))}
+                    className="p-1 rounded-md hover:bg-surface text-muted hover:text-foreground transition-colors"
+                    title="Diminuir Zoom"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-xs font-mono text-muted px-1 min-w-[36px] text-center">{zoomLevel}%</span>
+                  <button
+                    onClick={() => setZoomLevel(prev => Math.min(130, prev + 10))}
+                    className="p-1 rounded-md hover:bg-surface text-muted hover:text-foreground transition-colors"
+                    title="Aumentar Zoom"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setZoomLevel(100)}
+                    className="p-1 rounded-md hover:bg-surface text-muted hover:text-foreground transition-colors ml-0.5"
+                    title="Ajustar à tela"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Document Canvas Container */}
             <div 
               ref={previewRef}
-              className="flex-1 flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-900/60 rounded-lg overflow-auto border border-border/50 min-h-[560px]"
+              className="flex-1 flex items-center justify-center p-4 bg-slate-100 dark:bg-slate-900/60 rounded-lg overflow-auto border border-border/50 min-h-[600px]"
             >
               {!selectedWorker ? (
-                /* Empty State (matching Image 3) */
+                /* Empty State */
                 <div className="flex flex-col items-center justify-center text-center p-12 text-muted max-w-sm">
                   <div className="h-16 w-16 rounded-2xl bg-surface border border-border flex items-center justify-center mb-4 shadow-sm">
                     <FileText className="w-8 h-8 text-muted" />
@@ -557,21 +595,29 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                     Selecione um funcionário para visualizar a ficha
                   </p>
                   <p className="text-xs text-muted">
-                    Os dados do colaborador e histórico de entregas de EPI serão carregados instantaneamente na folha oficial.
+                    Os dados do colaborador e histórico de entregas de EPI serão carregados instantaneamente na folha oficial certificada NR-6.
                   </p>
                 </div>
               ) : (
-                /* High Fidelity NR-6 Sheet Preview */
+                /* Official Template Sheet (Pixel-Perfect Fidelity Matching Generated PDF) */
                 <div 
-                  style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-                  className="w-[595px] min-h-[842px] bg-white text-slate-900 p-8 rounded shadow-xl border border-slate-300 relative transition-transform duration-150 select-none text-[9px] font-sans"
+                  style={{ 
+                    transform: `scale(${zoomLevel / 100})`, 
+                    transformOrigin: 'top center',
+                    width: '595px',
+                    height: '842px',
+                    backgroundImage: 'url(/ficha_epi_template_bg.png)',
+                    backgroundSize: '100% 100%',
+                    backgroundRepeat: 'no-repeat',
+                  }}
+                  className="relative bg-white shadow-2xl rounded-sm border border-slate-300 text-slate-900 select-none overflow-hidden shrink-0"
                 >
                   {/* Calibrator Guidelines (Visible in Config Mode) */}
                   {activeTab === 'config' && (
                     <>
                       {/* Header Guideline */}
                       <div 
-                        style={{ top: `${pdfToCanvasPercentY(offsets.headerY)}%` }}
+                        style={{ top: `${842 - offsets.headerY}px` }}
                         className="absolute left-0 right-0 border-t-2 border-dashed border-blue-500/80 z-30 flex items-center justify-between px-2 pointer-events-none"
                       >
                         <span className="bg-blue-600 text-white font-mono text-[8px] px-1.5 py-0.5 rounded shadow">
@@ -579,9 +625,9 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                         </span>
                       </div>
 
-                      {/* First Row Guideline */}
+                      {/* First Row Top Guideline */}
                       <div 
-                        style={{ top: `${pdfToCanvasPercentY(offsets.firstRowY)}%` }}
+                        style={{ top: `${842 - (offsets.firstRowY + offsets.rowHeight)}px` }}
                         className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-500/80 z-30 flex items-center justify-between px-2 pointer-events-none"
                       >
                         <span className="bg-emerald-600 text-white font-mono text-[8px] px-1.5 py-0.5 rounded shadow">
@@ -591,7 +637,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
 
                       {/* Row Height Guideline (Row 2) */}
                       <div 
-                        style={{ top: `${pdfToCanvasPercentY(offsets.firstRowY - offsets.rowHeight)}%` }}
+                        style={{ top: `${842 - offsets.firstRowY}px` }}
                         className="absolute left-0 right-0 border-t border-dotted border-amber-500/80 z-30 flex items-center justify-between px-2 pointer-events-none"
                       >
                         <span className="bg-amber-600 text-white font-mono text-[8px] px-1.5 py-0.5 rounded shadow">
@@ -601,125 +647,132 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                     </>
                   )}
 
-                  {/* Document Header */}
-                  <div className="border border-slate-800 p-2 mb-3">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
-                      <div className="font-bold text-xs uppercase tracking-tight">
-                        ENGENHARQ CONSTRUÇÃO & ENGENHARIA
+                  {/* Header Employee Details Overlaid on Template */}
+                  {/* Nome do Empregado */}
+                  <div 
+                    style={{ left: '68px', top: `${842 - offsets.headerY - 9}px` }} 
+                    className="absolute font-bold text-[9px] text-slate-950 uppercase tracking-tight pointer-events-none z-10"
+                  >
+                    {selectedWorker.full_name || 'N/A'}
+                  </div>
+
+                  {/* Matrícula */}
+                  <div 
+                    style={{ left: '390px', top: `${842 - offsets.headerY - 9}px` }} 
+                    className="absolute font-mono font-bold text-[9px] text-slate-950 pointer-events-none z-10"
+                  >
+                    {selectedWorker.registration_number || selectedWorker.id?.slice(0, 8) || 'N/A'}
+                  </div>
+
+                  {/* Função / Cargo */}
+                  <div 
+                    style={{ left: '72px', top: `${842 - (offsets.headerY - 13) - 8}px` }} 
+                    className="absolute font-semibold text-[8.5px] text-slate-900 uppercase truncate max-w-[220px] pointer-events-none z-10"
+                  >
+                    {selectedWorker.current_role || selectedWorker.initial_role || 'N/A'}
+                  </div>
+
+                  {/* Data de Admissão */}
+                  {selectedWorker.admission_date && (
+                    <div 
+                      style={{ left: '410px', top: `${842 - (offsets.headerY - 13) - 8}px` }} 
+                      className="absolute font-semibold text-[8.5px] text-slate-900 bg-white/95 px-1 rounded-sm pointer-events-none z-10"
+                    >
+                      {format(new Date(selectedWorker.admission_date), 'dd/MM/yyyy')}
+                    </div>
+                  )}
+
+                  {/* 16 Table Rows with Exact Geometric Column Alignment */}
+                  {Array.from({ length: 16 }).map((_, r) => {
+                    const item = currentAssignments[r];
+                    const catalog = item?.catalog || item?.epi?.catalog || {};
+                    const epiName = catalog.name || item?.epi?.name || '';
+                    const caNumber = catalog.ca_number || item?.epi?.ca_number || '';
+                    const isUnif = catalog.category?.toLowerCase().includes('uniforme');
+                    const rowTop = 842 - (offsets.firstRowY + offsets.rowHeight - (r * offsets.rowHeight));
+
+                    return (
+                      <div 
+                        key={r}
+                        style={{ 
+                          top: `${rowTop}px`,
+                          height: `${offsets.rowHeight}px`,
+                        }}
+                        className="absolute left-0 right-0 flex items-center pointer-events-none text-[7.5px] text-slate-950"
+                      >
+                        {/* Col 1: QTD (20.4 to 49.2, center 34.8) */}
+                        <div style={{ left: '20px', width: '29px' }} className="absolute text-center font-bold font-mono">
+                          {item ? '1' : ''}
+                        </div>
+
+                        {/* Col 2: UNIFORME/EPI (49.2 to 169.2, left 53) */}
+                        <div style={{ left: '53px', width: '116px' }} className="absolute font-medium truncate leading-tight">
+                          {item ? `${isUnif ? '[UNIF]' : '[EPI]'} ${epiName || 'EPI'}` : ''}
+                        </div>
+
+                        {/* Col 3: C.A. (169.2 to 212.1, center 190.6) */}
+                        <div style={{ left: '169px', width: '43px' }} className="absolute text-center font-mono font-medium">
+                          {item ? caNumber || '-' : ''}
+                        </div>
+
+                        {/* Col 4: DATA ENT (212.1 to 268.9, cover slashes) */}
+                        {item?.assigned_at && (
+                          <div 
+                            style={{ left: '214px', width: '53px' }} 
+                            className="absolute text-center font-mono font-medium bg-white/95 py-0.5 rounded-sm"
+                          >
+                            {format(new Date(item.assigned_at), 'dd/MM/yy')}
+                          </div>
+                        )}
+
+                        {/* Col 5: ASSINATURA EMPREGADO (268.9 to 346.9, center 307.9) */}
+                        <div style={{ left: '269px', width: '78px' }} className="absolute flex items-center justify-center">
+                          {item?.digital_signature_url || item?.evidence_photo_url ? (
+                            <img 
+                              src={item.digital_signature_url || item.evidence_photo_url} 
+                              alt="Assinatura" 
+                              className="max-h-4 max-w-[72px] object-contain"
+                            />
+                          ) : item ? (
+                            <span className="text-[6.5px] text-slate-500 italic">[Assinado]</span>
+                          ) : null}
+                        </div>
+
+                        {/* Col 6: DATA DEV (346.9 to 411.0, cover slashes) */}
+                        {item?.returned_at && (
+                          <div 
+                            style={{ left: '349px', width: '60px' }} 
+                            className="absolute text-center font-mono font-medium bg-white/95 py-0.5 rounded-sm"
+                          >
+                            {format(new Date(item.returned_at), 'dd/MM/yy')}
+                          </div>
+                        )}
+
+                        {/* Col 7: ASSINATURA DEVOLUÇÃO (411.0 to 489.0, center 450.0) */}
+                        <div style={{ left: '411px', width: '78px' }} className="absolute flex items-center justify-center">
+                          {item?.return_photo_url ? (
+                            <img 
+                              src={item.return_photo_url} 
+                              alt="Devolução" 
+                              className="max-h-4 max-w-[72px] object-contain"
+                            />
+                          ) : null}
+                        </div>
+
+                        {/* Col 8: ASSINATURA RECEBEDOR (489.0 to 574.4, center 531.7) */}
+                        <div style={{ left: '489px', width: '85px' }} className="absolute text-center font-mono text-[7px] text-slate-400">
+                          {item ? '✓' : ''}
+                        </div>
                       </div>
-                      <div className="text-[8px] font-mono text-slate-600">
-                        SGEPI • NR-06
-                      </div>
-                    </div>
-                    <div className="text-center font-bold text-xs uppercase tracking-wider py-1">
-                      FICHA DE CONTROLE E ENTREGA DE EQUIPAMENTO DE PROTEÇÃO INDIVIDUAL - EPI
-                    </div>
-                  </div>
+                    );
+                  })}
 
-                  {/* Worker Identification Grid */}
-                  <div className="border border-slate-800 mb-3 grid grid-cols-12 text-[8.5px]">
-                    <div className="col-span-8 p-1.5 border-r border-b border-slate-800">
-                      <span className="font-bold text-slate-600 block text-[7.5px]">EMPREGADO:</span>
-                      <span className="font-bold uppercase text-slate-950">{selectedWorker.full_name || 'N/A'}</span>
-                    </div>
-                    <div className="col-span-4 p-1.5 border-b border-slate-800">
-                      <span className="font-bold text-slate-600 block text-[7.5px]">MATRÍCULA:</span>
-                      <span className="font-mono font-bold text-slate-950">{selectedWorker.registration_number || selectedWorker.id?.slice(0, 8) || 'N/A'}</span>
-                    </div>
-                    <div className="col-span-8 p-1.5 border-r border-slate-800">
-                      <span className="font-bold text-slate-600 block text-[7.5px]">FUNÇÃO:</span>
-                      <span className="font-medium uppercase text-slate-900">{selectedWorker.current_role || selectedWorker.initial_role || 'N/A'}</span>
-                    </div>
-                    <div className="col-span-4 p-1.5">
-                      <span className="font-bold text-slate-600 block text-[7.5px]">DATA ADMISSÃO:</span>
-                      <span className="font-medium text-slate-900">
-                        {selectedWorker.admission_date ? format(new Date(selectedWorker.admission_date), 'dd/MM/yyyy') : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Termo de Responsabilidade NR-6 */}
-                  <div className="border border-slate-800 p-2 mb-3 text-[7.5px] leading-tight text-justify bg-slate-50">
-                    <p className="font-bold mb-1">TERMO DE RESPONSABILIDADE (NR-06, ITEM 6.6.1):</p>
-                    <p>
-                      Recebi da empresa os Equipamentos de Proteção Individual (EPI) constantes nesta ficha, em perfeitas condições de uso, comprometendo-me a utilizá-los exclusivamente no desempenho de minhas funções, zelando pela sua perfeita guarda e conservação. Fico ciente de que o não uso constitui ato faltoso passível de sanções disciplinares conforme Art. 158 da CLT.
-                    </p>
-                  </div>
-
-                  {/* 17 Rows Deliveries Table */}
-                  <div className="border border-slate-800">
-                    <table className="w-full border-collapse text-[7.5px]">
-                      <thead>
-                        <tr className="bg-slate-200 text-slate-900 border-b border-slate-800 font-bold text-center">
-                          <th className="p-1 border-r border-slate-800 w-8">QTD</th>
-                          <th className="p-1 border-r border-slate-800 text-left">DESCRIÇÃO DO EPI</th>
-                          <th className="p-1 border-r border-slate-800 w-12">C.A.</th>
-                          <th className="p-1 border-r border-slate-800 w-16">DATA ENT.</th>
-                          <th className="p-1 border-r border-slate-800 w-24">ASS. EMPREGADO</th>
-                          <th className="p-1 border-r border-slate-800 w-16">DATA DEV.</th>
-                          <th className="p-1 border-r border-slate-800 w-16">ASS. DEV.</th>
-                          <th className="p-1 w-10">VISTO</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.from({ length: 17 }).map((_, index) => {
-                          const item = workerAssignments[index];
-                          const catalog = item?.catalog || {};
-                          return (
-                            <tr 
-                              key={index} 
-                              className={`border-b border-slate-300 ${index % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}`}
-                              style={{ height: `${offsets.rowHeight}px` }}
-                            >
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">
-                                {item ? '1' : ''}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 truncate max-w-[150px] font-medium">
-                                {item ? `${catalog.category?.toLowerCase().includes('uniforme') ? '[UNIF]' : '[EPI]'} ${catalog.name || 'EPI'}` : ''}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">
-                                {item ? catalog.ca_number || '-' : ''}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">
-                                {item?.assigned_at ? format(new Date(item.assigned_at), 'dd/MM/yy') : ''}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 text-center">
-                                {item?.digital_signature_url ? (
-                                  <img 
-                                    src={item.digital_signature_url} 
-                                    alt="Assinatura" 
-                                    className="max-h-4 max-w-[80px] mx-auto object-contain"
-                                  />
-                                ) : item ? (
-                                  <span className="text-[7px] text-slate-500 italic">[Assinado]</span>
-                                ) : null}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 text-center font-mono">
-                                {item?.returned_at ? format(new Date(item.returned_at), 'dd/MM/yy') : ''}
-                              </td>
-                              <td className="p-1 border-r border-slate-300 text-center">
-                                {item?.return_photo_url ? (
-                                  <img 
-                                    src={item.return_photo_url} 
-                                    alt="Devolução" 
-                                    className="max-h-4 max-w-[50px] mx-auto object-contain"
-                                  />
-                                ) : null}
-                              </td>
-                              <td className="p-1 text-center font-mono text-[7px] text-slate-400">
-                                {item ? '✓' : ''}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Document Footer */}
-                  <div className="mt-4 pt-2 border-t border-slate-300 flex items-center justify-between text-[7px] text-slate-500 font-mono">
-                    <span>EngenharQ OS • Sistema de Gestão de EPIs (SGEPI)</span>
-                    <span>Impresso em: {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
+                  {/* Document Folio Stamp */}
+                  <div 
+                    style={{ left: '375px', bottom: '15px' }} 
+                    className="absolute font-mono text-[7.5px] text-slate-500 pointer-events-none"
+                  >
+                    Folha {previewPage + 1} de {totalPages} • Impresso em: {format(new Date(), 'dd/MM/yyyy HH:mm')}
                   </div>
                 </div>
               )}
