@@ -129,6 +129,7 @@ export type Database = {
         Row: {
           applied_at: string
           applied_by: string | null
+          applied_by_id: string | null
           content_html: string
           created_at: string
           id: string
@@ -140,6 +141,7 @@ export type Database = {
         Insert: {
           applied_at?: string
           applied_by?: string | null
+          applied_by_id?: string | null
           content_html: string
           created_at?: string
           id?: string
@@ -151,6 +153,7 @@ export type Database = {
         Update: {
           applied_at?: string
           applied_by?: string | null
+          applied_by_id?: string | null
           content_html?: string
           created_at?: string
           id?: string
@@ -283,6 +286,7 @@ export type Database = {
           observations: string | null
           recommended_lifespan_days: number | null
           status: string | null
+          tracking_code: string | null
           unit_price: number
           updated_at: string | null
         }
@@ -309,6 +313,7 @@ export type Database = {
           observations?: string | null
           recommended_lifespan_days?: number | null
           status?: string | null
+          tracking_code?: string | null
           unit_price?: number
           updated_at?: string | null
         }
@@ -335,6 +340,7 @@ export type Database = {
           observations?: string | null
           recommended_lifespan_days?: number | null
           status?: string | null
+          tracking_code?: string | null
           unit_price?: number
           updated_at?: string | null
         }
@@ -632,6 +638,7 @@ export type Database = {
           id: string
           permissions: Json
           role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
@@ -641,6 +648,7 @@ export type Database = {
           id: string
           permissions?: Json
           role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
@@ -650,6 +658,7 @@ export type Database = {
           id?: string
           permissions?: Json
           role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
         }
         Relationships: []
       }
