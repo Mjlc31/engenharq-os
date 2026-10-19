@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Layers, Boxes } from 'lucide-react';
 import { useEpiAssets } from '../hooks/useEpiAssets';
 import { CatalogTab } from '../components/features/assets/CatalogTab';
+import { InventoryTab } from '../components/features/assets/InventoryTab';
 
 export function Assets() {
+  const [activeTab, setActiveTab] = useState<'catalog' | 'inventory'>('catalog');
   
   const {
     epis,
@@ -25,10 +27,34 @@ export function Assets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de EPIs</h1>
-          <p className="text-muted mt-1">Gerencie os modelos e o inventário de segurança.</p>
+          <p className="text-muted mt-1">Gerencie os modelos do catálogo NR-6 e o inventário de segurança.</p>
         </div>
-        
 
+        {/* Tab Controls */}
+        <div className="flex items-center p-1 bg-surface border border-border rounded-lg shadow-sm">
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all ${
+              activeTab === 'catalog'
+                ? 'bg-primary text-white shadow-sm font-semibold'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            Catálogo de Modelos (NR-6)
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all ${
+              activeTab === 'inventory'
+                ? 'bg-primary text-white shadow-sm font-semibold'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            <Boxes className="w-4 h-4" />
+            Inventário Individual & Rastreamento
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -38,14 +64,25 @@ export function Assets() {
         </div>
       )}
 
-
-
-      <CatalogTab 
-        catalogs={catalogs}
-        loading={loading}
-        saveCatalog={saveCatalog}
-        deleteCatalog={deleteCatalog}
-      />
+      {activeTab === 'catalog' ? (
+        <CatalogTab 
+          catalogs={catalogs}
+          loading={loading}
+          saveCatalog={saveCatalog}
+          deleteCatalog={deleteCatalog}
+        />
+      ) : (
+        <InventoryTab
+          epis={epis}
+          workers={workers}
+          loading={loading}
+          addEpi={addEpi}
+          assignEpi={assignEpi}
+          returnEpi={returnEpi}
+          importInventoryCSV={importInventoryCSV}
+          exportInventoryCSV={exportInventoryCSV}
+        />
+      )}
     </div>
   );
 }

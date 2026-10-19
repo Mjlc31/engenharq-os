@@ -34,13 +34,16 @@ export function PrintTags() {
     if (selectedType === 'WORKERS') {
       return workers.filter(w => 
         w.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        w.registration_number?.toLowerCase().includes(searchTerm.toLowerCase())
+        w.registration_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.cpf?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } else {
-      return epis.filter(e => 
-        e.category.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        e.tracking_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        e.ca_number?.toLowerCase().includes(searchTerm.toLowerCase())
+      return (epis as any[]).filter(e => 
+        (e.name && e.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.category && e.category.toLowerCase().includes(searchTerm.toLowerCase())) || 
+        (e.code && e.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.tracking_code && e.tracking_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (e.ca_number && e.ca_number.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
   }, [workers, epis, selectedType, searchTerm]);
@@ -124,15 +127,18 @@ export function PrintTags() {
                   <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">EngenharQ OS</p>
                 </div>
               </div>
-            )) : (filteredItems as EpiInventory[]).map(e => (
+            )) : (filteredItems as any[]).map(e => (
               <div key={e.id} className="border-2 border-zinc-300 rounded-lg p-4 flex flex-row items-center gap-4 bg-white tag-card">
-                <QRCodeSVG value={`EPI-${e.id}`} size={72} level="M" />
+                <QRCodeSVG value={`EPI-${e.id}`} size={76} level="M" />
                 <div className="flex flex-col text-left overflow-hidden w-full">
-                  <span className="font-bold text-zinc-900 text-sm truncate uppercase" title={e.category}>{e.category}</span>
-                  <span className="text-[11px] text-zinc-600 font-mono font-bold mt-0.5">{e.tracking_code}</span>
+                  <span className="font-bold text-zinc-900 text-sm truncate uppercase" title={e.name || e.category}>{e.name || e.category}</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-zinc-700 font-mono font-bold truncate">{e.code || e.category}</span>
+                    {e.brand && <span className="text-[10px] text-zinc-500 font-medium truncate">({e.brand})</span>}
+                  </div>
                   <div className="flex flex-col gap-0.5 mt-2 bg-zinc-50 p-1.5 rounded border border-zinc-100">
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">CA: <span className="text-zinc-800">{e.ca_number || 'N/A'}</span></span>
-                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">VAL: <span className="text-zinc-800">{formatDate(e.ca_expiration_date)}</span></span>
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">CA: <span className="text-zinc-900 font-bold">{e.ca_number || 'N/A'}</span></span>
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">VAL: <span className="text-zinc-900 font-bold">{formatDate(e.ca_validity || e.ca_expiration_date)}</span></span>
                   </div>
                 </div>
               </div>

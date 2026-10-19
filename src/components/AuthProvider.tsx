@@ -33,11 +33,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserPermissions = async (userId: string, currentRole?: UserRole | null) => {
     try {
-      const { data } = await supabase
+      const fetchPromise = supabase
         .from('users')
         .select('role, permissions')
         .eq('id', userId)
         .maybeSingle();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 2500)
+      );
+
+      const res = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      const data = res?.data;
 
       if (data) {
         if (data.role) setRole(data.role as UserRole);
@@ -55,16 +62,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (e) {
       console.warn('Erro ao carregar permissões do usuário:', e);
-      setPermissions(DEFAULT_PERMISSIONS);
+      setPermissions(currentRole === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS);
     }
   };
 
   useEffect(() => {
+    let mounted = true;
     const initAuth = async () => {
       try {
-        const { data: sessionData, error } = await supabase.auth.getSession();
-        const activeSession = sessionData?.session;
-        if (activeSession) {
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 2500)
+        );
+
+        const res = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        const activeSession = res?.data?.session;
+
+        if (activeSession && mounted) {
           setSession(activeSession);
           setUser(activeSession.user);
           const resolvedRole = (activeSession.user.app_metadata?.role as UserRole) ?? null;
@@ -72,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (activeSession.user.id) {
             await fetchUserPermissions(activeSession.user.id, resolvedRole);
           }
-        } else {
+        } else if (mounted) {
           setSession(null);
           setUser(null);
           setRole(null);
@@ -80,8 +94,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.warn('Erro ao inicializar auth:', err);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setRole(null);
+          setPermissions(null);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
     initAuth();

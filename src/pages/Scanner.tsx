@@ -159,11 +159,12 @@ export function Scanner() {
     return new Blob([u8arr], { type: mime });
   };
 
-  const uploadToStorage = async (dataUrl: string, bucket: string, path: string) => {
+  const uploadToStorage = async (data: string | Blob, bucket: string, path: string, customContentType?: string) => {
     try {
-      const blob = dataUrlToBlob(dataUrl);
+      const blob = typeof data === 'string' ? dataUrlToBlob(data) : data;
+      const mime = customContentType || blob.type || (path.endsWith('.pdf') ? 'application/pdf' : 'image/png');
       const { error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
-        contentType: blob.type,
+        contentType: mime,
         upsert: true
       });
       if (uploadError) {
@@ -196,14 +197,14 @@ export function Scanner() {
     setLoading(true);
     try {
       const evidenceUrlToUpload = evidenceMode === 'photo' ? capturedPhoto! : signatureUrlData!;
-      const pdfBase64 = await generateEpiReceiptPDF(worker, epis, evidenceUrlToUpload);
+      const pdfBlob = await generateEpiReceiptPDF(worker, epis, evidenceUrlToUpload);
       
       const timestamp = new Date().getTime();
       
       // Upload files to storage (parallel)
       const [photoUrl, ] = await Promise.all([
-        uploadToStorage(evidenceUrlToUpload, 'epi-receipts', `evidences/${worker.id}_${timestamp}.png`),
-        uploadToStorage(pdfBase64, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`)
+        uploadToStorage(evidenceUrlToUpload, 'epi-receipts', `evidences/${worker.id}_${timestamp}.png`, 'image/png'),
+        uploadToStorage(pdfBlob, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`, 'application/pdf')
       ]);
       
       // confirmAssignment sem biometria

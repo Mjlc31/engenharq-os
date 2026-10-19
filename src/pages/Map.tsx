@@ -79,7 +79,7 @@ export function MapTracking() {
       const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
-          .select(`*, epi:epi_catalog(*), worker:workers(*)`)
+          .select(`*, catalog:epi_catalog!catalog_id(*), epi:epi_catalog!catalog_id(*), worker:workers(*)`)
           .is('returned_at', null),
         supabase.from('epi_catalog').select('*').eq('status', 'ACTIVE'),
         supabase.from('workers').select('*, site:construction_sites(*)')
@@ -119,7 +119,10 @@ export function MapTracking() {
       // Filter by category if selected
       const filteredEpis = filterCategory === 'ALL' 
         ? episAtSite 
-        : episAtSite.filter(a => a.catalog?.category.toLowerCase().includes(filterCategory.toLowerCase()));
+        : episAtSite.filter(a => {
+            const cat = a.catalog || a.epi;
+            return cat?.category?.toLowerCase().includes(filterCategory.toLowerCase());
+          });
 
       return {
         ...site,
@@ -134,7 +137,8 @@ export function MapTracking() {
   const categories = useMemo(() => {
     const cats = new Set<string>();
     assignments.forEach(a => {
-      if (a.catalog?.category) cats.add(a.catalog.category);
+      const cat = a.catalog || a.epi;
+      if (cat?.category) cats.add(cat.category);
     });
     return Array.from(cats);
   }, [assignments]);
@@ -339,20 +343,23 @@ export function MapTracking() {
                       Nenhum equipamento correspondente aos filtros atuais nesta obra.
                     </p>
                   ) : (
-                    selectedSiteInfo.epis.map(a => (
-                      <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-medium text-sm text-foreground">{a.catalog?.category}</span>
-                          <span className="text-xs text-muted">
-                            {a.catalog?.name} - CA: {a.catalog?.ca_number || 'N/A'}
-                          </span>
+                    selectedSiteInfo.epis.map(a => {
+                      const cat = a.catalog || a.epi;
+                      return (
+                        <div key={a.id} className="p-3 bg-background border border-border rounded-lg hover:border-zinc-700 transition-colors">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-sm text-foreground">{cat?.category || 'Equipamento'}</span>
+                            <span className="text-xs text-muted">
+                              {cat?.name || 'EPI'} - CA: {cat?.ca_number || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted">
+                            <Users className="w-3 h-3" />
+                            <span className="truncate" title={a.worker?.full_name}>{a.worker?.full_name}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted">
-                          <Users className="w-3 h-3" />
-                          <span className="truncate" title={a.worker?.full_name}>{a.worker?.full_name}</span>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
