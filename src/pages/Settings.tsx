@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
-import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users } from 'lucide-react';
+import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase } from 'lucide-react';
 import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from '../services/rbacService';
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
+
+export const PRESET_FUNCTIONS: { label: string; defaultRole: UserRole }[] = [
+  { label: 'Encarregado de Obra', defaultRole: 'SITE_MANAGER' },
+  { label: 'Engenheiro SST', defaultRole: 'SAFETY_ENGINEER' },
+  { label: 'Técnico de Segurança do Trabalho (TST)', defaultRole: 'SAFETY_ENGINEER' },
+  { label: 'Almoxarife / Estoquista', defaultRole: 'SITE_MANAGER' },
+  { label: 'Mestre de Obras', defaultRole: 'SITE_MANAGER' },
+  { label: 'Engenheiro Residente', defaultRole: 'SAFETY_ENGINEER' },
+  { label: 'Administrador do Sistema', defaultRole: 'ADMIN' },
+  { label: 'Visualizador / Auditor', defaultRole: 'VIEWER' }
+];
 
 export function Settings() {
   const { session, role } = useAuth();
@@ -11,18 +22,23 @@ export function Settings() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState('');
 
   // Edit Permissions Modal
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [tempPermissions, setTempPermissions] = useState<UserPermissions>(DEFAULT_PERMISSIONS);
   const [tempRole, setTempRole] = useState<UserRole>('SITE_MANAGER');
+  const [tempCustomRole, setTempCustomRole] = useState('');
+  const [tempFullName, setTempFullName] = useState('');
   const [savingPermissions, setSavingPermissions] = useState(false);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   // New User Modal
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('SITE_MANAGER');
+  const [newCustomRole, setNewCustomRole] = useState('');
   const [newPassword, setNewPassword] = useState('Engenharq@2026');
   const [creatingUser, setCreatingUser] = useState(false);
 
@@ -45,6 +61,8 @@ export function Settings() {
   const openEditModal = (u: User) => {
     setEditingUser(u);
     setTempRole(u.role);
+    setTempCustomRole(u.custom_role || roleLabels[u.role] || '');
+    setTempFullName(u.full_name || '');
     setTempPermissions(u.permissions || (u.role === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS));
   };
 
@@ -65,8 +83,14 @@ export function Settings() {
     if (!editingUser) return;
     setSavingPermissions(true);
     try {
-      await rbacService.updateUserPermissions(editingUser.id, tempPermissions, tempRole);
-      toast({ type: 'success', title: 'Sucesso', message: 'Permissões atualizadas com sucesso!' });
+      await rbacService.updateUserPermissions(
+        editingUser.id,
+        tempPermissions,
+        tempRole,
+        tempCustomRole.trim() || null,
+        tempFullName.trim() || undefined
+      );
+      toast({ type: 'success', title: 'Sucesso', message: 'Dados e permissões atualizados com sucesso!' });
       setEditingUser(null);
       await loadUsers();
     } catch (err: any) {
@@ -76,26 +100,63 @@ export function Settings() {
     }
   };
 
+  const handleDeactivateUser = async (u: User) => {
+    if (u.id === session?.user?.id) {
+      toast({ type: 'warning', title: 'Atenção', message: 'Você não pode desativar seu próprio usuário administrador.' });
+      return;
+    }
+    if (!window.confirm(`Tem certeza que deseja desativar o usuário "${u.full_name || u.email}"? Ele perderá acesso ao sistema.`)) {
+      return;
+    }
+    setDeactivatingId(u.id);
+    try {
+      await rbacService.deactivateUser(u.id);
+      toast({ type: 'success', title: 'Usuário Desativado', message: 'O usuário foi desativado com sucesso.' });
+      if (editingUser?.id === u.id) setEditingUser(null);
+      await loadUsers();
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao desativar usuário.' });
+    } finally {
+      setDeactivatingId(null);
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newFullName.trim()) {
+      toast({ type: 'warning', title: 'Campo Obrigatório', message: 'Informe o nome completo do usuário.' });
+      return;
+    }
+    if (!newEmail.trim()) {
+      toast({ type: 'warning', title: 'Campo Obrigatório', message: 'Informe o e-mail do usuário.' });
+      return;
+    }
+    if (!newCustomRole.trim()) {
+      toast({ type: 'warning', title: 'Campo Obrigatório', message: 'Digite ou selecione a função / cargo do usuário.' });
+      return;
+    }
+
     setCreatingUser(true);
     try {
       await rbacService.createUser({
-        email: newEmail,
-        full_name: newFullName,
+        email: newEmail.trim(),
+        full_name: newFullName.trim(),
         role: newRole,
+        custom_role: newCustomRole.trim(),
         password: newPassword,
         permissions: newRole === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS
       });
-      toast({ type: 'success', title: 'Usuário Criado', message: 'Novo usuário registrado com sucesso!' });
+      toast({ type: 'success', title: 'Usuário Criado', message: `Novo usuário ${newFullName} registrado com sucesso!` });
       setIsNewUserModalOpen(false);
       setNewEmail('');
       setNewFullName('');
+      setNewCustomRole('');
       setNewRole('SITE_MANAGER');
       setNewPassword('Engenharq@2026');
       await loadUsers();
     } catch (err: any) {
-      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao criar usuário.' });
+      console.error('Erro ao criar usuário:', err);
+      toast({ type: 'error', title: 'Erro ao Criar Usuário', message: err.message || 'Falha ao registrar usuário.' });
     } finally {
       setCreatingUser(false);
     }
@@ -114,6 +175,17 @@ export function Settings() {
     SITE_MANAGER: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     VIEWER: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
   };
+
+  const filteredUsers = users.filter(u => {
+    if (!userSearch.trim()) return true;
+    const q = userSearch.toLowerCase();
+    return (
+      (u.full_name && u.full_name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.custom_role && u.custom_role.toLowerCase().includes(q)) ||
+      (roleLabels[u.role] && roleLabels[u.role].toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -171,15 +243,32 @@ export function Settings() {
               </button>
             </div>
 
+            {/* Search and Action Bar */}
+            <div className="p-4 border-b border-border bg-surface-hover/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome, email ou cargo..."
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-background border border-border rounded-md text-xs text-foreground placeholder:text-muted focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="text-xs text-muted font-medium self-end sm:self-auto">
+                Total: <strong className="text-foreground">{filteredUsers.length}</strong> de {users.length} usuários ativos
+              </div>
+            </div>
+
             <div className="p-0">
               {loading ? (
                 <div className="p-12 text-center text-muted flex items-center justify-center gap-2 text-sm">
                   <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   Carregando usuários e permissões...
                 </div>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <div className="p-12 text-center text-muted text-sm">
-                  Nenhum usuário cadastrado na base de dados.
+                  {userSearch ? 'Nenhum usuário encontrado com os filtros aplicados.' : 'Nenhum usuário cadastrado na base de dados.'}
                 </div>
               ) : (
                 <div className="divide-y divide-border overflow-x-auto">
@@ -187,13 +276,14 @@ export function Settings() {
                     <thead className="bg-surface-hover text-muted uppercase font-semibold">
                       <tr>
                         <th className="px-6 py-3">Usuário</th>
-                        <th className="px-6 py-3">Perfil / Cargo</th>
+                        <th className="px-6 py-3">Cargo / Função</th>
+                        <th className="px-6 py-3">Nível de Acesso (RBAC)</th>
                         <th className="px-6 py-3">Módulos Liberados</th>
-                        <th className="px-6 py-3 text-right">Ação</th>
+                        <th className="px-6 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {users.map(u => {
+                      {filteredUsers.map(u => {
                         const perm = u.permissions || {};
                         const modulesAllowed = Object.entries(perm)
                           .filter(([_, val]) => {
@@ -205,11 +295,27 @@ export function Settings() {
                           })
                           .map(([key]) => key);
 
+                        const displayedCustomRole = u.custom_role || roleLabels[u.role] || u.role;
+                        const isCurrentUser = u.id === session?.user?.id;
+
                         return (
                           <tr key={u.id} className="hover:bg-surface-hover/30 transition-colors">
                             <td className="px-6 py-4">
-                              <div className="font-bold text-foreground text-sm">{u.full_name || 'Sem Nome'}</div>
+                              <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                                {u.full_name || 'Sem Nome'}
+                                {isCurrentUser && (
+                                  <span className="text-[10px] px-1.5 py-0.2 bg-primary/20 text-primary rounded font-mono font-normal">você</span>
+                                )}
+                              </div>
                               <div className="text-xs text-muted font-mono">{u.email}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-1.5">
+                                <Briefcase className="w-3.5 h-3.5 text-muted shrink-0" />
+                                <span className="font-medium text-foreground text-xs">
+                                  {displayedCustomRole}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${roleColors[u.role] || 'bg-zinc-500/10 text-zinc-400'}`}>
@@ -233,13 +339,27 @@ export function Settings() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(u)}
-                                className="px-3 py-1.5 bg-surface hover:bg-surface-hover text-primary border border-primary/30 rounded-md font-semibold text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" /> Permissões
-                              </button>
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(u)}
+                                  className="px-3 py-1.5 bg-surface hover:bg-surface-hover text-primary border border-primary/30 rounded-md font-semibold text-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                                  title="Editar perfil, cargo e permissões"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Editar
+                                </button>
+                                {!isCurrentUser && (
+                                  <button
+                                    type="button"
+                                    disabled={deactivatingId === u.id}
+                                    onClick={() => handleDeactivateUser(u)}
+                                    className="p-1.5 text-muted hover:text-red-400 hover:bg-red-500/10 rounded-md border border-transparent hover:border-red-500/20 transition-colors cursor-pointer"
+                                    title="Desativar usuário"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -259,8 +379,8 @@ export function Settings() {
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-foreground text-base">Permissões de Acesso: {editingUser.full_name}</h3>
-                <p className="text-xs text-muted">{editingUser.email}</p>
+                <h3 className="font-bold text-foreground text-base">Editar Usuário & Permissões: {editingUser.full_name}</h3>
+                <p className="text-xs text-muted font-mono">{editingUser.email}</p>
               </div>
               <button
                 type="button"
@@ -272,16 +392,76 @@ export function Settings() {
             </div>
 
             <div className="p-5 space-y-5 flex-1">
+              {/* Nome Completo */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Perfil de Acesso Geral</label>
+                <label className="text-xs font-semibold text-foreground">Nome Completo</label>
+                <input
+                  type="text"
+                  value={tempFullName}
+                  onChange={e => setTempFullName(e.target.value)}
+                  placeholder="Nome completo do usuário"
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* Cargo / Função Digitável */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground">
+                    Cargo / Função Digitável
+                  </label>
+                  <span className="text-[10px] text-muted">Personalize livremente a função</span>
+                </div>
+                <input
+                  type="text"
+                  list="roles-suggestions-edit"
+                  placeholder="Ex: Técnico em Segurança, Almoxarife, Encarregado..."
+                  value={tempCustomRole}
+                  onChange={e => setTempCustomRole(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+                <datalist id="roles-suggestions-edit">
+                  {PRESET_FUNCTIONS.map(p => (
+                    <option key={p.label} value={p.label} />
+                  ))}
+                </datalist>
+
+                {/* Sugestões rápidas de cargos pré-cadastrados */}
+                <div className="pt-1">
+                  <span className="text-[10px] text-muted block mb-1">Sugestões rápidas:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_FUNCTIONS.map(p => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setTempCustomRole(p.label);
+                          setTempRole(p.defaultRole);
+                        }}
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                          tempCustomRole === p.label
+                            ? 'bg-primary/20 text-primary border-primary font-bold'
+                            : 'bg-surface hover:bg-surface-hover text-muted hover:text-foreground border-border'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Perfil de Acesso Geral */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Perfil de Acesso Geral (RBAC)</label>
                 <select
                   value={tempRole}
                   onChange={e => setTempRole(e.target.value as UserRole)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
-                  <option value="ADMIN">Administrador (Acesso Total)</option>
-                  <option value="SAFETY_ENGINEER">Engenheiro SST (Gestão e Emissão)</option>
                   <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
+                  <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
+                  <option value="ADMIN">Administrador (Acesso Total)</option>
                   <option value="VIEWER">Visualizador (Somente Leitura)</option>
                 </select>
               </div>
@@ -420,27 +600,41 @@ export function Settings() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-border flex items-center justify-end gap-3 bg-surface-hover/20">
-              <button
-                type="button"
-                onClick={() => setEditingUser(null)}
-                className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={savingPermissions}
-                onClick={handleSavePermissions}
-                className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
-              >
-                {savingPermissions ? (
-                  <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                Salvar Permissões
-              </button>
+            <div className="p-4 border-t border-border flex items-center justify-between gap-3 bg-surface-hover/20">
+              {editingUser.id !== session?.user?.id ? (
+                <button
+                  type="button"
+                  disabled={deactivatingId === editingUser.id}
+                  onClick={() => handleDeactivateUser(editingUser)}
+                  className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Desativar Usuário
+                </button>
+              ) : (
+                <div />
+              )}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPermissions}
+                  onClick={handleSavePermissions}
+                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                >
+                  {savingPermissions ? (
+                    <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Salvar Alterações
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -451,7 +645,15 @@ export function Settings() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-foreground text-base">Novo Usuário do Sistema</h3>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-base">Novo Usuário do Sistema</h3>
+                  <p className="text-[11px] text-muted">Cadastre o colaborador e defina seus acessos no SGEPI.</p>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsNewUserModalOpen(false)}
@@ -463,7 +665,7 @@ export function Settings() {
 
             <form onSubmit={handleCreateUser} className="p-5 space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted">Nome Completo</label>
+                <label className="text-xs font-semibold text-muted">Nome Completo *</label>
                 <input
                   type="text"
                   required
@@ -475,7 +677,7 @@ export function Settings() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted">E-mail</label>
+                <label className="text-xs font-semibold text-muted">E-mail de Acesso *</label>
                 <input
                   type="email"
                   required
@@ -486,18 +688,77 @@ export function Settings() {
                 />
               </div>
 
+              {/* Cargo / Função Digitável com sugestões */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted">
+                    Cargo / Função <span className="text-primary">*</span>
+                  </label>
+                  <span className="text-[10px] text-primary font-medium">Área digitável</span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  list="new-roles-suggestions"
+                  placeholder="Digite a função (Ex: Almoxarife, Encarregado, Técnico SST...)"
+                  value={newCustomRole}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setNewCustomRole(val);
+                    const match = PRESET_FUNCTIONS.find(p => p.label.toLowerCase() === val.toLowerCase());
+                    if (match) {
+                      setNewRole(match.defaultRole);
+                    }
+                  }}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+                <datalist id="new-roles-suggestions">
+                  {PRESET_FUNCTIONS.map(p => (
+                    <option key={p.label} value={p.label} />
+                  ))}
+                </datalist>
+
+                {/* Chips de funções pré-cadastradas */}
+                <div className="pt-1">
+                  <span className="text-[10px] text-muted block mb-1">Ou selecione uma pré-cadastrada:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_FUNCTIONS.map(p => (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => {
+                          setNewCustomRole(p.label);
+                          setNewRole(p.defaultRole);
+                        }}
+                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                          newCustomRole === p.label
+                            ? 'bg-primary/20 text-primary border-primary font-bold'
+                            : 'bg-surface hover:bg-surface-hover text-muted hover:text-foreground border-border'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Perfil de Acesso Geral */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted">Cargo / Perfil</label>
+                <label className="text-xs font-semibold text-muted">Perfil de Acesso & Permissões Base</label>
                 <select
                   value={newRole}
                   onChange={e => setNewRole(e.target.value as UserRole)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
-                  <option value="SITE_MANAGER">Encarregado / Obra</option>
-                  <option value="SAFETY_ENGINEER">Engenheiro SST</option>
-                  <option value="ADMIN">Administrador</option>
-                  <option value="VIEWER">Visualizador</option>
+                  <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
+                  <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
+                  <option value="ADMIN">Administrador (Acesso Total)</option>
+                  <option value="VIEWER">Visualizador (Somente Leitura)</option>
                 </select>
+                <p className="text-[11px] text-muted">
+                  Você poderá customizar permissões individuais detalhadas após o cadastro.
+                </p>
               </div>
 
               <div className="space-y-1">
@@ -509,6 +770,7 @@ export function Settings() {
                   onChange={e => setNewPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
                 />
+                <p className="text-[10px] text-muted">O usuário poderá alterar a senha após o primeiro acesso.</p>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-3">
@@ -529,7 +791,7 @@ export function Settings() {
                   ) : (
                     <Plus className="w-4 h-4" />
                   )}
-                  Criar Usuário
+                  {creatingUser ? 'Cadastrando...' : 'Criar Usuário'}
                 </button>
               </div>
             </form>

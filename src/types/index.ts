@@ -18,10 +18,13 @@ export interface UserPermissions {
 export interface User {
   id: string;
   role: UserRole;
+  custom_role?: string | null;
   full_name: string;
   email: string;
   permissions?: UserPermissions;
   created_at: string;
+  deleted_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface ConstructionSite {
