@@ -100,18 +100,21 @@ export const auditService = {
         });
 
         if (a.returned_at) {
+          const isLoss = a.condition_on_return === 'DAMAGED';
           logs.push({
             id: `return-${a.id}`,
             timestamp: a.returned_at,
             userName: 'Administrador Sistema',
             userInitials: 'AS',
-            userColor: 'bg-emerald-500 text-emerald-950',
-            type: 'Devolução',
-            typeBadgeColor: BADGE_COLORS['Devolução'],
+            userColor: isLoss ? 'bg-rose-500 text-rose-950' : 'bg-emerald-500 text-emerald-950',
+            type: isLoss ? 'Extravio' : 'Devolução',
+            typeBadgeColor: isLoss ? BADGE_COLORS['Extravio'] : BADGE_COLORS['Devolução'],
             module: 'Entregas',
-            description: `Devolução registrada de ${epiName} do colaborador ${workerName}`,
+            description: isLoss
+              ? `Extravio/Perda registrada de ${epiName} do colaborador ${workerName}`
+              : `Devolução registrada de ${epiName} do colaborador ${workerName}`,
             ipAddress: '192.168.1.100',
-            details: { workerName, epiName, returnedAt: a.returned_at }
+            details: { workerName, epiName, returnedAt: a.returned_at, condition: a.condition_on_return }
           });
         }
       });

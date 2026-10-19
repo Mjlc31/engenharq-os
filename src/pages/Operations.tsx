@@ -9,7 +9,7 @@ import { ReplacementForm } from '../components/features/operations/ReplacementFo
 import { LossForm } from '../components/features/operations/LossForm';
 import { TransferTab } from '../components/features/operations/TransferTab';
 import { Eye, Edit, Trash2, Camera, Download } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 export function Operations() {
   const { epis, catalogs, workers, loading } = useEpiAssets();
@@ -19,14 +19,27 @@ export function Operations() {
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [pendingReplacement, setPendingReplacement] = useState<{workerId: string, oldEpiId: string, newEpiId: string} | null>(null);
   const [pendingReturn, setPendingReturn] = useState<{workerId: string, assignmentId: string} | null>(null);
-  const [pendingLoss, setPendingLoss] = useState<{workerId: string, assignmentId: string, reason: string} | null>(null);
+  const [pendingLoss, setPendingLoss] = useState<{workerId: string, assignmentId: string, reason: string, catalogName?: string, catalogId?: string} | null>(null);
 
   // Form states
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [selectedCatalogId, setSelectedCatalogId] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().slice(0, 10));
   const [observations, setObservations] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { data: activeAssignments = [] } = useQuery({
+    queryKey: ['active-epi-assignments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('epi_assignments')
+        .select('id, catalog_id, quantity')
+        .is('returned_at', null);
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
 
   const uploadPhoto = async (photoFile?: File) => {
@@ -73,6 +86,8 @@ export function Operations() {
       const assignmentsToInsert = Array(quantity).fill(null).map(() => ({
         worker_id: selectedWorkerId,
         catalog_id: selectedCatalogId,
+        assigned_at: new Date(deliveryDate).toISOString(),
+        unit_price_at_delivery: Number(catalog.unit_price ?? 0),
         condition_on_delivery: 'GOOD' as const,
         digital_signature_url: signatureDataUrl,
         audit_selfie_url: photoUrl
@@ -92,6 +107,7 @@ export function Operations() {
       setQuantity(1);
       setObservations('');
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
@@ -127,6 +143,7 @@ export function Operations() {
       setIsSignatureModalOpen(false);
       setPendingReturn(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -144,11 +161,21 @@ export function Operations() {
         audit_selfie_url: photoUrl
       }).eq('id', pendingLoss.assignmentId);
       if (error) throw error;
+
+      await supabase.from('disciplinary_records').insert({
+        worker_id: pendingLoss.workerId,
+        type: 'ORIENTACAO_SEGURANCA',
+        title: `Termo de Extravio / Perda de EPI - ${pendingLoss.catalogName || 'Equipamento'}`,
+        content_html: `<p>O colaborador declarou o extravio/perda do equipamento <strong>${pendingLoss.catalogName || 'EPI'}</strong> sob sua responsabilidade, ficando orientado sobre os procedimentos de guarda e reposição de EPIs.</p>`,
+        applied_at: new Date().toISOString(),
+        pdf_url: photoUrl || signatureDataUrl
+      });
       
-      toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura.' });
+      toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura e documentado em Medidas Disciplinares.' });
       setIsSignatureModalOpen(false);
       setPendingLoss(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     }
@@ -176,6 +203,8 @@ export function Operations() {
       const { error: assignError } = await supabase.from('epi_assignments').insert({
         worker_id: pendingReplacement.workerId,
         catalog_id: pendingReplacement.newEpiId,
+        assigned_at: new Date().toISOString(),
+        unit_price_at_delivery: Number(catalog.unit_price ?? 0),
         condition_on_delivery: 'GOOD' as const,
         digital_signature_url: signatureDataUrl,
         audit_selfie_url: photoUrl
@@ -191,6 +220,7 @@ export function Operations() {
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
@@ -257,7 +287,13 @@ export function Operations() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Data da Entrega</label>
-                  <input type="date" required defaultValue={new Date().toISOString().slice(0,10)} className="w-full px-4 py-2 bg-background border border-border rounded-md" />
+                  <input 
+                    type="date" 
+                    required 
+                    value={deliveryDate} 
+                    onChange={e => setDeliveryDate(e.target.value)} 
+                    className="w-full px-4 py-2 bg-background border border-border rounded-md" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Estoque Disponível</label>
@@ -291,7 +327,9 @@ export function Operations() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {catalogs.map(cat => {
                 const available = cat.current_stock;
-                const inUse = 0; // We no longer strictly track IN_USE separate from total without querying assignments, but current_stock is what matters
+                const inUse = (activeAssignments as any[])
+                  .filter((a: any) => a.catalog_id === cat.id)
+                  .reduce((sum: number, a: any) => sum + (a.quantity || 1), 0);
                 return (
                   <div key={cat.id} className="p-4 border border-border rounded-lg bg-background">
                     <h3 className="font-bold text-foreground truncate">{cat.name}</h3>

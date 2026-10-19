@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Worker, WorkerRole, ConstructionSite, EpiAssignment, DisciplinaryType } from '../types';
+import { Worker, WorkerRole, ConstructionSite, EpiAssignment, DisciplinaryType, AsoType } from '../types';
 import { useToast } from '../components/ui/Toast';
-import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat, ShieldAlert, ShieldCheck, AlertTriangle, FileText, X } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat, ShieldAlert, ShieldCheck, AlertTriangle, FileText, X, GraduationCap, HeartPulse, Clock } from 'lucide-react';
 import { generateEpiRecordPdf, generateDisciplinaryPdf } from '../lib/pdfGenerator';
 import { disciplinaryService } from '../services/disciplinaryService';
+import { sstService } from '../services/sstService';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { format } from 'date-fns';
 
@@ -18,6 +19,9 @@ export function WorkerProfile() {
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [epiAssignments, setEpiAssignments] = useState<EpiAssignment[]>([]);
   const [disciplinaryRecords, setDisciplinaryRecords] = useState<any[]>([]);
+  const [trainings, setTrainings] = useState<any[]>([]);
+  const [trainingCatalog, setTrainingCatalog] = useState<any[]>([]);
+  const [asos, setAsos] = useState<any[]>([]);
   
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -32,8 +36,9 @@ export function WorkerProfile() {
   const [newRoleStartDate, setNewRoleStartDate] = useState('');
 
   // Tabs state
-  const [activeTab, setActiveTab] = useState<'profile' | 'epi' | 'disciplinary'>(
-    searchParams.get('tab') === 'epi' ? 'epi' : searchParams.get('tab') === 'disciplinary' ? 'disciplinary' : 'profile'
+  const initialTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'profile' | 'epi' | 'disciplinary' | 'trainings' | 'aso'>(
+    initialTab === 'epi' ? 'epi' : initialTab === 'disciplinary' ? 'disciplinary' : initialTab === 'trainings' ? 'trainings' : initialTab === 'aso' ? 'aso' : 'profile'
   );
 
   // Disciplinary Modal state
@@ -43,6 +48,23 @@ export function WorkerProfile() {
   const [disciplinaryContent, setDisciplinaryContent] = useState('');
   const [appliedByName, setAppliedByName] = useState('Engenharia de Segurança');
   const [savingDisciplinary, setSavingDisciplinary] = useState(false);
+
+  // SST Modal states (Trainings & ASO)
+  const [isTrainingModalOpen, setIsTrainingModalOpen] = useState(false);
+  const [trainingCatalogId, setTrainingCatalogId] = useState('');
+  const [trainingInstructor, setTrainingInstructor] = useState('Instrutor SST Credenciado');
+  const [trainingCompletedAt, setTrainingCompletedAt] = useState(new Date().toISOString().slice(0, 10));
+  const [trainingNotes, setTrainingNotes] = useState('');
+  const [savingTraining, setSavingTraining] = useState(false);
+
+  const [isAsoModalOpen, setIsAsoModalOpen] = useState(false);
+  const [asoType, setAsoType] = useState<AsoType>('PERIODICO');
+  const [asoIssuedAt, setAsoIssuedAt] = useState(new Date().toISOString().slice(0, 10));
+  const [asoValidityYears, setAsoValidityYears] = useState(1);
+  const [asoFitHeight, setAsoFitHeight] = useState(false);
+  const [asoFitConfined, setAsoFitConfined] = useState(false);
+  const [asoDoctorName, setAsoDoctorName] = useState('Médico do Trabalho Coordenador');
+  const [savingAso, setSavingAso] = useState(false);
 
   // Signature state
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -54,12 +76,15 @@ export function WorkerProfile() {
     try {
       if (!id) return;
 
-      const [workerRes, rolesRes, sitesRes, epiRes, discRes] = await Promise.all([
+      const [workerRes, rolesRes, sitesRes, epiRes, discRes, trainingsRes, asosRes, catalogRes] = await Promise.all([
         supabase.from('workers').select('*, site:construction_sites(*)').eq('id', id).single(),
         supabase.from('worker_roles_history').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name'),
         supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).order('assigned_at', { ascending: false }),
-        disciplinaryService.fetchRecords(id).catch(() => [])
+        disciplinaryService.fetchRecords(id).catch(() => []),
+        sstService.fetchWorkerTrainings(id).catch(() => []),
+        sstService.fetchWorkerAsos(id).catch(() => []),
+        sstService.fetchTrainingCatalog().catch(() => [])
       ]);
 
       if (workerRes.error) throw workerRes.error;
@@ -72,11 +97,98 @@ export function WorkerProfile() {
       setSites(sitesRes.data as ConstructionSite[]);
       setEpiAssignments(epiRes.data || []);
       setDisciplinaryRecords(discRes || []);
+      setTrainings(trainingsRes || []);
+      setAsos(asosRes || []);
+      setTrainingCatalog(catalogRes || []);
     } catch (err: unknown) {
       console.error('Erro ao buscar perfil:', err);
       toast({ type: 'error', title: 'Erro', message: 'Erro Supabase: ' + (err instanceof Error ? err.message : JSON.stringify(err)) });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getValidityStatus = (validUntil?: string) => {
+    if (!validUntil) return { label: 'Sem Data', color: 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20' };
+    const today = new Date();
+    const expiry = new Date(validUntil);
+    const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { label: `Vencido (${Math.abs(diffDays)}d)`, color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' };
+    }
+    if (diffDays <= 30) {
+      return { label: `A Vencer (${diffDays}d)`, color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' };
+    }
+    return { label: 'Válido', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' };
+  };
+
+  const handleSaveTraining = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!worker || !trainingCatalogId) return;
+    setSavingTraining(true);
+    try {
+      const selectedCat = trainingCatalog.find(c => c.id === trainingCatalogId);
+      const validityMonths = selectedCat?.default_validity_months || 12;
+      
+      const compDate = new Date(trainingCompletedAt);
+      const validUntilDate = new Date(compDate);
+      validUntilDate.setMonth(validUntilDate.getMonth() + validityMonths);
+      const validUntil = validUntilDate.toISOString().split('T')[0];
+
+      await sstService.recordWorkerTraining({
+        worker_id: worker.id,
+        training_id: trainingCatalogId,
+        instructor_name: trainingInstructor,
+        completed_at: new Date(trainingCompletedAt).toISOString(),
+        valid_until: validUntil,
+        notes: trainingNotes || undefined
+      });
+
+      toast({ type: 'success', title: 'Sucesso', message: 'Treinamento registrado com sucesso!' });
+      setIsTrainingModalOpen(false);
+      setTrainingCatalogId('');
+      setTrainingNotes('');
+      const updatedTrainings = await sstService.fetchWorkerTrainings(worker.id);
+      setTrainings(updatedTrainings);
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao registrar treinamento.' });
+    } finally {
+      setSavingTraining(false);
+    }
+  };
+
+  const handleSaveAso = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!worker) return;
+    setSavingAso(true);
+    try {
+      await sstService.recordWorkerAso({
+        worker_id: worker.id,
+        type: asoType,
+        issued_at: asoIssuedAt,
+        validity_years: asoValidityYears,
+        fit_for_height: asoFitHeight,
+        fit_for_confined_space: asoFitConfined,
+        doctor_name: asoDoctorName || undefined
+      });
+
+      setWorker(prev => prev ? ({
+        ...prev,
+        apt_for_height: asoFitHeight,
+        apt_for_confined_space: asoFitConfined,
+        apt_for_height_and_confined_space: asoFitHeight && asoFitConfined,
+        aso_date: asoIssuedAt
+      }) : null);
+
+      toast({ type: 'success', title: 'Sucesso', message: 'ASO registrado e aptidões atualizadas!' });
+      setIsAsoModalOpen(false);
+      const updatedAsos = await sstService.fetchWorkerAsos(worker.id);
+      setAsos(updatedAsos);
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao registrar ASO.' });
+    } finally {
+      setSavingAso(false);
     }
   };
 
@@ -337,24 +449,24 @@ export function WorkerProfile() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-border">
+      <div className="flex gap-4 border-b border-border overflow-x-auto">
         <button
           onClick={() => setActiveTab('profile')}
-          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer ${activeTab === 'profile' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer whitespace-nowrap ${activeTab === 'profile' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Dados e Cargos
           {activeTab === 'profile' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('epi')}
-          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer ${activeTab === 'epi' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer whitespace-nowrap ${activeTab === 'epi' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Ficha de EPI
           {activeTab === 'epi' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('disciplinary')}
-          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer flex items-center gap-1.5 ${activeTab === 'disciplinary' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'disciplinary' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Medidas Disciplinares
           {disciplinaryRecords.length > 0 && (
@@ -363,6 +475,30 @@ export function WorkerProfile() {
             </span>
           )}
           {activeTab === 'disciplinary' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('trainings')}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'trainings' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+        >
+          Treinamentos (NR)
+          {trainings.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full">
+              {trainings.length}
+            </span>
+          )}
+          {activeTab === 'trainings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+        </button>
+        <button
+          onClick={() => setActiveTab('aso')}
+          className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'aso' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
+        >
+          Controle de ASO
+          {asos.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-teal-500/20 text-teal-400 text-[10px] font-bold rounded-full">
+              {asos.length}
+            </span>
+          )}
+          {activeTab === 'aso' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
         </button>
       </div>
 
@@ -731,7 +867,7 @@ export function WorkerProfile() {
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'disciplinary' ? (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -807,6 +943,151 @@ export function WorkerProfile() {
                         >
                           <Download className="w-3.5 h-3.5" /> Baixar Termo (PDF)
                         </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'trainings' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface border border-border rounded-xl p-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-emerald-500" />
+                Treinamentos de Normas Regulamentadoras (NR)
+              </h3>
+              <p className="text-xs text-muted mt-0.5">Certificados e capacitações de segurança obrigatórias deste colaborador.</p>
+            </div>
+            <button
+              onClick={() => setIsTrainingModalOpen(true)}
+              className="bg-primary hover:bg-primary-dark text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" /> Novo Treinamento
+            </button>
+          </div>
+
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            {trainings.length === 0 ? (
+              <div className="p-12 text-center text-muted">
+                <GraduationCap className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+                <p className="text-foreground font-medium">Nenhum treinamento registrado para este colaborador.</p>
+                <p className="text-xs text-muted mt-1">Clique no botão acima para registrar a conclusão de um curso ou NR.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {trainings.map((t) => {
+                  const valStatus = getValidityStatus(t.valid_until);
+                  const trainingTitle = t.training?.title || t.training_title || 'Treinamento de Segurança';
+                  const nrCode = t.training?.nr_code || 'NR';
+                  const workload = t.training?.workload_hours || 8;
+
+                  return (
+                    <div key={t.id} className="p-5 hover:bg-surface-hover/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {nrCode}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${valStatus.color}`}>
+                            {valStatus.label}
+                          </span>
+                          <span className="text-xs text-muted flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" /> {workload}h
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground">{trainingTitle}</h4>
+                        <div className="text-xs text-muted flex flex-wrap items-center gap-4">
+                          <span><strong>Instrutor:</strong> {t.instructor_name || 'Não informado'}</span>
+                          <span><strong>Realizado em:</strong> {t.completed_at ? format(new Date(t.completed_at), 'dd/MM/yyyy') : '-'}</span>
+                          <span><strong>Válido até:</strong> {t.valid_until ? format(new Date(t.valid_until), 'dd/MM/yyyy') : '-'}</span>
+                        </div>
+                        {t.notes && <p className="text-xs text-zinc-400 italic mt-1">Obs: {t.notes}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'aso' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface border border-border rounded-xl p-4">
+            <div>
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <HeartPulse className="w-5 h-5 text-teal-500" />
+                Atestados de Saúde Ocupacional (ASO)
+              </h3>
+              <p className="text-xs text-muted mt-0.5">Histórico médico ocupacional e controle de aptidão física para altura e espaço confinado.</p>
+            </div>
+            <button
+              onClick={() => setIsAsoModalOpen(true)}
+              className="bg-primary hover:bg-primary-dark text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" /> Novo ASO
+            </button>
+          </div>
+
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            {asos.length === 0 ? (
+              <div className="p-12 text-center text-muted">
+                <HeartPulse className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+                <p className="text-foreground font-medium">Nenhum ASO registrado para este colaborador.</p>
+                <p className="text-xs text-muted mt-1">Cadastre o atestado admissional, periódico ou demissional para manter a conformidade.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {asos.map((a) => {
+                  const valStatus = getValidityStatus(a.valid_until);
+
+                  return (
+                    <div key={a.id} className="p-5 hover:bg-surface-hover/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded text-xs font-black bg-teal-500/10 text-teal-400 border border-teal-500/20">
+                            {a.type}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${valStatus.color}`}>
+                            {valStatus.label}
+                          </span>
+                          <span className="text-xs text-muted">
+                            Validade: {a.validity_years} {a.validity_years > 1 ? 'anos' : 'ano'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground">
+                          Médico Emitente: {a.doctor_name || 'Médico do Trabalho / Coordenador'}
+                        </h4>
+                        <div className="text-xs text-muted flex flex-wrap items-center gap-4">
+                          <span><strong>Emissão:</strong> {a.issued_at ? format(new Date(a.issued_at), 'dd/MM/yyyy') : '-'}</span>
+                          <span><strong>Vencimento:</strong> {a.valid_until ? format(new Date(a.valid_until), 'dd/MM/yyyy') : '-'}</span>
+                        </div>
+
+                        {/* Aptidões específicas */}
+                        <div className="flex flex-wrap items-center gap-2 mt-2 pt-1 border-t border-border/50">
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
+                            a.fit_for_height
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}>
+                            <HardHat className="w-3.5 h-3.5" />
+                            {a.fit_for_height ? 'Apto Altura (NR-35)' : 'Inapto Altura (NR-35)'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
+                            a.fit_for_confined_space
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}>
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            {a.fit_for_confined_space ? 'Apto Espaço Confinado (NR-33)' : 'Inapto Espaço Confinado (NR-33)'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -897,6 +1178,218 @@ export function WorkerProfile() {
                 Salvar & Gerar Termo (PDF)
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Registro de Treinamento */}
+      {isTrainingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-bold text-foreground text-base">Registrar Treinamento (NR)</h3>
+              </div>
+              <button
+                onClick={() => setIsTrainingModalOpen(false)}
+                className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTraining} className="p-5 space-y-4 flex-1">
+              <div className="bg-background border border-border rounded-lg p-3 text-xs grid grid-cols-2 gap-2">
+                <div><span className="text-muted">Colaborador:</span> <strong className="text-foreground">{worker.full_name}</strong></div>
+                <div><span className="text-muted">CPF:</span> <strong className="text-foreground">{worker.cpf}</strong></div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Selecionar Treinamento (NR)</label>
+                <select
+                  required
+                  value={trainingCatalogId}
+                  onChange={e => setTrainingCatalogId(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                >
+                  <option value="">-- Escolha um treinamento --</option>
+                  {trainingCatalog.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nr_code} - {cat.title} ({cat.workload_hours}h)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Instrutor / Responsável Técnico</label>
+                <input
+                  type="text"
+                  required
+                  value={trainingInstructor}
+                  onChange={e => setTrainingInstructor(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                  placeholder="Nome do Instrutor ou Empresa"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Data de Realização</label>
+                <input
+                  type="date"
+                  required
+                  value={trainingCompletedAt}
+                  onChange={e => setTrainingCompletedAt(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Observações</label>
+                <textarea
+                  rows={3}
+                  value={trainingNotes}
+                  onChange={e => setTrainingNotes(e.target.value)}
+                  className="w-full bg-background border border-border rounded p-3 text-sm text-foreground focus:outline-none focus:border-primary"
+                  placeholder="Número de registro, certificadora ou observações adicionais..."
+                />
+              </div>
+
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsTrainingModalOpen(false)}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingTraining || !trainingCatalogId}
+                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                >
+                  {savingTraining ? 'Salvando...' : 'Registrar Treinamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Registro de ASO */}
+      {isAsoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HeartPulse className="w-5 h-5 text-teal-500" />
+                <h3 className="font-bold text-foreground text-base">Registrar ASO (Saúde Ocupacional)</h3>
+              </div>
+              <button
+                onClick={() => setIsAsoModalOpen(false)}
+                className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAso} className="p-5 space-y-4 flex-1">
+              <div className="bg-background border border-border rounded-lg p-3 text-xs grid grid-cols-2 gap-2">
+                <div><span className="text-muted">Colaborador:</span> <strong className="text-foreground">{worker.full_name}</strong></div>
+                <div><span className="text-muted">CPF:</span> <strong className="text-foreground">{worker.cpf}</strong></div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted">Tipo de ASO</label>
+                  <select
+                    value={asoType}
+                    onChange={e => setAsoType(e.target.value as AsoType)}
+                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                  >
+                    <option value="ADMISSIONAL">Admissional</option>
+                    <option value="PERIODICO">Periódico</option>
+                    <option value="RETORNO_TRABALHO">Retorno ao Trabalho</option>
+                    <option value="MUDANCA_FUNCAO">Mudança de Função</option>
+                    <option value="DEMISSIONAL">Demissional</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted">Validade (Anos)</label>
+                  <select
+                    value={asoValidityYears}
+                    onChange={e => setAsoValidityYears(Number(e.target.value))}
+                    className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                  >
+                    <option value={1}>1 Ano (Padrão Obras)</option>
+                    <option value={2}>2 Anos</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Data de Emissão do Exame</label>
+                <input
+                  type="date"
+                  required
+                  value={asoIssuedAt}
+                  onChange={e => setAsoIssuedAt(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted">Médico Coordenador / Emitente</label>
+                <input
+                  type="text"
+                  value={asoDoctorName}
+                  onChange={e => setAsoDoctorName(e.target.value)}
+                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                  placeholder="Nome do Médico e CRM"
+                />
+              </div>
+
+              <div className="bg-background border border-border rounded-lg p-3 space-y-2">
+                <p className="text-xs font-bold text-foreground mb-1">Aptidões Específicas:</p>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={asoFitHeight}
+                    onChange={e => setAsoFitHeight(e.target.checked)}
+                    className="rounded text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span>Apto para Trabalho em Altura (NR-35)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={asoFitConfined}
+                    onChange={e => setAsoFitConfined(e.target.checked)}
+                    className="rounded text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span>Apto para Espaço Confinado (NR-33)</span>
+                </label>
+              </div>
+
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAsoModalOpen(false)}
+                  className="px-4 py-2 text-sm text-muted hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAso}
+                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                >
+                  {savingAso ? 'Salvando...' : 'Salvar ASO & Atualizar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -50,6 +50,7 @@ export default function App() {
               <Route path="sites" element={<Sites />} />
               <Route path="map" element={<MapTracking />} />
               <Route path="tags" element={<PrintTags />} />
+              <Route path="print-tags" element={<PrintTags />} />
               <Route path="audit" element={<Audit />} />
               <Route path="settings" element={<Settings />} />
               <Route path="operations" element={<Operations />} />

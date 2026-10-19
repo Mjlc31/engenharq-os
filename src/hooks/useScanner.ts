@@ -92,6 +92,7 @@ export function useScanner() {
           catalog_id: item.id,
           worker_id: workerId,
           quantity: item.quantity || 1,
+          unit_price_at_delivery: Number(item.unit_price ?? 0),
           expected_return_date: expectedReturn.toISOString(),
           digital_signature_url: signatureUrl,
           audit_selfie_url: selfieUrl || biometricsData?.selfieUrl,

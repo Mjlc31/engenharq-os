@@ -5,20 +5,147 @@ import jsPDF from 'jspdf';
 import { Worker, EpiAssignment } from '../types';
 
 export const generateEpiReceiptPDF = async (
-  assignment: any,
-  worker: any,
-  epi: any,
-  company: any,
-  deliveryPhotoUrl?: string
-) => {
+  arg1: any,
+  arg2?: any,
+  arg3?: any,
+  arg4?: any,
+  arg5?: string
+): Promise<Blob> => {
   const doc = new jsPDF();
-  doc.setFontSize(20);
-  doc.text('Recibo de EPI', 105, 20, { align: 'center' });
-  doc.setFontSize(12);
-  doc.text(`Funcionário: ${worker.name}`, 20, 40);
-  doc.text(`CPF: ${worker.cpf || 'Não informado'}`, 20, 50);
-  doc.text(`EPI: ${epi.name}`, 20, 60);
-  doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, 20, 70);
+  
+  // Detect call signature:
+  let worker: any = {};
+  let items: any[] = [];
+  let evidenceUrl: string | undefined = undefined;
+
+  if (Array.isArray(arg2)) {
+    worker = arg1 || {};
+    items = arg2;
+    evidenceUrl = typeof arg3 === 'string' ? arg3 : undefined;
+  } else {
+    // Legacy: assignment, worker, epi, company, deliveryPhotoUrl
+    worker = arg2 || {};
+    items = arg3 ? [arg3] : [];
+    evidenceUrl = arg5;
+  }
+
+  // Header / Branding
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, 210, 30, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMPROVANTE DE ENTREGA DE EPI', 105, 16, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ENGENHARQ OS • SISTEMA DE GESTÃO DE SEGURANÇA DO TRABALHO (NR-06)', 105, 23, { align: 'center' });
+
+  // Worker Info Box
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('1. DADOS DO COLABORADOR', 15, 40);
+
+  doc.setDrawColor(226, 232, 240);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(15, 44, 180, 26, 2, 2, 'FD');
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  const wName = worker.full_name || worker.name || 'Colaborador não identificado';
+  const wCpf = worker.cpf || 'Não informado';
+  const wMat = worker.registration_number || worker.mat || worker.id?.slice(0, 8) || 'N/A';
+  const wRole = worker.current_role || worker.initial_role || worker.role || 'Geral';
+  const wSite = worker.site?.name || 'Obra Geral';
+
+  doc.text(`Nome: ${wName.toUpperCase()}`, 20, 52);
+  doc.text(`CPF: ${wCpf}`, 20, 58);
+  doc.text(`Função: ${wRole}`, 20, 64);
+
+  doc.text(`Matrícula: ${wMat}`, 110, 52);
+  doc.text(`Unidade / Obra: ${wSite}`, 110, 58);
+  doc.text(`Data da Entrega: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 110, 64);
+
+  // Items Table Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('2. EQUIPAMENTOS FORNECIDOS', 15, 80);
+
+  doc.setFillColor(241, 245, 249);
+  doc.rect(15, 84, 180, 8, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ITEM / MODELO', 18, 89);
+  doc.text('CÓDIGO', 90, 89);
+  doc.text('C.A.', 125, 89);
+  doc.text('QTD', 155, 89);
+  doc.text('CONDIÇÃO', 170, 89);
+
+  let curY = 98;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+
+  items.forEach((item, idx) => {
+    const itemName = item.name || item.category || 'EPI';
+    const itemCode = item.code || item.tracking_code || '-';
+    const itemCa = item.ca_number || 'N/A';
+    const itemQty = item.quantity || 1;
+
+    doc.text(`${idx + 1}. ${itemName}`, 18, curY);
+    doc.text(String(itemCode), 90, curY);
+    doc.text(String(itemCa), 125, curY);
+    doc.text(String(itemQty), 158, curY);
+    doc.text('NOVO / BOM', 170, curY);
+
+    doc.setDrawColor(241, 245, 249);
+    doc.line(15, curY + 3, 195, curY + 3);
+    curY += 8;
+  });
+
+  // Terms and conditions
+  curY = Math.max(curY + 4, 150);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('3. TERMO DE RESPONSABILIDADE E COMPROMISSO (NR-06)', 15, curY);
+
+  curY += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  const legalText = `Declaro ter recebido da empresa os EPIs acima descritos, novos e em perfeitas condições de uso, comprometendo-me a utilizá-los estritamente para a finalidade a que se destinam no desempenho de minhas funções, mantendo-os higienizados e sob minha guarda. Estou ciente de que o não uso dos mesmos constitui ato faltoso passível de punição disciplinar conforme o Artigo 158 da CLT e item 6.6.2 da NR-06. Em caso de extravio ou dano doloso, autorizo o devido ressarcimento conforme legislação vigente.`;
+  
+  const splitLegal = doc.splitTextToSize(legalText, 180);
+  doc.text(splitLegal, 15, curY);
+
+  // Evidence / Signatures Box
+  curY += splitLegal.length * 4 + 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('4. COMPROVAÇÃO DE ENTREGA (EVIDÊNCIA DIGITAL)', 15, curY);
+
+  curY += 6;
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(15, curY, 85, 45);
+  doc.rect(110, curY, 85, 45);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Assinatura do Responsável pela Entrega', 18, curY + 40);
+  doc.text('Assinatura / Evidência do Colaborador', 113, curY + 40);
+
+  if (evidenceUrl && evidenceUrl.startsWith('data:image')) {
+    try {
+      doc.addImage(evidenceUrl, 'PNG', 115, curY + 2, 75, 32);
+    } catch {
+      // Ignorar falha na conversão de imagem
+    }
+  }
+
+  // Footer
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Documento gerado eletronicamente em ${new Date().toISOString()} • EngenharQ OS v2.5`, 105, 290, { align: 'center' });
+
   return doc.output('blob');
 };
 

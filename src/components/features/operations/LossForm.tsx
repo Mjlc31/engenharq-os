@@ -38,8 +38,14 @@ export function LossForm({ workers, setIsSignatureModalOpen, setPendingLoss }: {
     setLoading(false);
   };
 
-  const handleExtravio = async (assignmentId: string) => {
-    setPendingLoss({ assignmentId, workerId: selectedWorkerId, reason: 'Perda/Extravio' });
+  const handleExtravio = async (a: any) => {
+    setPendingLoss({ 
+      assignmentId: a.id, 
+      workerId: selectedWorkerId, 
+      reason: 'Perda/Extravio',
+      catalogName: a.catalog?.name,
+      catalogId: a.catalog_id
+    });
     setIsSignatureModalOpen(true);
   };
 
@@ -78,7 +84,7 @@ export function LossForm({ workers, setIsSignatureModalOpen, setPendingLoss }: {
                     <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleString('pt-BR')}</td>
                     <td className="px-4 py-2">
                       <button 
-                        onClick={() => handleExtravio(a.id)}
+                        onClick={() => handleExtravio(a)}
                         disabled={submitting}
                         className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
                       >
