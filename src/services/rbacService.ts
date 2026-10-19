@@ -32,9 +32,17 @@ export const rbacService = {
     return (data || []) as User[];
   },
 
-  async updateUserPermissions(userId: string, permissions: UserPermissions, role?: UserRole) {
-    const updatePayload: any = { permissions };
-    if (role) updatePayload.role = role;
+  async updateUserPermissions(
+    userId: string,
+    permissions: UserPermissions,
+    role?: UserRole,
+    custom_role?: string | null,
+    full_name?: string
+  ) {
+    const updatePayload: any = { permissions, updated_at: new Date().toISOString() };
+    if (role) updatePayload.role = role === 'VIEWER' ? 'SITE_MANAGER' : role;
+    if (custom_role !== undefined) updatePayload.custom_role = custom_role;
+    if (full_name) updatePayload.full_name = full_name;
 
     const { data, error } = await supabase
       .from('users')
@@ -51,45 +59,88 @@ export const rbacService = {
     email: string;
     full_name: string;
     role: UserRole;
+    custom_role?: string | null;
     permissions?: UserPermissions;
     password?: string;
   }) {
-    // 1. Criar usuário no auth do Supabase
     const userPermissions = payload.permissions || (payload.role === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS);
-    
-    // Tentativa via Supabase Auth SignUp
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password || 'Engenharq@2026',
-      options: {
-        data: {
-          full_name: payload.full_name,
-          role: payload.role
-        }
+    const dbRole = (payload.role === 'VIEWER' ? 'SITE_MANAGER' : payload.role);
+
+    // 1. Executa via RPC SECURITY DEFINER (não desloga a sessão do administrador e confirma o e-mail imediatamente)
+    try {
+      const { data, error } = await supabase.rpc('admin_create_user', {
+        new_email: payload.email.trim(),
+        new_password: payload.password || 'Engenharq@2026',
+        new_full_name: payload.full_name.trim(),
+        new_role: dbRole as any,
+        new_custom_role: payload.custom_role ? payload.custom_role.trim() : null,
+        new_permissions: userPermissions
+      });
+
+      if (!error && data) {
+        return data as unknown as User;
       }
-    });
+      if (error) {
+        console.warn('admin_create_user RPC retornou erro:', error.message);
+        throw error;
+      }
+    } catch (rpcErr: any) {
+      // Se for validação (duplicidade ou permissão), propaga imediatamente
+      if (rpcErr.message && (rpcErr.message.includes('já existe') || rpcErr.message.includes('Apenas administradores') || rpcErr.message.includes('obrigatório'))) {
+        throw rpcErr;
+      }
 
-    if (authError) throw authError;
+      // 2. Fallback via client-side caso RPC falhe
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: payload.email,
+        password: payload.password || 'Engenharq@2026',
+        options: {
+          data: {
+            full_name: payload.full_name,
+            role: dbRole,
+            custom_role: payload.custom_role
+          }
+        }
+      });
 
-    if (authData.user) {
-      // Inserir / Atualizar na tabela public.users
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .upsert({
-          id: authData.user.id,
-          email: payload.email,
-          full_name: payload.full_name,
-          role: (payload.role === 'VIEWER' ? 'SITE_MANAGER' : payload.role) as any,
-          permissions: userPermissions as any
-        })
-        .select()
-        .single();
+      if (authError) throw authError;
 
-      if (userError) throw userError;
-      return userData as User;
+      if (authData.user) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: authData.user.id,
+            email: payload.email,
+            full_name: payload.full_name,
+            role: dbRole as any,
+            custom_role: payload.custom_role || null,
+            permissions: userPermissions as any
+          })
+          .select()
+          .single();
+
+        if (userError) throw userError;
+        return userData as User;
+      }
+      throw rpcErr;
     }
 
     throw new Error('Não foi possível obter dados do usuário criado.');
+  },
+
+  async deactivateUser(userId: string) {
+    const { data, error } = await supabase.rpc('admin_deactivate_user', {
+      target_user_id: userId
+    });
+    if (error) {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', userId);
+      if (updateError) throw updateError;
+      return true;
+    }
+    return data;
   },
 
   hasPermission(permissions: UserPermissions | undefined, moduleKey: string, actionKey: string = 'view'): boolean {

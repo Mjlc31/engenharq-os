@@ -632,6 +632,7 @@ export type Database = {
       users: {
         Row: {
           created_at: string
+          custom_role: string | null
           deleted_at: string | null
           email: string
           full_name: string
@@ -642,6 +643,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_role?: string | null
           deleted_at?: string | null
           email: string
           full_name: string
@@ -652,6 +654,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_role?: string | null
           deleted_at?: string | null
           email?: string
           full_name?: string
@@ -933,6 +936,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_user: {
+        Args: {
+          new_email: string
+          new_password: string
+          new_full_name: string
+          new_role: Database["public"]["Enums"]["user_role"]
+          new_custom_role?: string | null
+          new_permissions?: Json
+        }
+        Returns: Json
+      }
+      admin_deactivate_user: {
+        Args: {
+          target_user_id: string
+        }
+        Returns: boolean
+      }
       assign_epi: {
         Args: { p_catalog_id: string; p_quantity?: number; p_worker_id: string }
         Returns: boolean
