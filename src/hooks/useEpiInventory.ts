@@ -19,7 +19,7 @@ export function useEpiInventory() {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      setEpis(data as EpiInventory[] || []);
+      setEpis((data as unknown as EpiInventory[]) || []);
       return data;
     } catch (err: any) {
       console.error('Erro ao buscar EPIs:', err);

@@ -3,7 +3,7 @@ import { X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 
-export type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export interface Toast {
   id: string;
@@ -55,11 +55,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               "flex w-full max-w-sm items-start gap-3 rounded-lg border p-4 shadow-lg transition-all bg-surface",
               t.type === 'success' && "border-emerald-500/20",
               t.type === 'error' && "border-red-500/20",
+              t.type === 'warning' && "border-amber-500/20",
               t.type === 'info' && "border-blue-500/20"
             )}
           >
             {t.type === 'success' && <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />}
             {t.type === 'error' && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />}
+            {t.type === 'warning' && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
             {t.type === 'info' && <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />}
             
             <div className="flex-1 overflow-hidden">

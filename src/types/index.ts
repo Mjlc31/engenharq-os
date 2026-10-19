@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER';
+export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER' | 'VIEWER';
 export type EpiStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DISCARDED';
 export type TransferStatus = 'EM_TRANSITO' | 'RECEBIDO' | 'CANCELADO';
 export type AsoType = 'ADMISSIONAL' | 'PERIODICO' | 'RETORNO_TRABALHO' | 'MUDANCA_FUNCAO' | 'DEMISSIONAL';

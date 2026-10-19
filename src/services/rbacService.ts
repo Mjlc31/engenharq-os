@@ -79,7 +79,7 @@ export const rbacService = {
           id: authData.user.id,
           email: payload.email,
           full_name: payload.full_name,
-          role: payload.role,
+          role: (payload.role === 'VIEWER' ? 'SITE_MANAGER' : payload.role) as any,
           permissions: userPermissions as any
         })
         .select()
