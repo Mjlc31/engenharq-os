@@ -45,7 +45,11 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
         setError('Por favor, faça a assinatura antes de salvar.');
         return;
       }
-      finalData = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || null;
+      try {
+        finalData = sigCanvasRef.current?.getTrimmedCanvas().toDataURL('image/png') || null;
+      } catch (e) {
+        finalData = sigCanvasRef.current?.getCanvas().toDataURL('image/png') || null;
+      }
     } else {
       if (!capturedPhoto) {
         setError('Por favor, tire a foto antes de salvar.');
