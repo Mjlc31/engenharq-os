@@ -47,7 +47,7 @@ export function useEpiAssets() {
     
     try {
       const { error: insertError } = await supabase.from('epi_catalog').insert([
-        { category, tracking_code, ca_number: caNumber, status: 'AVAILABLE' }
+        { name: category, category, tracking_code, ca_number: caNumber, status: 'AVAILABLE' }
       ]);
       if (insertError) throw insertError;
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });

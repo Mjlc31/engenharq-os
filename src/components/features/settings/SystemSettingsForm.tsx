@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '../../../lib/supabase';
 import { Save, Loader2, Image as ImageIcon } from 'lucide-react';
@@ -25,20 +23,17 @@ export function SystemSettingsForm() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [settingsId, setSettingsId] = useState<string | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      default_expiration_alert_days: 30,
-    }
+  const [values, setValues] = useState<SettingsFormValues>({
+    company_name: '',
+    logo_url: null,
+    epi_declaration_text: '',
+    epi_terms_text: '',
+    epi_legal_base_text: '',
+    default_expiration_alert_days: 30,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const logoUrl = watch('logo_url');
+  const logoUrl = values.logo_url;
 
   useEffect(() => {
     fetchSettings();
@@ -58,12 +53,14 @@ export function SystemSettingsForm() {
 
       if (data) {
         setSettingsId(data.id);
-        setValue('company_name', data.company_name || '');
-        setValue('logo_url', data.logo_url);
-        setValue('epi_declaration_text', data.epi_declaration_text);
-        setValue('epi_terms_text', data.epi_terms_text);
-        setValue('epi_legal_base_text', data.epi_legal_base_text);
-        setValue('default_expiration_alert_days', data.default_expiration_alert_days);
+        setValues({
+          company_name: data.company_name || '',
+          logo_url: data.logo_url || null,
+          epi_declaration_text: data.epi_declaration_text || '',
+          epi_terms_text: data.epi_terms_text || '',
+          epi_legal_base_text: data.epi_legal_base_text || '',
+          default_expiration_alert_days: data.default_expiration_alert_days || 30,
+        });
       }
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar configurações.');
@@ -77,7 +74,7 @@ export function SystemSettingsForm() {
     setUploadingLogo(true);
     try {
       const url = await uploadImage(e.target.files[0], 'system-assets');
-      if (url) setValue('logo_url', url, { shouldDirty: true });
+      if (url) setValues(prev => ({ ...prev, logo_url: url }));
     } catch (err: any) {
       setError('Erro ao enviar a imagem.');
     } finally {
@@ -85,11 +82,19 @@ export function SystemSettingsForm() {
     }
   };
 
-  const onSubmit = async (values: SettingsFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       setSaving(true);
       setError(null);
       setSuccess(false);
+
+      if (!values.company_name.trim()) {
+        setErrors({ company_name: 'Razão social é obrigatória' });
+        setSaving(false);
+        return;
+      }
+      setErrors({});
 
       if (settingsId) {
         // Atualiza o existente
@@ -145,7 +150,7 @@ export function SystemSettingsForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="bg-surface border border-border rounded-xl overflow-hidden">
+    <form onSubmit={handleSubmit} className="bg-surface border border-border rounded-xl overflow-hidden">
       <div className="p-6 border-b border-border flex justify-between items-center">
         <h3 className="text-lg font-bold">Configurações do Sistema</h3>
         <button
@@ -176,22 +181,24 @@ export function SystemSettingsForm() {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Razão Social da Empresa *</label>
               <input
-                {...register('company_name')}
+                value={values.company_name}
+                onChange={e => setValues(prev => ({ ...prev, company_name: e.target.value }))}
                 className={`w-full bg-background border ${errors.company_name ? 'border-red-500' : 'border-border'} rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50`}
                 placeholder="Ex: Engenharq LTDA"
               />
-              {errors.company_name && <p className="text-red-500 text-xs mt-1">{errors.company_name.message}</p>}
+              {errors.company_name && <p className="text-red-500 text-xs mt-1">{errors.company_name}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Dias de Alerta para Vencimento de CA</label>
               <input
                 type="number"
-                {...register('default_expiration_alert_days', { valueAsNumber: true })}
+                value={values.default_expiration_alert_days || 30}
+                onChange={e => setValues(prev => ({ ...prev, default_expiration_alert_days: Number(e.target.value) }))}
                 className={`w-full bg-background border ${errors.default_expiration_alert_days ? 'border-red-500' : 'border-border'} rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50`}
                 placeholder="Ex: 30"
               />
-              {errors.default_expiration_alert_days && <p className="text-red-500 text-xs mt-1">{errors.default_expiration_alert_days.message}</p>}
+              {errors.default_expiration_alert_days && <p className="text-red-500 text-xs mt-1">{errors.default_expiration_alert_days}</p>}
             </div>
 
             <div>
@@ -220,7 +227,8 @@ export function SystemSettingsForm() {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Texto de Declaração de EPI</label>
               <textarea
-                {...register('epi_declaration_text')}
+                value={values.epi_declaration_text || ''}
+                onChange={e => setValues(prev => ({ ...prev, epi_declaration_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 placeholder="Texto padrão que aparecerá na ficha de entrega..."
               />
@@ -229,7 +237,8 @@ export function SystemSettingsForm() {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Termos de Responsabilidade</label>
               <textarea
-                {...register('epi_terms_text')}
+                value={values.epi_terms_text || ''}
+                onChange={e => setValues(prev => ({ ...prev, epi_terms_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 placeholder="Termos de responsabilidade para uso do EPI..."
               />
@@ -238,7 +247,8 @@ export function SystemSettingsForm() {
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Base Legal (NR, CLT)</label>
               <textarea
-                {...register('epi_legal_base_text')}
+                value={values.epi_legal_base_text || ''}
+                onChange={e => setValues(prev => ({ ...prev, epi_legal_base_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 placeholder="Ex: Conforme NR 06..."
               />

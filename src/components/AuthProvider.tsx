@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { UserPermissions } from '../types';
 import { ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from '../services/rbacService';
 
-export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER';
+export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER' | 'VIEWER';
 
 interface AuthContextType {
   session: Session | null;
