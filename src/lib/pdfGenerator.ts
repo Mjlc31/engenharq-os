@@ -149,6 +149,53 @@ export const generateEpiReceiptPDF = async (
   return doc.output('blob');
 };
 
+let cachedTemplateBytes: ArrayBuffer | null = null;
+
+async function getTemplatePdfBytes(): Promise<ArrayBuffer> {
+  if (cachedTemplateBytes) return cachedTemplateBytes;
+  const templateResponse = await fetch('/ficha_epi_template.pdf');
+  if (!templateResponse.ok) {
+    throw new Error(`Falha ao carregar o modelo da Ficha de EPI (${templateResponse.status})`);
+  }
+  cachedTemplateBytes = await templateResponse.arrayBuffer();
+  return cachedTemplateBytes;
+}
+
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function safeEmbedImage(pdfDoc: PDFDocument, urlOrData: string): Promise<any | null> {
+  if (!urlOrData || typeof urlOrData !== 'string') return null;
+  try {
+    if (urlOrData.startsWith('data:image/')) {
+      const isPng = urlOrData.startsWith('data:image/png');
+      const base64Data = urlOrData.split(',')[1];
+      if (!base64Data) return null;
+      const bytes = base64ToUint8Array(base64Data);
+      return isPng ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+    }
+
+    const response = await fetch(urlOrData);
+    if (!response.ok) return null;
+    const imageBytes = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('png') || urlOrData.toLowerCase().endsWith('.png')) {
+      return await pdfDoc.embedPng(imageBytes);
+    } else {
+      return await pdfDoc.embedJpg(imageBytes);
+    }
+  } catch (err) {
+    console.warn('Não foi possível embutir imagem na ficha (fallback seguro):', err);
+    return null;
+  }
+}
+
 export const generateEpiRecordPdf = async (
   worker: Worker | any, 
   epiAssignments: EpiAssignment[] | any[],
@@ -156,9 +203,9 @@ export const generateEpiRecordPdf = async (
   customConfig?: { firstRowY?: number; rowHeight?: number; headerY?: number; sigOffsetY?: number }
 ): Promise<Blob | void> => {
   try {
-    const templateResponse = await fetch('/ficha_epi_template.pdf');
-    const existingPdfBytes = await templateResponse.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const templateBytes = await getTemplatePdfBytes();
+    const pdfDoc = await PDFDocument.load(templateBytes);
+    const templateSourceDoc = await PDFDocument.load(templateBytes);
 
     let savedOffsets: any = {};
     try {
@@ -168,157 +215,187 @@ export const generateEpiRecordPdf = async (
       savedOffsets = {};
     }
 
-    const headerY = customConfig?.headerY ?? savedOffsets.headerY ?? 722;
-    const firstRowY = customConfig?.firstRowY ?? savedOffsets.firstRowY ?? 377;
-    const rowHeight = customConfig?.rowHeight ?? savedOffsets.rowHeight ?? 22;
-    const sigOffsetY = customConfig?.sigOffsetY ?? savedOffsets.sigOffsetY ?? 4;
+    // Accurate calibrated coordinates for ficha_epi_template.pdf (A4: 595.44 x 841.92)
+    const headerY = customConfig?.headerY ?? savedOffsets.headerY ?? 725.5;
+    const firstRowBottomY = customConfig?.firstRowY ?? savedOffsets.firstRowY ?? 377.0;
+    const rowHeight = customConfig?.rowHeight ?? savedOffsets.rowHeight ?? 22.0;
+    const ROWS_PER_PAGE = 16;
 
+    // Header Coordinates (Worker Identification Box)
     const HEADER = {
-      nameX: 72, nameY: headerY,
-      matX: 458, matY: headerY,
-      funcX: 75, funcY: headerY - 14,
-      admX: 430, admY: headerY - 14
+      nameX: 68, 
+      nameY: headerY,
+      matX: 390, 
+      matY: headerY,
+      funcX: 72, 
+      funcY: headerY - 13.0, // 712.5 pt
+      admCoverX: 398,
+      admCoverY: headerY - 15.0, // 710.5 pt
+      admCoverW: 85,
+      admCoverH: 12,
+      admX: 410, 
+      admY: headerY - 13.0  // 712.5 pt
     };
 
+    // Table Column Coordinates (verified with 0.1pt precision)
     const COL = {
-      qt: 45,
-      epiName: 70,
-      ca: 200,
-      dataEnt: 233,
-      assEnt: 332,
-      dataDev: 394,
-      assDev: 469,
-      assRec: 529
+      qtX: 35,              // Col 1 (20.4 to 49.2, center 34.8)
+      nameX: 53,            // Col 2 (49.2 to 169.2, left 53)
+      caCenterX: 190.6,     // Col 3 (169.2 to 212.1, center 190.6)
+      dataEntCoverX: 214,   // Col 4 (212.1 to 268.9)
+      dataEntCoverW: 53,
+      dataEntTextX: 222.5,  // Centered date in Col 4
+      assEntCenterX: 307.9, // Col 5 (268.9 to 346.9, center 307.9)
+      dataDevCoverX: 349,   // Col 6 (346.9 to 411.0)
+      dataDevCoverW: 60,
+      dataDevTextX: 361.0,  // Centered date in Col 6
+      assDevCenterX: 450.0  // Col 7 (411.0 to 489.0, center 450.0)
     };
 
-    const TABLE = {
-      firstRowY: firstRowY,
-      rowHeight: rowHeight,
-      maxRows: 17
-    };
-
-    let currentPage = pdfDoc.getPages()[0];
-    let currentRow = 0;
-    
     // Sort ascending by assigned_at so oldest is at top
     const assignments = [...epiAssignments].sort((a, b) => 
       new Date(a.assigned_at || 0).getTime() - new Date(b.assigned_at || 0).getTime()
     );
 
-    const workerName = worker.name || worker.full_name || '';
-    const workerMat = worker.id || worker.mat || '';
-    const workerRole = worker.role || worker.department || '';
+    const workerName = (worker.full_name || worker.name || '').toUpperCase();
+    const workerMat = String(worker.registration_number || worker.matricula || worker.mat || worker.id?.slice(0, 8) || '').toUpperCase();
+    const workerRole = String(worker.current_role || worker.job_title || worker.job_role || worker.role || worker.initial_role || worker.department || '').toUpperCase();
 
-    currentPage.drawText(workerName.toUpperCase(), { x: HEADER.nameX, y: HEADER.nameY, size: 10 });
-    currentPage.drawText(workerMat.slice(0, 8).toUpperCase(), { x: HEADER.matX, y: HEADER.matY, size: 10 });
-    
-    if (workerRole) {
-      currentPage.drawText(workerRole.toUpperCase(), { x: HEADER.funcX, y: HEADER.funcY, size: 10 });
-    }
-    
-    if (worker.admission_date) {
-      currentPage.drawRectangle({ x: 420, y: 704, width: 70, height: 12, color: rgb(1, 1, 1) });
-      currentPage.drawText(format(new Date(worker.admission_date), 'dd/MM/yyyy'), { x: HEADER.admX, y: HEADER.admY, size: 10 });
-    }
+    const totalPages = Math.max(1, Math.ceil(assignments.length / ROWS_PER_PAGE));
 
-    const impressaoStamp = `Impresso em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`;
-
-    for (let i = 0; i < assignments.length; i++) {
-      const assignment = assignments[i];
-      if (currentRow >= TABLE.maxRows) {
-        // Stamp the current page before moving to next
-        currentPage.drawText(impressaoStamp, { x: 430, y: 15, size: 8 });
-        
-        currentRow = 0;
-        currentPage = pdfDoc.addPage();
+    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+      let page;
+      if (pageIdx === 0) {
+        page = pdfDoc.getPages()[0];
+      } else {
+        const [copiedPage] = await pdfDoc.copyPages(templateSourceDoc, [0]);
+        page = pdfDoc.addPage(copiedPage);
       }
 
-      const currentY = TABLE.firstRowY - (currentRow * TABLE.rowHeight);
-      
-      const catalog = assignment.catalog || assignment.epi?.catalog || {};
-      const epiName = catalog.name || 'EPI Desconhecido';
-      const caNumber = catalog.ca_number || assignment.epi?.ca_number || '';
-      const isUnif = catalog.category?.toLowerCase().includes('uniforme');
-      
-      currentPage.drawText('1', { x: COL.qt, y: currentY, size: 8 });
-      let textName = `${isUnif ? '[UNIF]' : '[EPI]'} ${epiName}`;
-      if (textName.length > 28) textName = textName.substring(0, 26) + '...';
-      currentPage.drawText(textName, { x: COL.epiName, y: currentY, size: 8 });
-      
-      if (caNumber) {
-        currentPage.drawText(caNumber.toString(), { x: COL.ca, y: currentY, size: 8 });
+      // Stamp Employee Header on each page
+      if (workerName) {
+        page.drawText(workerName, { x: HEADER.nameX, y: HEADER.nameY, size: 9 });
+      }
+      if (workerMat) {
+        page.drawText(workerMat, { x: HEADER.matX, y: HEADER.matY, size: 9 });
+      }
+      if (workerRole) {
+        page.drawText(workerRole, { x: HEADER.funcX, y: HEADER.funcY, size: 8.5 });
+      }
+      if (worker.admission_date) {
+        page.drawRectangle({ 
+          x: HEADER.admCoverX, 
+          y: HEADER.admCoverY, 
+          width: HEADER.admCoverW, 
+          height: HEADER.admCoverH, 
+          color: rgb(1, 1, 1) 
+        });
+        page.drawText(format(new Date(worker.admission_date), 'dd/MM/yyyy'), { 
+          x: HEADER.admX, 
+          y: HEADER.admY, 
+          size: 8.5 
+        });
       }
 
-      if (assignment.assigned_at) {
-        currentPage.drawRectangle({ x: 222, y: currentY - 5, width: 58, height: 15, color: rgb(1, 1, 1) });
-        currentPage.drawText(format(new Date(assignment.assigned_at), 'dd/MM/yy'), { x: COL.dataEnt, y: currentY, size: 8 });
-      }
+      // Folio / Stamp
+      const pageStamp = `Folha ${pageIdx + 1} de ${totalPages} • Impresso em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`;
+      page.drawText(pageStamp, { x: 375, y: 15, size: 7.5 });
 
-      if (assignment.digital_signature_url) {
-        try {
-          // It's a public URL, fetch it directly
-          const response = await fetch(assignment.digital_signature_url);
-          const imageBytes = await response.arrayBuffer();
-          let image;
-          
-          // detect type by extension or content type
-          const contentType = response.headers.get('content-type') || '';
-          if (contentType.includes('png') || assignment.digital_signature_url.toLowerCase().endsWith('.png')) {
-            image = await pdfDoc.embedPng(imageBytes);
-          } else {
-            image = await pdfDoc.embedJpg(imageBytes);
-          }
+      // Rows for this page
+      const pageAssignments = assignments.slice(pageIdx * ROWS_PER_PAGE, (pageIdx + 1) * ROWS_PER_PAGE);
 
-          const imgDims = image.scaleToFit(95, 18);
-          // currentY is baseline. Cell middle is baseline + sigOffsetY.
-          const cellCenterY = currentY + sigOffsetY;
-          const cellCenterX = 281 + (103 / 2);
-          currentPage.drawImage(image, {
-            x: cellCenterX - (imgDims.width / 2),
-            y: cellCenterY - (imgDims.height / 2),
-            width: imgDims.width,
-            height: imgDims.height,
+      for (let r = 0; r < pageAssignments.length; r++) {
+        const assignment = pageAssignments[r];
+        const rowBottom = firstRowBottomY - (r * rowHeight);
+        const baselineY = rowBottom + 6.5; // Text baseline placed comfortably inside the row
+        const centerY = rowBottom + 11.0;  // Vertical middle for signatures/photos
+
+        const catalog = assignment.catalog || assignment.epi?.catalog || {};
+        const epiName = catalog.name || 'EPI Desconhecido';
+        const caNumber = catalog.ca_number || assignment.epi?.ca_number || '';
+        const isUnif = catalog.category?.toLowerCase().includes('uniforme');
+
+        // Col 1: Quantidade
+        page.drawText('1', { x: COL.qtX - 2, y: baselineY, size: 8 });
+
+        // Col 2: Descrição do EPI
+        let textName = `${isUnif ? '[UNIF]' : '[EPI]'} ${epiName}`;
+        if (textName.length > 26) textName = textName.substring(0, 24) + '...';
+        page.drawText(textName, { x: COL.nameX, y: baselineY, size: 7.5 });
+
+        // Col 3: CA (centered)
+        if (caNumber) {
+          const caStr = caNumber.toString();
+          const approxCaWidth = caStr.length * 4.2;
+          page.drawText(caStr, { x: COL.caCenterX - (approxCaWidth / 2), y: baselineY, size: 7.5 });
+        }
+
+        // Col 4: Data de Entrega (cobre os slashes / / sem apagar bordas verticais)
+        if (assignment.assigned_at) {
+          page.drawRectangle({ 
+            x: COL.dataEntCoverX, 
+            y: rowBottom + 2, 
+            width: COL.dataEntCoverW, 
+            height: 18, 
+            color: rgb(1, 1, 1) 
           });
-        } catch (e) {
-          console.error("Error loading delivery photo/signature:", e);
+          page.drawText(format(new Date(assignment.assigned_at), 'dd/MM/yy'), { 
+            x: COL.dataEntTextX, 
+            y: baselineY, 
+            size: 7.5 
+          });
+        }
+
+        // Col 5: Assinatura / Foto de Evidência da Entrega
+        const deliveryEvidenceUrl = assignment.digital_signature_url || assignment.evidence_photo_url;
+        if (deliveryEvidenceUrl) {
+          const img = await safeEmbedImage(pdfDoc, deliveryEvidenceUrl);
+          if (img) {
+            const dims = img.scaleToFit(72, 17);
+            page.drawImage(img, {
+              x: COL.assEntCenterX - (dims.width / 2),
+              y: centerY - (dims.height / 2),
+              width: dims.width,
+              height: dims.height,
+            });
+          } else {
+            page.drawText('[Assinado]', { x: COL.assEntCenterX - 18, y: baselineY, size: 6.5 });
+          }
+        }
+
+        // Col 6: Data de Devolução (cobre os slashes / / sem apagar bordas verticais)
+        if (assignment.returned_at) {
+          page.drawRectangle({ 
+            x: COL.dataDevCoverX, 
+            y: rowBottom + 2, 
+            width: COL.dataDevCoverW, 
+            height: 18, 
+            color: rgb(1, 1, 1) 
+          });
+          page.drawText(format(new Date(assignment.returned_at), 'dd/MM/yy'), { 
+            x: COL.dataDevTextX, 
+            y: baselineY, 
+            size: 7.5 
+          });
+        }
+
+        // Col 7: Foto de Devolução / Assinatura
+        if (assignment.return_photo_url) {
+          const returnImg = await safeEmbedImage(pdfDoc, assignment.return_photo_url);
+          if (returnImg) {
+            const dims = returnImg.scaleToFit(72, 17);
+            page.drawImage(returnImg, {
+              x: COL.assDevCenterX - (dims.width / 2),
+              y: centerY - (dims.height / 2),
+              width: dims.width,
+              height: dims.height,
+            });
+          } else {
+            page.drawText('[Devolvido]', { x: COL.assDevCenterX - 18, y: baselineY, size: 6.5 });
+          }
         }
       }
-
-      if (assignment.returned_at) {
-        currentPage.drawRectangle({ x: 385, y: currentY - 5, width: 54, height: 15, color: rgb(1, 1, 1) });
-        currentPage.drawText(format(new Date(assignment.returned_at), 'dd/MM/yy'), { x: COL.dataDev, y: currentY, size: 8 });
-      }
-      
-      if (assignment.return_photo_url) {
-        try {
-          const response = await fetch(assignment.return_photo_url);
-          const imageBytes = await response.arrayBuffer();
-          let image;
-          const contentType = response.headers.get('content-type') || '';
-          if (contentType.includes('png') || assignment.return_photo_url.toLowerCase().endsWith('.png')) {
-            image = await pdfDoc.embedPng(imageBytes);
-          } else {
-            image = await pdfDoc.embedJpg(imageBytes);
-          }
-          const imgDims = image.scaleToFit(50, 18);
-          const cellCenterY = currentY + sigOffsetY;
-          const cellCenterXDev = 440 + (58 / 2);
-          currentPage.drawImage(image, {
-            x: cellCenterXDev - (imgDims.width / 2),
-            y: cellCenterY - (imgDims.height / 2),
-            width: imgDims.width,
-            height: imgDims.height,
-          });
-        } catch (e) {
-          console.error("Error loading return photo:", e);
-        }
-      }
-
-      currentRow++;
     }
-
-    // Stamp the final page
-    currentPage.drawText(impressaoStamp, { x: 430, y: 15, size: 8 });
 
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -330,7 +407,7 @@ export const generateEpiRecordPdf = async (
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Ficha_EPI_${workerMat.slice(0,8)}.pdf`;
+      link.download = `Ficha_EPI_${workerMat || 'Colaborador'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
