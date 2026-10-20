@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ShieldCheck, Fingerprint, LockKeyhole, ArrowRight } from 'lucide-react';
 import { useAuth } from '../components/AuthProvider';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import logoImg from '../assets/logo.png';
 import helmet3dImg from '../assets/helmet3d.jpg';
@@ -14,9 +14,11 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const { session } = useAuth();
   const [forgotMode, setForgotMode] = useState(false);
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/';
 
   if (session) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={from} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

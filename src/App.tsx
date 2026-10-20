@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
@@ -26,9 +26,10 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ defaul
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center text-primary font-medium">Initializing Security Protocol...</div>;
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Navigate to="/login" state={{ from: location }} replace />;
   
   return <>{children}</>;
 };
