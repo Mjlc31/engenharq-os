@@ -31,33 +31,41 @@ export function RecentDeliveriesWidget({ deliveries }: RecentDeliveriesWidgetPro
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {deliveries.map((item) => (
-              <tr key={item.id} className="hover:bg-surface-hover/40 transition-colors">
-                <td className="py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${item.avatarColor}`}>
-                      {item.workerInitials}
-                    </div>
-                    <span className="font-semibold text-foreground truncate max-w-[140px]">
-                      {item.workerName}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-3 text-muted">{item.epiName}</td>
-                <td className="py-3 text-muted font-mono">{item.date}</td>
-                <td className="py-3 text-right">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block ${
-                      item.status === 'Em uso'
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
+            {deliveries.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-muted">
+                  Nenhuma entrega registrada no momento.
                 </td>
               </tr>
-            ))}
+            ) : (
+              deliveries.map((item) => (
+                <tr key={item.id} className="hover:bg-surface-hover/40 transition-colors">
+                  <td className="py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${item.avatarColor}`}>
+                        {item.workerInitials}
+                      </div>
+                      <span className="font-semibold text-foreground truncate max-w-[140px]">
+                        {item.workerName}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 text-muted">{item.epiName}</td>
+                  <td className="py-3 text-muted font-mono">{item.date}</td>
+                  <td className="py-3 text-right">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block ${
+                        item.status === 'Em uso'
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

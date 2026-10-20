@@ -75,10 +75,17 @@ export function useDashboard() {
         workersReq,
         allAssignmentsReq
       ] = await Promise.allSettled([
-        supabase.from('epi_catalog').select('id, name, category, current_stock, min_stock, ca_number, ca_validity, status').is('deleted_at', null),
-        supabase.from('workers').select('id, full_name, status, aso_date, admission_date').is('deleted_at', null),
-        supabase.from('epi_assignments')
-          .select('id, assigned_at, returned_at, condition_on_return, quantity, catalog:epi_catalog!catalog_id(id, name, category, ca_number, lifespan_days), worker:workers!worker_id(id, full_name, reference_photo_url)')
+        supabase
+          .from('epi_catalog')
+          .select('id, name, category, current_stock, min_stock, ca_number, ca_validity, status')
+          .is('deleted_at', null),
+        supabase
+          .from('workers')
+          .select('id, full_name, status, aso_date, admission_date')
+          .is('deleted_at', null),
+        supabase
+          .from('epi_assignments')
+          .select('id, assigned_at, returned_at, condition_on_return, quantity, catalog:epi_catalog!catalog_id(id, name, category, ca_number, lifespan_days, deleted_at), worker:workers!worker_id(id, full_name, reference_photo_url, deleted_at)')
           .is('deleted_at', null)
           .order('assigned_at', { ascending: false })
           .limit(300)
@@ -88,17 +95,36 @@ export function useDashboard() {
 
       const catalogs = getData(catalogsReq);
       const workers = getData(workersReq);
-      const assignments = getData(allAssignmentsReq);
+      const rawAssignments = getData(allAssignmentsReq);
 
-      // Workers breakdown
-      const activeWorkers = workers.filter((w: any) => (w.status || 'ACTIVE') === 'ACTIVE').length;
-      const inactiveWorkers = workers.filter((w: any) => w.status === 'INACTIVE' || w.status === 'DISMISSED').length;
+      // Filtra apenas atribuições cujo colaborador e catálogo continuam ativos (não deletados)
+      const assignments = rawAssignments.filter((a: any) => {
+        const worker = Array.isArray(a.worker) ? a.worker[0] : a.worker;
+        const catalog = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;
+        if (!worker || worker.deleted_at) return false;
+        if (!catalog || catalog.deleted_at) return false;
+        return true;
+      });
+
+      // Contagem real de trabalhadores
+      const activeWorkers = workers.filter((w: any) => {
+        const st = (w.status || 'ACTIVE').toUpperCase();
+        return st === 'ACTIVE' || st === 'ATIVO';
+      }).length;
+
+      const inactiveWorkers = workers.filter((w: any) => {
+        const st = (w.status || '').toUpperCase();
+        return st === 'INACTIVE' || st === 'INATIVO' || st === 'DISMISSED' || st === 'DESLIGADO' || st === 'VACATION' || st === 'FÉRIAS' || st === 'FERIAS';
+      }).length;
+
       const totalWorkers = workers.length;
 
-      // Inventory & Stock
-      const totalStock = catalogs.reduce((acc: number, item: any) => acc + (item.current_stock || 0), 0);
+      // Estoque total real do catálogo ativo
+      const totalStock = catalogs.reduce((acc: number, item: any) => acc + (Number(item.current_stock) || 0), 0);
+
+      // EPIs em uso (atribuições ativas e não devolvidas de colaboradores/catálogos válidos)
       const activeAssignments = assignments.filter((a: any) => !a.returned_at);
-      const inUse = activeAssignments.reduce((acc: number, a: any) => acc + (a.quantity || 1), 0);
+      const inUse = activeAssignments.reduce((acc: number, a: any) => acc + (Number(a.quantity) || 1), 0);
 
       // Devolvidos este mês
       const returnedMonth = assignments.filter((a: any) => {
@@ -107,19 +133,23 @@ export function useDashboard() {
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       }).length;
 
-      // Extraviados (LOST or non returned)
-      const lostCount = assignments.filter((a: any) => 
-        a.condition_on_return === 'LOST' || a.condition_on_return === 'EXTRAVIADO'
-      ).length;
+      // Extraviados (LOST or EXTRAVIADO)
+      const lostCount = assignments.filter((a: any) => {
+        const cond = (a.condition_on_return || '').toUpperCase();
+        return cond === 'LOST' || cond === 'EXTRAVIADO' || cond === 'PERDA';
+      }).length;
 
-      // Estoque crítico (abaixo do mínimo)
-      const criticalCatalogs = catalogs.filter((item: any) => {
-        const min = item.min_stock ?? 10;
-        return (item.current_stock ?? 0) <= min;
-      });
+      // Estoque crítico (abaixo do mínimo definido pelo usuário no catálogo)
+      // Se não houver itens cadastrados no catálogo, o estoque crítico é 0
+      const criticalCatalogs = catalogs.length > 0 
+        ? catalogs.filter((item: any) => {
+            const min = item.min_stock ?? 10;
+            return (item.current_stock ?? 0) <= min;
+          })
+        : [];
       const criticalStock = criticalCatalogs.length;
 
-      // EPIs vencendo nos próximos 30 dias
+      // EPIs vencendo nos próximos 30 dias (baseado na data de validade do CA do catálogo ativo)
       const expiringCatalogs = catalogs.filter((item: any) => {
         if (!item.ca_validity) return false;
         const exp = new Date(item.ca_validity);
@@ -137,7 +167,7 @@ export function useDashboard() {
       });
       const avgRetentionDays = activeAssignments.length > 0 ? Math.round(totalDaysHeld / activeAssignments.length) : 0;
 
-      // EPIs por Categoria (NR-6)
+      // EPIs por Categoria (NR-6) — computado fidedignamente do estoque de catálogo
       const categoryMap: Record<string, number> = {
         'Proteção da Cabeça': 0,
         'Proteção dos Olhos': 0,
@@ -157,19 +187,19 @@ export function useDashboard() {
           cat.includes('Mãos') || cat.includes('Membros Superiores') ? 'Proteção das Mãos' :
           cat.includes('Pés') || cat.includes('Membros Inferiores') ? 'Proteção dos Pés' :
           'Proteção da Cabeça';
-        categoryMap[normalized] = (categoryMap[normalized] || 0) + (item.current_stock || 1);
+        categoryMap[normalized] = (categoryMap[normalized] || 0) + (Number(item.current_stock) || 0);
       });
 
       const categoryDistribution: CategoryStat[] = [
-        { category: 'Proteção da Cabeça', count: categoryMap['Proteção da Cabeça'] || 45, color: '#3b82f6', barColor: 'bg-blue-500' },
-        { category: 'Proteção dos Olhos', count: categoryMap['Proteção dos Olhos'] || 78, color: '#10b981', barColor: 'bg-emerald-500' },
-        { category: 'Proteção Auditiva', count: categoryMap['Proteção Auditiva'] || 156, color: '#f59e0b', barColor: 'bg-amber-500' },
-        { category: 'Proteção Respiratória', count: categoryMap['Proteção Respiratória'] || 98, color: '#a855f7', barColor: 'bg-purple-500' },
-        { category: 'Proteção das Mãos', count: categoryMap['Proteção das Mãos'] || 120, color: '#ef4444', barColor: 'bg-rose-500' },
-        { category: 'Proteção dos Pés', count: categoryMap['Proteção dos Pés'] || 65, color: '#06b6d4', barColor: 'bg-cyan-500' }
+        { category: 'Proteção da Cabeça', count: categoryMap['Proteção da Cabeça'], color: '#3b82f6', barColor: 'bg-blue-500' },
+        { category: 'Proteção dos Olhos', count: categoryMap['Proteção dos Olhos'], color: '#10b981', barColor: 'bg-emerald-500' },
+        { category: 'Proteção Auditiva', count: categoryMap['Proteção Auditiva'], color: '#f59e0b', barColor: 'bg-amber-500' },
+        { category: 'Proteção Respiratória', count: categoryMap['Proteção Respiratória'], color: '#a855f7', barColor: 'bg-purple-500' },
+        { category: 'Proteção das Mãos', count: categoryMap['Proteção das Mãos'], color: '#ef4444', barColor: 'bg-rose-500' },
+        { category: 'Proteção dos Pés', count: categoryMap['Proteção dos Pés'], color: '#06b6d4', barColor: 'bg-cyan-500' }
       ];
 
-      // Entregas por Mês (últimos 6 meses)
+      // Entregas por Mês (últimos 6 meses) — computado fidedignamente das movimentações reais
       const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       const monthlyDeliveries: MonthlyDeliveryStat[] = [];
       for (let i = 5; i >= 0; i--) {
@@ -181,15 +211,13 @@ export function useDashboard() {
           return d.getMonth() === mIdx && d.getFullYear() === mYear;
         }).length;
 
-        // Se o banco estiver com poucos registros históricos neste mês, fornece baseline visual proporcional
-        const defaultSample = [45, 52, 48, 61, 55, 38][5 - i] || 35;
         monthlyDeliveries.push({
           month: monthNames[mIdx],
-          count: deliveriesInMonth > 0 ? deliveriesInMonth : defaultSample
+          count: deliveriesInMonth
         });
       }
 
-      // Últimas Entregas formatadas
+      // Últimas Entregas reais formatadas (sem mock/fallback fake)
       const recentDeliveries: DashboardDeliveryItem[] = assignments.slice(0, 5).map((a: any, idx: number) => {
         const worker = Array.isArray(a.worker) ? a.worker[0] : a.worker;
         const catalog = Array.isArray(a.catalog) ? a.catalog[0] : a.catalog;
@@ -209,69 +237,59 @@ export function useDashboard() {
         };
       });
 
-      // Se recentDeliveries tiver menos de 4, preenche com amostras realistas da imagem de referência
-      if (recentDeliveries.length < 4) {
-        const fallbackList: DashboardDeliveryItem[] = [
-          { id: 'fb-1', workerName: 'José Carlos', workerInitials: 'JS', avatarColor: 'bg-amber-500 text-amber-950', epiName: 'Capacete de Segurança', date: '14/01/2026', status: 'Em uso' },
-          { id: 'fb-2', workerName: 'José Carlos', workerInitials: 'JS', avatarColor: 'bg-amber-500 text-amber-950', epiName: 'Óculos de Proteção', date: '14/01/2026', status: 'Em uso' },
-          { id: 'fb-3', workerName: 'Maria Aparecida', workerInitials: 'MS', avatarColor: 'bg-pink-500 text-pink-950', epiName: 'Capacete de Segurança', date: '31/01/2026', status: 'Em uso' },
-          { id: 'fb-4', workerName: 'Maria Aparecida', workerInitials: 'MS', avatarColor: 'bg-pink-500 text-pink-950', epiName: 'Luva de Segurança', date: '31/01/2026', status: 'Devolvido' },
-          { id: 'fb-5', workerName: 'Pedro Henrique', workerInitials: 'PO', avatarColor: 'bg-cyan-500 text-cyan-950', epiName: 'Botina de Segurança', date: '19/01/2026', status: 'Em uso' }
-        ];
-        recentDeliveries.push(...fallbackList.slice(recentDeliveries.length, 5));
-      }
+      // Alertas Dinâmicos baseados estritamente na realidade do sistema
+      const alerts: DashboardAlert[] = [];
 
-      // Alertas Estruturados
-      const criticalNames = criticalCatalogs.slice(0, 3).map((c: any) => c.name).join(', ') || 'Óculos, Máscaras PFF2, Luvas de Vaqueta';
-      const alerts: DashboardAlert[] = [
-        {
+      if (expiringEpis > 0) {
+        alerts.push({
           id: 'alert-ca',
           type: 'CA_EXPIRATION',
           severity: 'WARNING',
-          title: `${expiringEpis || 23} EPIs vencendo`,
-          description: 'Certificados de Aprovação vencem nos próximos 30 dias',
+          title: `${expiringEpis} EPI(s) com CA vencendo`,
+          description: 'Certificados de Aprovação (CA) expiram nos próximos 30 dias.',
           badgeColor: 'text-amber-500 border-amber-500/30',
           bgLight: 'bg-amber-500/10'
-        },
-        {
+        });
+      }
+
+      if (criticalStock > 0) {
+        const criticalNames = criticalCatalogs.slice(0, 3).map((c: any) => c.name).join(', ');
+        alerts.push({
           id: 'alert-stock',
           type: 'CRITICAL_STOCK',
           severity: 'CRITICAL',
-          title: `${criticalStock || 3} itens com estoque crítico`,
-          description: criticalNames,
+          title: `${criticalStock} item(ns) com estoque crítico`,
+          description: `Abaixo da cota mínima: ${criticalNames}`,
           badgeColor: 'text-rose-500 border-rose-500/30',
           bgLight: 'bg-rose-500/10'
-        },
-        {
-          id: 'alert-replacement',
+        });
+      }
+
+      // Se não houver nenhum alerta crítico, exibe status de conformidade
+      if (alerts.length === 0) {
+        alerts.push({
+          id: 'alert-ok',
           type: 'SCHEDULED_REPLACEMENT',
           severity: 'INFO',
-          title: '15 trocas programadas',
-          description: 'Previsão de substituição para esta semana',
-          badgeColor: 'text-blue-500 border-blue-500/30',
-          bgLight: 'bg-blue-500/10'
-        },
-        {
-          id: 'alert-purchase',
-          type: 'PENDING_ORDER',
-          severity: 'INFO',
-          title: 'Pedido de compra pendente',
-          description: 'Reposição de Óculos de Proteção aguardando aprovação',
-          badgeColor: 'text-cyan-500 border-cyan-500/30',
-          bgLight: 'bg-cyan-500/10'
-        }
-      ];
+          title: 'Operação em conformidade',
+          description: catalogs.length === 0 
+            ? 'Inventário inicial aguardando novos cadastros de EPIs no almoxarifado.'
+            : 'Nenhum estoque crítico ou vencimento iminente de CA detectado.',
+          badgeColor: 'text-emerald-500 border-emerald-500/30',
+          bgLight: 'bg-emerald-500/10'
+        });
+      }
 
       const stats: DashboardStats = {
-        activeWorkers: activeWorkers > 0 ? activeWorkers : 156,
-        inactiveWorkers: inactiveWorkers > 0 ? inactiveWorkers : 12,
-        totalWorkers: totalWorkers > 0 ? totalWorkers : 168,
-        inUse: inUse > 0 ? inUse : 487,
-        expiringEpis: expiringEpis > 0 ? expiringEpis : 23,
-        criticalStock: criticalStock > 0 ? criticalStock : 3,
-        totalStock: totalStock > 0 ? totalStock : 1250,
-        returnedMonth: returnedMonth > 0 ? returnedMonth : 145,
-        lostCount: lostCount > 0 ? lostCount : 8,
+        activeWorkers,
+        inactiveWorkers,
+        totalWorkers,
+        inUse,
+        expiringEpis,
+        criticalStock,
+        totalStock,
+        returnedMonth,
+        lostCount,
         avgRetentionDays
       };
 

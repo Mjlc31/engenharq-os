@@ -7,7 +7,7 @@ interface MonthlyDeliveriesWidgetProps {
 }
 
 export function MonthlyDeliveriesWidget({ data }: MonthlyDeliveriesWidgetProps) {
-  const maxCount = Math.max(...data.map(d => d.count), 1);
+  const maxCount = Math.max(...data.map(d => d.count), 0);
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between">
@@ -18,7 +18,9 @@ export function MonthlyDeliveriesWidget({ data }: MonthlyDeliveriesWidgetProps) 
 
       <div className="flex items-end justify-between gap-3 h-52 pt-8 pb-2 px-2">
         {data.map((item, idx) => {
-          const heightPct = Math.max(15, Math.round((item.count / maxCount) * 85));
+          const heightPct = maxCount > 0 && item.count > 0 
+            ? Math.max(8, Math.round((item.count / maxCount) * 85)) 
+            : 0;
 
           return (
             <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">

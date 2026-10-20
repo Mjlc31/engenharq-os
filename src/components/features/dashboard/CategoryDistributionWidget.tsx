@@ -7,7 +7,7 @@ interface CategoryDistributionWidgetProps {
 }
 
 export function CategoryDistributionWidget({ categories }: CategoryDistributionWidgetProps) {
-  const maxCount = Math.max(...categories.map(c => c.count), 1);
+  const maxCount = Math.max(...categories.map(c => c.count), 0);
 
   return (
     <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm flex flex-col justify-between">
@@ -18,7 +18,7 @@ export function CategoryDistributionWidget({ categories }: CategoryDistributionW
 
       <div className="space-y-4">
         {categories.map((item, idx) => {
-          const percentage = Math.min(100, Math.round((item.count / maxCount) * 100));
+          const percentage = maxCount > 0 ? Math.min(100, Math.round((item.count / maxCount) * 100)) : 0;
 
           return (
             <div key={idx} className="space-y-1.5">
