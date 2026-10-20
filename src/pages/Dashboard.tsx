@@ -41,16 +41,16 @@ export function Dashboard() {
   }
 
   const stats = data?.stats || {
-    activeWorkers: 156,
-    inactiveWorkers: 12,
-    totalWorkers: 168,
-    inUse: 487,
-    expiringEpis: 23,
-    criticalStock: 3,
-    totalStock: 1250,
-    returnedMonth: 145,
-    lostCount: 8,
-    avgRetentionDays: 14
+    activeWorkers: 0,
+    inactiveWorkers: 0,
+    totalWorkers: 0,
+    inUse: 0,
+    expiringEpis: 0,
+    criticalStock: 0,
+    totalStock: 0,
+    returnedMonth: 0,
+    lostCount: 0,
+    avgRetentionDays: 0
   };
 
   const categoryDistribution = data?.categoryDistribution || [];
