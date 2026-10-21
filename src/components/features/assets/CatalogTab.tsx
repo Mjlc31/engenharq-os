@@ -1175,6 +1175,7 @@ export function CatalogTab({
                   type="number"
                   min="0"
                   required
+                  data-testid="adjust-site-qty-input"
                   value={adjustingQty}
                   onChange={e => setAdjustingQty(e.target.value !== '' ? Number(e.target.value) : '')}
                   className="w-full bg-background border-2 border-primary/40 focus:border-primary rounded-md px-3 py-2 text-foreground font-mono font-bold text-sm"
