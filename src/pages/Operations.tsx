@@ -101,6 +101,28 @@ export function Operations() {
         .eq('id', selectedCatalogId);
       if (stockError) throw stockError;
 
+      // Sincronizar saída no canteiro de obras do colaborador
+      const assignedWorker = workers.find(w => w.id === selectedWorkerId);
+      if (assignedWorker?.current_site_id) {
+        const { data: siteInv } = await supabase
+          .from('site_inventory')
+          .select('current_stock')
+          .eq('site_id', assignedWorker.current_site_id)
+          .eq('catalog_id', selectedCatalogId)
+          .maybeSingle();
+
+        if (siteInv) {
+          await supabase
+            .from('site_inventory')
+            .update({
+              current_stock: Math.max(0, (siteInv.current_stock || 0) - quantity),
+              updated_at: new Date().toISOString()
+            })
+            .eq('site_id', assignedWorker.current_site_id)
+            .eq('catalog_id', selectedCatalogId);
+        }
+      }
+
       toast({ type: 'success', title: 'Sucesso', message: `${quantity} EPI(s) entregues, assinados e registrados na ficha.` });
       setSelectedWorkerId('');
       setSelectedCatalogId('');
@@ -136,6 +158,26 @@ export function Operations() {
         const catalog = catalogs.find(c => c.id === assignmentData.catalog_id);
         if (catalog) {
           await supabase.from('epi_catalog').update({ current_stock: catalog.current_stock + 1 }).eq('id', catalog.id);
+        }
+
+        // Restocar na obra do colaborador
+        const worker = workers.find(w => w.id === pendingReturn.workerId);
+        if (worker?.current_site_id) {
+          const { data: siteInv } = await supabase
+            .from('site_inventory')
+            .select('current_stock')
+            .eq('site_id', worker.current_site_id)
+            .eq('catalog_id', assignmentData.catalog_id)
+            .maybeSingle();
+
+          await supabase
+            .from('site_inventory')
+            .upsert({
+              site_id: worker.current_site_id,
+              catalog_id: assignmentData.catalog_id,
+              current_stock: (siteInv?.current_stock || 0) + 1,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'site_id,catalog_id' });
         }
       }
       

@@ -113,6 +113,31 @@ export function useScanner() {
         }
       }
 
+      // Sincronizar estoque no canteiro de obras (site_inventory)
+      const { data: workerData } = await supabase.from('workers').select('current_site_id').eq('id', workerId).maybeSingle();
+      if (workerData?.current_site_id) {
+        for (const item of epis) {
+          const qty = item.quantity || 1;
+          const { data: siteInv } = await supabase
+            .from('site_inventory')
+            .select('current_stock')
+            .eq('site_id', workerData.current_site_id)
+            .eq('catalog_id', item.id)
+            .maybeSingle();
+
+          if (siteInv) {
+            await supabase
+              .from('site_inventory')
+              .update({
+                current_stock: Math.max(0, (siteInv.current_stock || 0) - qty),
+                updated_at: new Date().toISOString()
+              })
+              .eq('site_id', workerData.current_site_id)
+              .eq('catalog_id', item.id);
+          }
+        }
+      }
+
       return true;
     } catch (err: unknown) {
       setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
