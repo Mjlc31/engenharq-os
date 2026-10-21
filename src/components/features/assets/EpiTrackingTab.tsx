@@ -303,7 +303,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
         if (returnModalData.siteId) {
           const { data: currentSiteInv } = await supabase
             .from('site_inventory')
-            .select('current_stock')
+            .select('quantity')
             .eq('site_id', returnModalData.siteId)
             .eq('catalog_id', returnModalData.catalogId)
             .maybeSingle();
@@ -314,7 +314,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
             .upsert({
               site_id: returnModalData.siteId,
               catalog_id: returnModalData.catalogId,
-              current_stock: (currentSiteInv?.current_stock || 0) + qtyToAdd,
+              quantity: (currentSiteInv?.quantity || 0) + qtyToAdd,
               updated_at: new Date().toISOString()
             }, { onConflict: 'site_id,catalog_id' });
         }

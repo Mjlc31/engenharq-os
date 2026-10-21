@@ -9,6 +9,7 @@ import { disciplinaryService } from '../services/disciplinaryService';
 import { sstService } from '../services/sstService';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { format } from 'date-fns';
+import { isValidCPF, applyCpfMask } from '../lib/validators';
 
 export function WorkerProfile() {
   const { id } = useParams<{ id: string }>();
@@ -267,6 +268,12 @@ export function WorkerProfile() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.cpf && !isValidCPF(formData.cpf)) {
+      toast({ type: 'error', title: 'CPF Inválido', message: 'Por favor verifique os números digitados do CPF.' });
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -527,8 +534,9 @@ export function WorkerProfile() {
                   <input
                     type="text"
                     required
+                    maxLength={14}
                     value={formData.cpf || ''}
-                    onChange={e => handleChange('cpf', e.target.value)}
+                    onChange={e => handleChange('cpf', applyCpfMask(e.target.value))}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
                   />
                 </div>
