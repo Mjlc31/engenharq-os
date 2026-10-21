@@ -210,7 +210,7 @@ export function Settings() {
             <div className="mt-4 pt-4 border-t border-border text-xs text-muted text-left space-y-2">
               <div><strong className="text-foreground">Sessão:</strong> Ativa</div>
               <div><strong className="text-foreground">Cidade / Base:</strong> Maceió, AL</div>
-              <div><strong className="text-foreground">SGEPI Versão:</strong> v2.4.0</div>
+              <div><strong className="text-foreground">SGEPI Versão:</strong> v2.7.0</div>
             </div>
           </div>
 

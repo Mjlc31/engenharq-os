@@ -61,9 +61,22 @@ export function Layout() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Cadastros: false,
     Operações: false,
-    SST: true,
+    SST: false,
     Relatórios: false,
   });
+
+  useEffect(() => {
+    const p = location.pathname;
+    if (['/sites', '/workers', '/assets'].some(path => p.startsWith(path))) {
+      setOpenSections(prev => ({ ...prev, Cadastros: true }));
+    } else if (['/scanner', '/map', '/operations'].some(path => p.startsWith(path))) {
+      setOpenSections(prev => ({ ...prev, Operações: true }));
+    } else if (['/trainings', '/aso'].some(path => p.startsWith(path))) {
+      setOpenSections(prev => ({ ...prev, SST: true }));
+    } else if (['/reports', '/ficha-epi', '/tags', '/print-tags'].some(path => p.startsWith(path))) {
+      setOpenSections(prev => ({ ...prev, Relatórios: true }));
+    }
+  }, [location.pathname]);
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -97,7 +110,7 @@ export function Layout() {
               className="h-8 w-8 object-contain transition-transform group-hover:scale-105" 
             />
             <h1 className="text-lg font-bold tracking-tight uppercase">
-              Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden lg:inline-block">v2.4.0</span>
+              Engenhar<span className="text-primary">Q</span> OS <span className="ml-2 text-[10px] text-muted font-mono border border-border px-1 rounded hidden lg:inline-block">v2.7.0</span>
             </h1>
           </Link>
         </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ConstructionSite } from '../../../types';
 import { X, Upload, UserCircle2 } from 'lucide-react';
 import { uploadImage } from '../../../lib/storage';
+import { useToast } from '../../ui/Toast';
 
 interface WorkerFormProps {
   sites: ConstructionSite[];
@@ -45,6 +46,7 @@ const isValidCPF = (cpf: string) => {
 };
 
 export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
+  const { toast } = useToast();
   const [fullName, setFullName] = useState('');
   const [cpf, setCpf] = useState('');
   const [registration, setRegistration] = useState('');
@@ -80,7 +82,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
 
     if (!isValidCPF(cpf)) {
       setIsSubmitting(false);
-      window.alert('CPF Inválido. Por favor verifique os números digitados.');
+      toast({ type: 'error', title: 'CPF Inválido', message: 'Por favor verifique os números digitados do CPF.' });
       return;
     }
 

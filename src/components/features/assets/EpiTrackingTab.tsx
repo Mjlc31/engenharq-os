@@ -72,6 +72,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
     workerName: string;
     epiName: string;
     quantity: number;
+    siteId?: string | null;
   } | null>(null);
   const [returnCondition, setReturnCondition] = useState<'GOOD' | 'DAMAGED' | 'DISCARDED'>('GOOD');
   const [returnRestock, setReturnRestock] = useState(true);
@@ -296,6 +297,26 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
             .from('epi_catalog')
             .update({ current_stock: (currentCat.current_stock || 0) + (returnModalData.quantity || 1) })
             .eq('id', returnModalData.catalogId);
+        }
+
+        // Se houver obra vinculada, restocar também no estoque da obra (site_inventory)
+        if (returnModalData.siteId) {
+          const { data: currentSiteInv } = await supabase
+            .from('site_inventory')
+            .select('current_stock')
+            .eq('site_id', returnModalData.siteId)
+            .eq('catalog_id', returnModalData.catalogId)
+            .maybeSingle();
+
+          const qtyToAdd = returnModalData.quantity || 1;
+          await supabase
+            .from('site_inventory')
+            .upsert({
+              site_id: returnModalData.siteId,
+              catalog_id: returnModalData.catalogId,
+              current_stock: (currentSiteInv?.current_stock || 0) + qtyToAdd,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'site_id,catalog_id' });
         }
       }
 
@@ -677,7 +698,8 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                               catalogId: item.catalog_id,
                               workerName: item.worker?.full_name || 'Colaborador',
                               epiName: item.catalog?.name || 'EPI',
-                              quantity: item.quantity || 1
+                              quantity: item.quantity || 1,
+                              siteId: item.worker?.current_site_id || null
                             })}
                             className="bg-surface hover:bg-surface-hover border border-border text-foreground hover:text-primary font-medium text-xs px-2.5 py-1.5 rounded flex items-center gap-1 transition-colors"
                             title="Registrar devolução deste EPI"
