@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../ui/Toast';
 import { useSites } from '../../../hooks/useSites';
+import { isValidCPF } from '../../../lib/validators';
 
 interface BulkImportModalProps {
   onClose: () => void;
@@ -60,7 +61,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
         
         const cpfClean = String(row['CPF'] || '').replace(/\D/g, '');
         
-        if (cpfClean && cpfClean.length !== 11) {
+        if (row['CPF'] && !isValidCPF(cpfClean)) {
           validationErrors.push(`Linha ${rowNum}: CPF inválido (${row['CPF']}).`);
         }
         
@@ -70,54 +71,51 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
           validationErrors.push(`Linha ${rowNum}: Obra '${row['OBRA']}' não encontrada no sistema. Cadastre a obra primeiro com este exato nome.`);
         }
 
-        if (validationErrors.length === 0) {
-          let apt = null;
-          if (row['APTIDÃO ALTURA / ESPAÇO CONFINADO']) {
-             const val = String(row['APTIDÃO ALTURA / ESPAÇO CONFINADO']).toUpperCase();
-             if (val.includes('APTO') && !val.includes('INAPTO')) apt = true;
-             else if (val.includes('INAPTO')) apt = false;
-          }
-          
-          const parseDate = (val: any) => {
-            if (!val) return null;
-            if (typeof val === 'number') {
-              const date = new Date(Math.round((val - 25569)*86400*1000));
-              return date.toISOString().split('T')[0];
-            }
-            if (typeof val === 'string') {
-              // Verifica se está no formato DD/MM/YYYY
-              const parts = val.split('/');
-              if (parts.length === 3) {
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-              }
-              try {
-                const d = new Date(val);
-                if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-              } catch {
-                // ignore invalid date parsing
-              }
-            }
-            return null;
-          };
-
-          workersToInsert.push({
-            full_name: String(row['NOME']),
-            cpf: cpfClean,
-            registration_number: String(row['MAT.'] || `GERADO-${Date.now()}-${index}`),
-            current_site_id: siteId,
-            initial_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']) : null,
-            current_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']) : null,
-            work_sector: row['SETOR'] ? String(row['SETOR']) : null,
-            admission_date: parseDate(row['ADMISSÃO']),
-            birth_date: parseDate(row['DATA DE NASCIMENTO']),
-            aso_date: parseDate(row['DATA DO ASO']),
-            phone_contact: row['CONTATO TELEFÔNICO'] ? String(row['CONTATO TELEFÔNICO']) : null,
-            uniform_size: row['TAMANHO DE FARDAMENTO'] ? String(row['TAMANHO DE FARDAMENTO']) : null,
-            boot_size: row['Nº DE BOTA'] ? String(row['Nº DE BOTA']) : null,
-            apt_for_height_and_confined_space: apt,
-            status: 'ACTIVE'
-          });
+        let apt = null;
+        if (row['APTIDÃO ALTURA / ESPAÇO CONFINADO']) {
+           const val = String(row['APTIDÃO ALTURA / ESPAÇO CONFINADO']).toUpperCase();
+           if (val.includes('APTO') && !val.includes('INAPTO')) apt = true;
+           else if (val.includes('INAPTO')) apt = false;
         }
+        
+        const parseDate = (val: any) => {
+          if (!val) return null;
+          if (typeof val === 'number') {
+            const date = new Date(Math.round((val - 25569)*86400*1000));
+            return date.toISOString().split('T')[0];
+          }
+          if (typeof val === 'string') {
+            const parts = val.split('/');
+            if (parts.length === 3) {
+              return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            try {
+              const d = new Date(val);
+              if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+            } catch {
+              // ignore invalid date parsing
+            }
+          }
+          return null;
+        };
+
+        workersToInsert.push({
+          full_name: String(row['NOME']).trim(),
+          cpf: cpfClean,
+          registration_number: String(row['MAT.'] || `GERADO-${Date.now()}-${index}`).trim(),
+          current_site_id: siteId || null,
+          initial_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']).trim() : null,
+          current_role: row['FUNÇÃO INICIAL'] ? String(row['FUNÇÃO INICIAL']).trim() : null,
+          work_sector: row['SETOR'] ? String(row['SETOR']).trim() : null,
+          admission_date: parseDate(row['ADMISSÃO']),
+          birth_date: parseDate(row['DATA DE NASCIMENTO']),
+          aso_date: parseDate(row['DATA DO ASO']),
+          phone_contact: row['CONTATO TELEFÔNICO'] ? String(row['CONTATO TELEFÔNICO']).trim() : null,
+          uniform_size: row['TAMANHO DE FARDAMENTO'] ? String(row['TAMANHO DE FARDAMENTO']).trim() : null,
+          boot_size: row['Nº DE BOTA'] ? String(row['Nº DE BOTA']).trim() : null,
+          apt_for_height_and_confined_space: apt,
+          status: 'ACTIVE'
+        });
       });
 
       if (validationErrors.length > 0) {

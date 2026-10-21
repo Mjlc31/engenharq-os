@@ -90,6 +90,7 @@ export function CatalogTab({
   const [catImageUrl, setCatImageUrl] = useState('');
   const [catObservations, setCatObservations] = useState('');
   const [catSiteId, setCatSiteId] = useState<string>('');
+  const [isSavingCatalog, setIsSavingCatalog] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Modal: Add Stock / Entrada
@@ -260,6 +261,7 @@ export function CatalogTab({
       observations: catObservations || null
     };
 
+    setIsSavingCatalog(true);
     try {
       const stockVal = catInitialStock !== '' ? Number(catInitialStock) : 0;
       await saveCatalog(
@@ -277,6 +279,8 @@ export function CatalogTab({
       if (onRefresh) onRefresh();
     } catch(err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar catálogo.' });
+    } finally {
+      setIsSavingCatalog(false);
     }
   };
 
@@ -1016,8 +1020,12 @@ export function CatalogTab({
                 <button type="button" onClick={resetForm} className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border text-foreground rounded-md text-sm font-medium">
                   Cancelar
                 </button>
-                <button type="submit" disabled={!catName || !catCategory} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50">
-                  {editingCatalog ? 'Atualizar EPI' : 'Salvar EPI com Estoque'}
+                <button 
+                  type="submit" 
+                  disabled={!catName || !catCategory || isSavingCatalog} 
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50 transition-opacity"
+                >
+                  {isSavingCatalog ? 'Salvando...' : editingCatalog ? 'Atualizar EPI' : 'Salvar EPI com Estoque'}
                 </button>
               </div>
             </form>

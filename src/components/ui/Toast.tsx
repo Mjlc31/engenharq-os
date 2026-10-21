@@ -33,11 +33,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, title, message }]);
 
-    if (type !== 'error') {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 5000);
-    }
+    // Toasts de sucesso fecham em 5s; erros fecham em 8s para não bloquear o chão de fábrica
+    const dismissDelay = type === 'error' ? 8000 : 5000;
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, dismissDelay);
   }, []);
 
   const removeToast = (id: string) => {

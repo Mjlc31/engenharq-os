@@ -106,7 +106,7 @@ export function Operations() {
       if (assignedWorker?.current_site_id) {
         const { data: siteInv } = await supabase
           .from('site_inventory')
-          .select('current_stock')
+          .select('quantity')
           .eq('site_id', assignedWorker.current_site_id)
           .eq('catalog_id', selectedCatalogId)
           .maybeSingle();
@@ -115,7 +115,7 @@ export function Operations() {
           await supabase
             .from('site_inventory')
             .update({
-              current_stock: Math.max(0, (siteInv.current_stock || 0) - quantity),
+              quantity: Math.max(0, (siteInv.quantity || 0) - quantity),
               updated_at: new Date().toISOString()
             })
             .eq('site_id', assignedWorker.current_site_id)
@@ -165,7 +165,7 @@ export function Operations() {
         if (worker?.current_site_id) {
           const { data: siteInv } = await supabase
             .from('site_inventory')
-            .select('current_stock')
+            .select('quantity')
             .eq('site_id', worker.current_site_id)
             .eq('catalog_id', assignmentData.catalog_id)
             .maybeSingle();
@@ -175,7 +175,7 @@ export function Operations() {
             .upsert({
               site_id: worker.current_site_id,
               catalog_id: assignmentData.catalog_id,
-              current_stock: (siteInv?.current_stock || 0) + 1,
+              quantity: (siteInv?.quantity || 0) + 1,
               updated_at: new Date().toISOString()
             }, { onConflict: 'site_id,catalog_id' });
         }

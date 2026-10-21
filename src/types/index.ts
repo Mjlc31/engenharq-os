@@ -77,6 +77,7 @@ export interface Worker {
   facial_descriptor?: number[];
   status?: string | null;
   aso_date?: string | null;
+  termination_date?: string | null;
   created_at: string;
   site?: ConstructionSite;
   roles?: WorkerRole[];

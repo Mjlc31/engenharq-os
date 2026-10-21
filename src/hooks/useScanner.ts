@@ -120,7 +120,7 @@ export function useScanner() {
           const qty = item.quantity || 1;
           const { data: siteInv } = await supabase
             .from('site_inventory')
-            .select('current_stock')
+            .select('quantity')
             .eq('site_id', workerData.current_site_id)
             .eq('catalog_id', item.id)
             .maybeSingle();
@@ -129,7 +129,7 @@ export function useScanner() {
             await supabase
               .from('site_inventory')
               .update({
-                current_stock: Math.max(0, (siteInv.current_stock || 0) - qty),
+                quantity: Math.max(0, (siteInv.quantity || 0) - qty),
                 updated_at: new Date().toISOString()
               })
               .eq('site_id', workerData.current_site_id)

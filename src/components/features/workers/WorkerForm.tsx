@@ -3,47 +3,13 @@ import { ConstructionSite } from '../../../types';
 import { X, Upload, UserCircle2 } from 'lucide-react';
 import { uploadImage } from '../../../lib/storage';
 import { useToast } from '../../ui/Toast';
+import { isValidCPF, applyCpfMask } from '../../../lib/validators';
 
 interface WorkerFormProps {
   sites: ConstructionSite[];
   onClose: () => void;
   onSave: (workerData: any) => Promise<void>;
 }
-
-const applyCpfMask = (value: string) => {
-  return value
-    .replace(/\D/g, '')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-    .replace(/(-\d{2})\d+?$/, '$1');
-};
-
-const isValidCPF = (cpf: string) => {
-  const cleanCpf = cpf.replace(/\D/g, '');
-  if (cleanCpf.length !== 11) return false;
-  if (/^(\d)\1+$/.test(cleanCpf)) return false;
-
-  let sum = 0;
-  let remainder;
-  
-  for (let i = 1; i <= 9; i++) {
-    sum = sum + parseInt(cleanCpf.substring(i - 1, i)) * (11 - i);
-  }
-  remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  if (remainder !== parseInt(cleanCpf.substring(9, 10))) return false;
-
-  sum = 0;
-  for (let i = 1; i <= 10; i++) {
-    sum = sum + parseInt(cleanCpf.substring(i - 1, i)) * (12 - i);
-  }
-  remainder = (sum * 10) % 11;
-  if (remainder === 10 || remainder === 11) remainder = 0;
-  if (remainder !== parseInt(cleanCpf.substring(10, 11))) return false;
-
-  return true;
-};
 
 export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const { toast } = useToast();
@@ -71,41 +37,54 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploading(true);
-    const url = await uploadImage(e.target.files[0], 'worker-photos');
-    if (url) setReferencePhotoUrl(url);
-    setUploading(false);
+    try {
+      const url = await uploadImage(e.target.files[0], 'worker-photos');
+      if (url) setReferencePhotoUrl(url);
+    } catch (err: unknown) {
+      console.error('Erro ao enviar foto:', err);
+      toast({ type: 'error', title: 'Erro de Upload', message: 'Não foi possível carregar a foto do colaborador.' });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
     if (!isValidCPF(cpf)) {
-      setIsSubmitting(false);
       toast({ type: 'error', title: 'CPF Inválido', message: 'Por favor verifique os números digitados do CPF.' });
       return;
     }
 
-    await onSave({
-      full_name: fullName,
-      cpf,
-      registration_number: registration,
-      email: email || null,
-      status: status,
-      current_site_id: siteId || null,
-      initial_role: initialRole || null,
-      current_role: initialRole || null,
-      admission_date: admissionDate || null,
-      birth_date: birthDate || null,
-      work_sector: workSector || null,
-      uniform_size: uniformSize || null,
-      boot_size: bootSize || null,
-      apt_for_height_and_confined_space: aptForHeight,
-      phone_contact: phoneContact || null,
-      reference_photo_url: referencePhotoUrl || null,
-      aso_date: asoDate || null
-    });
-    setIsSubmitting(false);
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        full_name: fullName.trim(),
+        cpf,
+        registration_number: registration.trim(),
+        email: email.trim() || null,
+        status: status,
+        termination_date: (status === 'INACTIVE' || status === 'DISMISSED') ? (terminationDate || null) : null,
+        current_site_id: siteId || null,
+        initial_role: initialRole.trim() || null,
+        current_role: initialRole.trim() || null,
+        admission_date: admissionDate || null,
+        birth_date: birthDate || null,
+        work_sector: workSector.trim() || null,
+        uniform_size: uniformSize || null,
+        boot_size: bootSize || null,
+        apt_for_height_and_confined_space: aptForHeight,
+        phone_contact: phoneContact.trim() || null,
+        reference_photo_url: referencePhotoUrl || null,
+        aso_date: asoDate || null
+      });
+      onClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Falha ao salvar colaborador.';
+      toast({ type: 'error', title: 'Erro ao Salvar', message });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

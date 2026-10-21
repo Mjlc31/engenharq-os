@@ -156,13 +156,13 @@ export function MapTracking() {
         { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString(), condition_on_delivery: 'GOOD' }
       ]);
       
-      if (!assignError) {
-        const catalogItem = availableEpis.find(e => e.id === selectedEpi);
-        if (catalogItem) {
-           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, (catalogItem.current_stock || 0) - 1) }).eq('id', selectedEpi);
-        }
-        toast({ type: 'success', title: 'Sucesso', message: 'EPI alocado com sucesso!' });
+      if (assignError) throw assignError;
+
+      const catalogItem = availableEpis.find(e => e.id === selectedEpi);
+      if (catalogItem) {
+         await supabase.from('epi_catalog').update({ current_stock: Math.max(0, (catalogItem.current_stock || 0) - 1) }).eq('id', selectedEpi);
       }
+      toast({ type: 'success', title: 'Sucesso', message: 'EPI alocado com sucesso!' });
 
       // Reload Data
       setIsModalOpen(false);
