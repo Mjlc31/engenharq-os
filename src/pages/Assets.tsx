@@ -1,28 +1,21 @@
 import React, { useState } from 'react';
-import { AlertCircle, Layers, Boxes } from 'lucide-react';
+import { AlertCircle, Layers, ShieldCheck } from 'lucide-react';
 import { useEpiAssets } from '../hooks/useEpiAssets';
 import { CatalogTab } from '../components/features/assets/CatalogTab';
-import { InventoryTab } from '../components/features/assets/InventoryTab';
+import { EpiTrackingTab } from '../components/features/assets/EpiTrackingTab';
 
 export function Assets() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'inventory'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'tracking'>('catalog');
   
   const {
-    epis,
-    workers,
     catalogs,
     sites,
     siteInventories,
     loading,
     error,
-    addEpi,
-    assignEpi,
-    returnEpi,
     saveCatalog,
     deleteCatalog,
-    updateSiteStock,
-    importInventoryCSV,
-    exportInventoryCSV
+    updateSiteStock
   } = useEpiAssets();
 
   return (
@@ -30,7 +23,7 @@ export function Assets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de EPIs</h1>
-          <p className="text-muted mt-1">Gerencie os modelos do catálogo NR-6 e o inventário de segurança por obra.</p>
+          <p className="text-muted mt-1">Controle de estoque por canteiro de obras e rastreamento de EPIs em uso.</p>
         </div>
 
         {/* Tab Controls */}
@@ -47,15 +40,15 @@ export function Assets() {
             Catálogo & Estoque por Obra
           </button>
           <button
-            onClick={() => setActiveTab('inventory')}
+            onClick={() => setActiveTab('tracking')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all ${
-              activeTab === 'inventory'
+              activeTab === 'tracking'
                 ? 'bg-primary text-white shadow-sm font-semibold'
                 : 'text-muted hover:text-foreground'
             }`}
           >
-            <Boxes className="w-4 h-4" />
-            Inventário Individual & Rastreamento
+            <ShieldCheck className="w-4 h-4" />
+            EPIs em Uso & Rastreamento
           </button>
         </div>
       </div>
@@ -78,16 +71,7 @@ export function Assets() {
           updateSiteStock={updateSiteStock}
         />
       ) : (
-        <InventoryTab
-          epis={epis}
-          workers={workers}
-          loading={loading}
-          addEpi={addEpi}
-          assignEpi={assignEpi}
-          returnEpi={returnEpi}
-          importInventoryCSV={importInventoryCSV}
-          exportInventoryCSV={exportInventoryCSV}
-        />
+        <EpiTrackingTab sites={sites} />
       )}
     </div>
   );
