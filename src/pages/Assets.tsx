@@ -11,6 +11,8 @@ export function Assets() {
     epis,
     workers,
     catalogs,
+    sites,
+    siteInventories,
     loading,
     error,
     addEpi,
@@ -18,6 +20,7 @@ export function Assets() {
     returnEpi,
     saveCatalog,
     deleteCatalog,
+    updateSiteStock,
     importInventoryCSV,
     exportInventoryCSV
   } = useEpiAssets();
@@ -27,7 +30,7 @@ export function Assets() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de EPIs</h1>
-          <p className="text-muted mt-1">Gerencie os modelos do catálogo NR-6 e o inventário de segurança.</p>
+          <p className="text-muted mt-1">Gerencie os modelos do catálogo NR-6 e o inventário de segurança por obra.</p>
         </div>
 
         {/* Tab Controls */}
@@ -41,7 +44,7 @@ export function Assets() {
             }`}
           >
             <Layers className="w-4 h-4" />
-            Catálogo de Modelos (NR-6)
+            Catálogo & Estoque por Obra
           </button>
           <button
             onClick={() => setActiveTab('inventory')}
@@ -70,6 +73,9 @@ export function Assets() {
           loading={loading}
           saveCatalog={saveCatalog}
           deleteCatalog={deleteCatalog}
+          sites={sites}
+          siteInventories={siteInventories}
+          updateSiteStock={updateSiteStock}
         />
       ) : (
         <InventoryTab

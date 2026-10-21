@@ -131,6 +131,24 @@ export const inventoryService = {
       })
       .eq('id', params.catalog_id);
 
+    // 3. Se houver obra vinculada, atualizar site_inventory
+    if (params.site_id) {
+      const { data: existingSiteInv } = await supabase
+        .from('site_inventory')
+        .select('quantity')
+        .eq('site_id', params.site_id)
+        .eq('catalog_id', params.catalog_id)
+        .maybeSingle();
+
+      const currentSiteQty = existingSiteInv?.quantity || 0;
+      await supabase.from('site_inventory').upsert({
+        site_id: params.site_id,
+        catalog_id: params.catalog_id,
+        quantity: currentSiteQty + params.quantity,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'site_id,catalog_id' });
+    }
+
     return data as EpiPurchase;
   },
 

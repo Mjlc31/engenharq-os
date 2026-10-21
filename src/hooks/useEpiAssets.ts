@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { EpiInventory, EpiCatalog, Worker } from '../types';
+import { EpiInventory, EpiCatalog, Worker, ConstructionSite, SiteInventory } from '../types';
 import Papa from 'papaparse';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -12,12 +12,12 @@ export function useEpiAssets() {
   const { data, isLoading: queryLoading } = useQuery({
     queryKey: ['epi-assets'],
     queryFn: async () => {
-      const [workersData, catalogsData] = await Promise.all([
-        
+      const [workersData, catalogsData, sitesData, siteInvData] = await Promise.all([
         supabase.from('workers').select('*').is('deleted_at', null).order('full_name', { ascending: true }),
-        supabase.from('epi_catalog').select('*').is('deleted_at', null).order('name', { ascending: true })
+        supabase.from('epi_catalog').select('*').is('deleted_at', null).order('name', { ascending: true }),
+        supabase.from('construction_sites').select('*').is('deleted_at', null).order('name', { ascending: true }),
+        supabase.from('site_inventory').select('*')
       ]);
-      
       
       if (workersData.error) throw workersData.error;
       if (catalogsData.error) throw catalogsData.error;
@@ -25,7 +25,9 @@ export function useEpiAssets() {
       return {
         epis: [],
         workers: (workersData.data as Worker[]) || [],
-        catalogs: (catalogsData.data as EpiCatalog[]) || []
+        catalogs: (catalogsData.data as EpiCatalog[]) || [],
+        sites: (sitesData.data as ConstructionSite[]) || [],
+        siteInventories: (siteInvData.data as SiteInventory[]) || []
       };
     }
   });
@@ -33,6 +35,8 @@ export function useEpiAssets() {
   const epis = data?.epis || [];
   const workers = data?.workers || [];
   const catalogs = data?.catalogs || [];
+  const sites = data?.sites || [];
+  const siteInventories = data?.siteInventories || [];
 
   const addEpi = async (category: string, caNumber: string): Promise<string> => {
     setError(null);
@@ -93,14 +97,28 @@ export function useEpiAssets() {
     }
   };
 
-  const saveCatalog = async (payload: Partial<EpiCatalog>, id?: string, initialStock?: number) => {
+  const saveCatalog = async (payload: Partial<EpiCatalog>, id?: string, initialStock?: number, siteId?: string) => {
     setError(null);
     try {
       if (id) {
-        const { error: updateError } = await supabase.from('epi_catalog').update(payload as any).eq('id', id);
+        const updatePayload: any = { ...payload };
+        if (initialStock !== undefined) {
+          updatePayload.current_stock = initialStock;
+        }
+        const { error: updateError } = await supabase.from('epi_catalog').update(updatePayload).eq('id', id);
         if (updateError) throw updateError;
+
+        // Se uma obra foi selecionada, atualizar ou inserir no site_inventory
+        if (siteId && initialStock !== undefined) {
+          await supabase.from('site_inventory').upsert({
+            site_id: siteId,
+            catalog_id: id,
+            quantity: initialStock,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'site_id,catalog_id' });
+        }
       } else {
-        const payloadWithStock = { ...payload, current_stock: initialStock || 0 };
+        const payloadWithStock = { ...payload, current_stock: initialStock ?? 0 };
         const { data: newCat, error: insertError } = await supabase.from('epi_catalog').insert([payloadWithStock as any]).select().single();
         if (insertError) throw insertError;
 
@@ -108,18 +126,49 @@ export function useEpiAssets() {
         if (newCat && initialStock && initialStock > 0) {
           await supabase.from('epi_purchases').insert({
             catalog_id: newCat.id,
+            site_id: siteId || null,
             quantity: initialStock,
             unit_price: payload.unit_price || 0,
             invoice_number: 'INICIAL',
             supplier: 'ESTOQUE INICIAL',
             notes: 'Cadastro inicial de modelo com lote.'
           });
+
+          // Se houver obra vinculada, registrar também no estoque da obra
+          if (siteId) {
+            await supabase.from('site_inventory').upsert({
+              site_id: siteId,
+              catalog_id: newCat.id,
+              quantity: initialStock,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'site_id,catalog_id' });
+          }
         }
       }
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      await queryClient.invalidateQueries({ queryKey: ['site-inventory'] });
     } catch (err: unknown) {
       console.error('Erro ao salvar catálogo:', err);
       throw new Error('Falha ao salvar o modelo de EPI no catálogo.');
+    }
+  };
+
+  const updateSiteStock = async (siteId: string, catalogId: string, quantity: number) => {
+    setError(null);
+    try {
+      const qty = Math.max(0, quantity);
+      const { error: upsertError } = await supabase.from('site_inventory').upsert({
+        site_id: siteId,
+        catalog_id: catalogId,
+        quantity: qty,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'site_id,catalog_id' });
+
+      if (upsertError) throw upsertError;
+      await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+    } catch (err: any) {
+      console.error('Erro ao atualizar estoque da obra:', err);
+      throw new Error('Falha ao atualizar estoque na obra selecionada.');
     }
   };
 
@@ -207,6 +256,8 @@ export function useEpiAssets() {
     epis,
     workers,
     catalogs,
+    sites,
+    siteInventories,
     loading: queryLoading || isImporting,
     error,
     setError,
@@ -215,6 +266,7 @@ export function useEpiAssets() {
     returnEpi,
     saveCatalog,
     deleteCatalog,
+    updateSiteStock,
     importInventoryCSV,
     exportInventoryCSV
   };
