@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Upload, Download, CheckCircle, AlertTriangle, ArrowDownRight, Package } from 'lucide-react';
+import { Plus, Search, Upload, Download, CheckCircle, AlertTriangle, ArrowDownRight, Package, RotateCcw, Loader2 } from 'lucide-react';
 import { EpiInventory, Worker } from '../../../types';
 import { useToast } from '../../../components/ui/Toast';
 import { format } from 'date-fns';
@@ -37,6 +37,10 @@ export function InventoryTab({
   const [category, setCategory] = useState('');
   const [caNumber, setCaNumber] = useState('');
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
+  const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
+  const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
+  const [returnConfirmEpi, setReturnConfirmEpi] = useState<EpiInventory | null>(null);
+  const [isReturning, setIsReturning] = useState(false);
 
   const filteredEpis = useMemo(() => {
     return epis.filter(e => 
@@ -65,6 +69,8 @@ export function InventoryTab({
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingAdd) return;
+    setIsSubmittingAdd(true);
     try {
       const trackingCode = await addEpi(category, caNumber || 'N/A');
       setIsAdding(false);
@@ -73,12 +79,15 @@ export function InventoryTab({
       toast({ type: 'success', title: 'Sucesso', message: `EPI cadastrado com código: ${trackingCode}` });
     } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err instanceof Error ? err.message : 'Falha ao registrar EPI.' });
+    } finally {
+      setIsSubmittingAdd(false);
     }
   };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assigningEpiId || !selectedWorkerId) return;
+    if (!assigningEpiId || !selectedWorkerId || isSubmittingAssign) return;
+    setIsSubmittingAssign(true);
     try {
       await assignEpi(assigningEpiId, selectedWorkerId);
       setAssigningEpiId(null);
@@ -86,15 +95,21 @@ export function InventoryTab({
       toast({ type: 'success', title: 'Sucesso', message: 'EPI designado com sucesso.' });
     } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err instanceof Error ? err.message : 'Falha ao designar EPI.' });
+    } finally {
+      setIsSubmittingAssign(false);
     }
   };
 
   const handleReturnEpi = async (id: string) => {
+    setIsReturning(true);
     try {
       await returnEpi(id);
       toast({ type: 'success', title: 'Sucesso', message: 'EPI devolvido com sucesso.' });
+      setReturnConfirmEpi(null);
     } catch (err: unknown) {
       toast({ type: 'error', title: 'Erro', message: err instanceof Error ? err.message : 'Falha ao devolver EPI.' });
+    } finally {
+      setIsReturning(false);
     }
   };
 
@@ -147,9 +162,11 @@ export function InventoryTab({
             </div>
             <button
               type="submit"
-              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+              disabled={isSubmittingAdd}
+              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
             >
-              Salvar
+              {isSubmittingAdd && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSubmittingAdd ? 'Salvando...' : 'Salvar'}
             </button>
           </form>
         </div>
@@ -178,9 +195,11 @@ export function InventoryTab({
             </div>
             <button
               type="submit"
-              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+              disabled={isSubmittingAssign}
+              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
             >
-              Confirmar Designação
+              {isSubmittingAssign && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSubmittingAssign ? 'Designando...' : 'Confirmar Designação'}
             </button>
           </form>
         </div>
@@ -263,10 +282,10 @@ export function InventoryTab({
                         )}
                         {epi.status === 'IN_USE' && (
                           <button 
-                            onClick={() => handleReturnEpi(epi.id)}
+                            onClick={() => setReturnConfirmEpi(epi)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-muted bg-surface-hover rounded cursor-pointer hover:bg-surface-hover/80 hover:text-foreground transition-colors"
                           >
-                            DEVOLVER
+                            <RotateCcw className="w-3.5 h-3.5" /> DEVOLVER
                           </button>
                         )}
                       </td>
@@ -302,6 +321,39 @@ export function InventoryTab({
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmação de Devolução */}
+      {returnConfirmEpi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 text-primary" /> Confirmar Devolução
+            </h3>
+            <p className="text-sm text-muted mb-6">
+              Deseja confirmar a devolução do equipamento <strong className="text-foreground">{returnConfirmEpi.tracking_code}</strong> ({returnConfirmEpi.category}) ao estoque disponível?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                disabled={isReturning}
+                onClick={() => setReturnConfirmEpi(null)}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isReturning}
+                onClick={() => handleReturnEpi(returnConfirmEpi.id)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isReturning && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isReturning ? 'Devolvendo...' : 'Confirmar Devolução'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

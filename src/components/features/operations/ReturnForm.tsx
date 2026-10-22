@@ -38,7 +38,7 @@ export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn 
     setLoading(false);
   };
 
-  const handleDevolucao = async (assignmentId: string, epiId: string) => {
+  const handleDevolucao = (assignmentId: string) => {
     setPendingReturn({ assignmentId, workerId: selectedWorkerId });
     setIsSignatureModalOpen(true);
   };
@@ -78,9 +78,8 @@ export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn 
                     <td className="px-4 py-2">{new Date(a.assigned_at).toLocaleString('pt-BR')}</td>
                     <td className="px-4 py-2">
                       <button 
-                        onClick={() => handleDevolucao(a.id, a.epi_id)}
-                        disabled={submitting}
-                        className="px-3 py-1 bg-primary text-background rounded-md hover:bg-primary-dark disabled:opacity-50"
+                        onClick={() => handleDevolucao(a.id)}
+                        className="px-3 py-1 bg-primary text-background rounded-md hover:bg-primary-dark transition-colors font-medium text-xs"
                       >
                         Devolver
                       </button>

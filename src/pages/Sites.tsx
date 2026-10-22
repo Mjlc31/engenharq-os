@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { useSites } from '../hooks/useSites';
 import { useCompany, Company } from '../hooks/useCompany';
-import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon, X, Filter } from 'lucide-react';
+import { Building2, MapPin, Search, Edit2, Trash2, Calendar, Navigation, Eye, Upload, Download, ChevronLeft, ChevronRight, Save, Image as ImageIcon, X, Filter, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ConstructionSite } from '../types';
 import { uploadImage } from '../lib/storage';
@@ -57,6 +57,8 @@ export function Sites() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [savingCompany, setSavingCompany] = useState(false);
+  const [isDeletingSite, setIsDeletingSite] = useState(false);
 
   useEffect(() => {
     fetchSites();
@@ -79,36 +81,54 @@ export function Sites() {
   }, [company]);
 
   const handleSaveCompany = async () => {
-    const data: Company = {
-      id: company?.id,
-      legal_name: compName,
-      trade_name: compTradeName,
-      cnpj: compCnpj,
-      state_registration: compIE,
-      address: compAddress,
-      phone: compPhone,
-      email: compEmail,
-      website: compWebsite,
-      legal_representative: compRep,
-      logo_url: compLogo
-    };
-    await saveCompany(data);
+    setSavingCompany(true);
+    try {
+      const data: Company = {
+        id: company?.id,
+        legal_name: compName,
+        trade_name: compTradeName,
+        cnpj: compCnpj,
+        state_registration: compIE,
+        address: compAddress,
+        phone: compPhone,
+        email: compEmail,
+        website: compWebsite,
+        legal_representative: compRep,
+        logo_url: compLogo
+      };
+      await saveCompany(data);
+      toast({ type: 'success', title: 'Sucesso', message: 'Dados da empresa salvos com sucesso!' });
+    } catch (err: any) {
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar dados da empresa.' });
+    } finally {
+      setSavingCompany(false);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploadingLogo(true);
-    const url = await uploadImage(e.target.files[0], 'site-images');
-    if (url) setCompLogo(url);
-    setUploadingLogo(false);
+    try {
+      const url = await uploadImage(e.target.files[0], 'site-images');
+      if (url) setCompLogo(url);
+    } catch (err) {
+      toast({ type: 'error', title: 'Erro', message: 'Falha no upload do logotipo.' });
+    } finally {
+      setUploadingLogo(false);
+    }
   };
 
   const handleSiteImgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploadingSiteImg(true);
-    const url = await uploadImage(e.target.files[0], 'site-images');
-    if (url) setSiteImage(url);
-    setUploadingSiteImg(false);
+    try {
+      const url = await uploadImage(e.target.files[0], 'site-images');
+      if (url) setSiteImage(url);
+    } catch (err) {
+      toast({ type: 'error', title: 'Erro', message: 'Falha no upload da foto da obra.' });
+    } finally {
+      setUploadingSiteImg(false);
+    }
   };
 
   const resetSiteForm = () => {
@@ -184,13 +204,17 @@ export function Sites() {
   };
 
   const handleDeleteSite = async (id: string) => {
+    setIsDeletingSite(true);
     try {
       const { error } = await supabase.from('construction_sites').update({ deleted_at: new Date().toISOString() }).eq('id', id);
       if (error) throw error;
       toast({ type: 'success', title: 'Sucesso', message: 'Obra excluída.' });
-      fetchSites();
+      setDeleteConfirmId(null);
+      await fetchSites();
     } catch (err: any) {
-      toast({ type: 'error', title: 'Erro', message: 'Falha ao excluir.' });
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao excluir.' });
+    } finally {
+      setIsDeletingSite(false);
     }
   };
 
@@ -299,8 +323,13 @@ export function Sites() {
           </div>
           
           <div className="mt-8 flex justify-end">
-            <button onClick={handleSaveCompany} disabled={!compName || !compCnpj} className="bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium flex items-center gap-2 hover:opacity-90 disabled:opacity-50">
-              <Save className="w-4 h-4" /> Salvar Dados
+            <button 
+              onClick={handleSaveCompany} 
+              disabled={!compName || !compCnpj || savingCompany} 
+              className="bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {savingCompany ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {savingCompany ? 'Salvando...' : 'Salvar Dados'}
             </button>
           </div>
         </div>
@@ -479,13 +508,30 @@ export function Sites() {
       )}
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-foreground mb-2">Confirmar Exclusão</h3>
+            <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" /> Confirmar Exclusão
+            </h3>
             <p className="text-sm text-muted mb-6">Tem certeza que deseja excluir esta obra? Essa ação não pode ser desfeita.</p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-muted hover:text-foreground">Cancelar</button>
-              <button onClick={() => { handleDeleteSite(deleteConfirmId); setDeleteConfirmId(null); }} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Excluir Obra</button>
+              <button 
+                type="button"
+                disabled={isDeletingSite}
+                onClick={() => setDeleteConfirmId(null)} 
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button"
+                disabled={isDeletingSite}
+                onClick={() => handleDeleteSite(deleteConfirmId)} 
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isDeletingSite && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isDeletingSite ? 'Excluindo...' : 'Excluir Obra'}
+              </button>
             </div>
           </div>
         </div>

@@ -89,8 +89,15 @@ export function SystemSettingsForm() {
       setError(null);
       setSuccess(false);
 
-      if (!values.company_name.trim()) {
-        setErrors({ company_name: 'Razão social é obrigatória' });
+      const validation = settingsSchema.safeParse(values);
+      if (!validation.success) {
+        const formErrors: Record<string, string> = {};
+        validation.error.issues.forEach(issue => {
+          if (issue.path[0]) {
+            formErrors[issue.path[0].toString()] = issue.message;
+          }
+        });
+        setErrors(formErrors);
         setSaving(false);
         return;
       }

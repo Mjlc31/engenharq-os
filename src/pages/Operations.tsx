@@ -141,10 +141,12 @@ export function Operations() {
 
   const processReturn = async (signatureDataUrl: string, photoFile?: File) => {
     if (!pendingReturn) return;
+    setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
       
-      const { data: assignmentData } = await supabase.from('epi_assignments').select('catalog_id').eq('id', pendingReturn.assignmentId).single();
+      const { data: assignmentData, error: fetchErr } = await supabase.from('epi_assignments').select('catalog_id').eq('id', pendingReturn.assignmentId).single();
+      if (fetchErr) throw fetchErr;
       
       const { error } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
@@ -157,7 +159,8 @@ export function Operations() {
       if (assignmentData) {
         const catalog = catalogs.find(c => c.id === assignmentData.catalog_id);
         if (catalog) {
-          await supabase.from('epi_catalog').update({ current_stock: catalog.current_stock + 1 }).eq('id', catalog.id);
+          const { error: catErr } = await supabase.from('epi_catalog').update({ current_stock: catalog.current_stock + 1 }).eq('id', catalog.id);
+          if (catErr) console.warn('Aviso ao atualizar estoque catálogo:', catErr);
         }
 
         // Restocar na obra do colaborador
@@ -170,7 +173,7 @@ export function Operations() {
             .eq('catalog_id', assignmentData.catalog_id)
             .maybeSingle();
 
-          await supabase
+          const { error: siteInvErr } = await supabase
             .from('site_inventory')
             .upsert({
               site_id: worker.current_site_id,
@@ -178,21 +181,25 @@ export function Operations() {
               quantity: (siteInv?.quantity || 0) + 1,
               updated_at: new Date().toISOString()
             }, { onConflict: 'site_id,catalog_id' });
+          if (siteInvErr) console.warn('Aviso ao atualizar estoque da obra:', siteInvErr);
         }
       }
       
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
-      setIsSignatureModalOpen(false);
       setPendingReturn(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
       queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
+    } finally {
+      setSubmitting(false);
+      setIsSignatureModalOpen(false);
     }
   };
 
   const processLoss = async (signatureDataUrl: string, photoFile?: File) => {
     if (!pendingLoss) return;
+    setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
       
@@ -204,7 +211,7 @@ export function Operations() {
       }).eq('id', pendingLoss.assignmentId);
       if (error) throw error;
 
-      await supabase.from('disciplinary_records').insert({
+      const { error: discErr } = await supabase.from('disciplinary_records').insert({
         worker_id: pendingLoss.workerId,
         type: 'ORIENTACAO_SEGURANCA',
         title: `Termo de Extravio / Perda de EPI - ${pendingLoss.catalogName || 'Equipamento'}`,
@@ -212,14 +219,17 @@ export function Operations() {
         applied_at: new Date().toISOString(),
         pdf_url: photoUrl || signatureDataUrl
       });
+      if (discErr) console.warn('Aviso ao registrar medida disciplinar de extravio:', discErr);
       
       toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura e documentado em Medidas Disciplinares.' });
-      setIsSignatureModalOpen(false);
       setPendingLoss(null);
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
       queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
+    } finally {
+      setSubmitting(false);
+      setIsSignatureModalOpen(false);
     }
   };
 
