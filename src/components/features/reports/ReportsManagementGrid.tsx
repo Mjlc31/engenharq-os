@@ -17,7 +17,8 @@ import {
   Download,
   CalendarDays,
   Building2,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, addDays } from 'date-fns';
 
@@ -38,6 +39,7 @@ export function ReportsManagementGrid() {
   const [previewColumns, setPreviewColumns] = useState<any[]>([]);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [downloadingPdfKey, setDownloadingPdfKey] = useState<string | null>(null);
   const [activeReportKey, setActiveReportKey] = useState<string | null>(null);
 
   // Extract distinct sectors
@@ -72,7 +74,8 @@ export function ReportsManagementGrid() {
         if (siteFilter) query = query.eq('current_site_id', siteFilter);
         if (sectorFilter) query = query.eq('work_sector', sectorFilter);
 
-        const { data } = await query;
+        const { data, error } = await query;
+        if (error) throw error;
         const columns = [
           { key: 'Nome', label: 'Nome Completo' },
           { key: 'Matricula', label: 'Matrícula' },
@@ -102,7 +105,8 @@ export function ReportsManagementGrid() {
       }
 
       case 'epis': {
-        const { data } = await supabase.from('epi_catalog').select('code, name, category, brand, model, ca_number, current_stock, minimum_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, brand, model, ca_number, current_stock, minimum_stock');
+        if (error) throw error;
         const columns = [
           { key: 'Codigo', label: 'Código' },
           { key: 'Nome', label: 'Nome do EPI' },
@@ -134,11 +138,12 @@ export function ReportsManagementGrid() {
       }
 
       case 'deliveries': {
-        const { data } = await supabase.from('epi_assignments').select(`
+        const { data, error } = await supabase.from('epi_assignments').select(`
           assigned_at, returned_at,
           worker:workers(full_name, work_sector, current_site_id),
           catalog:epi_catalog!catalog_id(name, code, ca_number)
         `).order('assigned_at', { ascending: false });
+        if (error) throw error;
 
         let list = data || [];
         if (siteFilter) {
@@ -183,11 +188,12 @@ export function ReportsManagementGrid() {
       }
 
       case 'returns': {
-        const { data } = await supabase.from('epi_assignments').select(`
+        const { data, error } = await supabase.from('epi_assignments').select(`
           assigned_at, returned_at, condition_on_return,
           worker:workers(full_name, work_sector, current_site_id),
           catalog:epi_catalog!catalog_id(name, code)
         `).not('returned_at', 'is', null).order('returned_at', { ascending: false });
+        if (error) throw error;
 
         let list = data || [];
         if (siteFilter) {
@@ -230,7 +236,8 @@ export function ReportsManagementGrid() {
       }
 
       case 'stock': {
-        const { data } = await supabase.from('epi_catalog').select('code, name, category, unit_price, current_stock, minimum_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, unit_price, current_stock, minimum_stock');
+        if (error) throw error;
         const columns = [
           { key: 'Codigo', label: 'Código' },
           { key: 'Nome', label: 'Nome do EPI' },
@@ -266,7 +273,8 @@ export function ReportsManagementGrid() {
       }
 
       case 'expiring': {
-        const { data } = await supabase.from('epi_catalog').select('code, name, ca_number, ca_validity, current_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, ca_number, ca_validity, current_stock');
+        if (error) throw error;
         const today = startOfDay(new Date());
         const limit = addDays(today, 60); // Next 60 days
 
@@ -307,11 +315,12 @@ export function ReportsManagementGrid() {
       }
 
       case 'forecast': {
-        const { data } = await supabase.from('epi_assignments').select(`
+        const { data, error } = await supabase.from('epi_assignments').select(`
           assigned_at,
           worker:workers(full_name, work_sector),
           catalog:epi_catalog!catalog_id(name, code, ca_number, recommended_lifespan_days)
         `).is('returned_at', null);
+        if (error) throw error;
 
         const today = new Date();
         const columns = [
@@ -347,10 +356,11 @@ export function ReportsManagementGrid() {
       }
 
       case 'lost': {
-        const { data } = await supabase.from('disciplinary_records').select(`
+        const { data, error } = await supabase.from('disciplinary_records').select(`
           created_at, title, type,
           worker:workers(full_name, registration_number, cpf, work_sector)
         `).order('created_at', { ascending: false });
+        if (error) throw error;
 
         const columns = [
           { key: 'Colaborador', label: 'Colaborador' },
@@ -401,6 +411,7 @@ export function ReportsManagementGrid() {
   };
 
   const handleDownloadPdf = async (reportKey: string) => {
+    setDownloadingPdfKey(reportKey);
     try {
       const res = await fetchReportData(reportKey);
       if (res.data.length === 0) {
@@ -411,6 +422,8 @@ export function ReportsManagementGrid() {
       toast({ type: 'success', title: 'PDF Gerado com Sucesso', message: `O download de "${res.title}" foi iniciado.` });
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro ao gerar PDF', message: err.message });
+    } finally {
+      setDownloadingPdfKey(null);
     }
   };
 
@@ -584,10 +597,11 @@ export function ReportsManagementGrid() {
 
                 <button
                   onClick={() => handleDownloadPdf(card.id)}
-                  className="h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                  disabled={downloadingPdfKey === card.id || loadingReport}
+                  className="h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center justify-center gap-1.5 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  PDF
+                  {downloadingPdfKey === card.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {downloadingPdfKey === card.id ? 'Gerando...' : 'PDF'}
                 </button>
               </div>
             </div>

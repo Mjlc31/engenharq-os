@@ -4,7 +4,7 @@ import { sstService } from '../services/sstService';
 import { useWorkers } from '../hooks/useWorkers';
 import { useToast } from '../components/ui/Toast';
 import { uploadImage } from '../lib/storage';
-import { Award, Plus, Calendar, Clock, User, CheckCircle2, Image as ImageIcon, X, ChevronRight, Search } from 'lucide-react';
+import { Award, Plus, Calendar, Clock, User, CheckCircle2, Image as ImageIcon, X, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { ValidityBadge } from '../components/ui/ValidityBadge';
 
 export function Trainings() {
@@ -37,6 +37,7 @@ export function Trainings() {
   const [title, setTitle] = useState('');
   const [workloadHours, setWorkloadHours] = useState<number | ''>(8);
   const [defaultValidityMonths, setDefaultValidityMonths] = useState<number | ''>(12);
+  const [isSavingCatalog, setIsSavingCatalog] = useState(false);
 
   // Lightbox Image Preview
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -125,8 +126,9 @@ export function Trainings() {
 
   const handleCreateCatalogItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nrCode || !title || !workloadHours || !defaultValidityMonths) return;
+    if (!nrCode || !title || !workloadHours || !defaultValidityMonths || isSavingCatalog) return;
 
+    setIsSavingCatalog(true);
     try {
       await sstService.createTrainingCatalogItem({
         nr_code: nrCode,
@@ -141,6 +143,8 @@ export function Trainings() {
       await loadData();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao criar item no catálogo.' });
+    } finally {
+      setIsSavingCatalog(false);
     }
   };
 
@@ -527,8 +531,15 @@ export function Trainings() {
               </div>
 
               <div className="pt-4 border-t border-border flex justify-end gap-3">
-                <button type="button" onClick={() => setIsCatalogModalOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground">Cancelar</button>
-                <button type="submit" className="px-5 py-2 bg-primary text-primary-foreground font-semibold text-sm rounded-md shadow">Salvar no Catálogo</button>
+                <button type="button" disabled={isSavingCatalog} onClick={() => setIsCatalogModalOpen(false)} className="px-4 py-2 text-sm text-muted hover:text-foreground disabled:opacity-50">Cancelar</button>
+                <button 
+                  type="submit" 
+                  disabled={isSavingCatalog}
+                  className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground font-semibold text-sm rounded-md shadow disabled:opacity-50"
+                >
+                  {isSavingCatalog && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isSavingCatalog ? 'Salvando...' : 'Salvar no Catálogo'}
+                </button>
               </div>
             </form>
           </div>

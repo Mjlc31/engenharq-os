@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
-import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase } from 'lucide-react';
+import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
 import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from '../services/rbacService';
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
+import { SystemSettingsForm } from '../components/features/settings/SystemSettingsForm';
 
 export const PRESET_FUNCTIONS: { label: string; defaultRole: UserRole }[] = [
   { label: 'Encarregado de Obra', defaultRole: 'SITE_MANAGER' },
@@ -23,6 +24,7 @@ export function Settings() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [userSearch, setUserSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'USERS' | 'SYSTEM'>('USERS');
 
   // Edit Permissions Modal
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -32,6 +34,7 @@ export function Settings() {
   const [tempFullName, setTempFullName] = useState('');
   const [savingPermissions, setSavingPermissions] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [deactivateConfirmUser, setDeactivateConfirmUser] = useState<User | null>(null);
 
   // New User Modal
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
@@ -100,19 +103,23 @@ export function Settings() {
     }
   };
 
-  const handleDeactivateUser = async (u: User) => {
+  const handlePromptDeactivate = (u: User) => {
     if (u.id === session?.user?.id) {
       toast({ type: 'warning', title: 'Atenção', message: 'Você não pode desativar seu próprio usuário administrador.' });
       return;
     }
-    if (!window.confirm(`Tem certeza que deseja desativar o usuário "${u.full_name || u.email}"? Ele perderá acesso ao sistema.`)) {
-      return;
-    }
-    setDeactivatingId(u.id);
+    setDeactivateConfirmUser(u);
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateConfirmUser) return;
+    const target = deactivateConfirmUser;
+    setDeactivatingId(target.id);
     try {
-      await rbacService.deactivateUser(u.id);
+      await rbacService.deactivateUser(target.id);
       toast({ type: 'success', title: 'Usuário Desativado', message: 'O usuário foi desativado com sucesso.' });
-      if (editingUser?.id === u.id) setEditingUser(null);
+      if (editingUser?.id === target.id) setEditingUser(null);
+      setDeactivateConfirmUser(null);
       await loadUsers();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao desativar usuário.' });
@@ -192,10 +199,36 @@ export function Settings() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Configurações & Governança</h1>
-          <p className="text-muted mt-1">Gerencie os acessos, permissões granulares e segurança da plataforma.</p>
+          <p className="text-muted mt-1">Gerencie os acessos, permissões granulares e regras do sistema.</p>
         </div>
       </div>
 
+      <div className="flex border-b border-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab('USERS')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'USERS' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted hover:text-foreground'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          Usuários & Permissões (RBAC)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('SYSTEM')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'SYSTEM' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted hover:text-foreground'
+          }`}
+        >
+          <SettingsIcon className="w-4 h-4" />
+          Regras do Sistema & NR-6
+        </button>
+      </div>
+
+      {activeTab === 'SYSTEM' ? (
+        <SystemSettingsForm />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Profile Card */}
         <div className="md:col-span-1 space-y-6">
@@ -352,7 +385,7 @@ export function Settings() {
                                   <button
                                     type="button"
                                     disabled={deactivatingId === u.id}
-                                    onClick={() => handleDeactivateUser(u)}
+                                    onClick={() => handlePromptDeactivate(u)}
                                     className="p-1.5 text-muted hover:text-red-400 hover:bg-red-500/10 rounded-md border border-transparent hover:border-red-500/20 transition-colors cursor-pointer"
                                     title="Desativar usuário"
                                   >
@@ -372,6 +405,7 @@ export function Settings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Modal Editar Permissões Granulares */}
       {editingUser && (
@@ -605,7 +639,7 @@ export function Settings() {
                 <button
                   type="button"
                   disabled={deactivatingId === editingUser.id}
-                  onClick={() => handleDeactivateUser(editingUser)}
+                  onClick={() => handlePromptDeactivate(editingUser)}
                   className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/20 rounded transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Desativar Usuário
@@ -795,6 +829,40 @@ export function Settings() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Confirmar Desativação de Usuário */}
+      {deactivateConfirmUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Confirmar Desativação
+            </h3>
+            <p className="text-sm text-muted mb-6">
+              Tem certeza que deseja desativar o usuário <strong className="text-foreground">{deactivateConfirmUser.full_name || deactivateConfirmUser.email}</strong>? Ele perderá imediatamente o acesso ao sistema.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                disabled={deactivatingId === deactivateConfirmUser.id}
+                onClick={() => setDeactivateConfirmUser(null)}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deactivatingId === deactivateConfirmUser.id}
+                onClick={handleConfirmDeactivate}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {deactivatingId === deactivateConfirmUser.id && (
+                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                )}
+                {deactivatingId === deactivateConfirmUser.id ? 'Desativando...' : 'Desativar Usuário'}
+              </button>
+            </div>
           </div>
         </div>
       )}

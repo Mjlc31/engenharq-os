@@ -58,7 +58,7 @@ export const inventoryService = {
 
     // 2. Se houver estoque inicial e valor, registrar na tabela de compras
     if (initialStock > 0 && newCatalog) {
-      await supabase.from('epi_purchases').insert({
+      const { error: purchaseErr } = await supabase.from('epi_purchases').insert({
         catalog_id: newCatalog.id,
         site_id: payload.site_id || null,
         quantity: initialStock,
@@ -67,6 +67,7 @@ export const inventoryService = {
         supplier: payload.supplier || 'ESTOQUE INICIAL',
         notes: 'Cadastro inicial de EPI com lote inicial.'
       });
+      if (purchaseErr) console.warn('Aviso ao registrar compra inicial:', purchaseErr);
     }
 
     return newCatalog as EpiCatalog;
@@ -123,13 +124,14 @@ export const inventoryService = {
 
     const newStock = (currentCat?.current_stock || 0) + params.quantity;
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from('epi_catalog')
       .update({
         current_stock: newStock,
         unit_price: params.unit_price
       })
       .eq('id', params.catalog_id);
+    if (updateErr) throw updateErr;
 
     // 3. Se houver obra vinculada, atualizar site_inventory
     if (params.site_id) {
@@ -141,12 +143,13 @@ export const inventoryService = {
         .maybeSingle();
 
       const currentSiteQty = existingSiteInv?.quantity || 0;
-      await supabase.from('site_inventory').upsert({
+      const { error: siteInvErr } = await supabase.from('site_inventory').upsert({
         site_id: params.site_id,
         catalog_id: params.catalog_id,
         quantity: currentSiteQty + params.quantity,
         updated_at: new Date().toISOString()
       }, { onConflict: 'site_id,catalog_id' });
+      if (siteInvErr) throw siteInvErr;
     }
 
     return data as EpiPurchase;

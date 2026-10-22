@@ -15,7 +15,8 @@ import {
   MapPin, 
   SlidersHorizontal,
   CheckCircle2,
-  PackageCheck
+  PackageCheck,
+  Loader2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { EpiCatalog, ConstructionSite, SiteInventory } from '../../../types';
@@ -92,6 +93,8 @@ export function CatalogTab({
   const [catSiteId, setCatSiteId] = useState<string>('');
   const [isSavingCatalog, setIsSavingCatalog] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [deleteConfirmCatalog, setDeleteConfirmCatalog] = useState<EpiCatalog | null>(null);
+  const [isDeletingCatalog, setIsDeletingCatalog] = useState(false);
 
   // Modal: Add Stock / Entrada
   const [isAddingStock, setIsAddingStock] = useState(false);
@@ -719,16 +722,7 @@ export function CatalogTab({
                         {/* Excluir */}
                         {role && ['ADMIN', 'SAFETY_ENGINEER'].includes(role) && (
                           <button 
-                            onClick={async () => {
-                              if (!window.confirm(`Deseja excluir o EPI "${cat.name}" do catálogo?`)) return;
-                              try {
-                                await deleteCatalog(cat.id);
-                                toast({ type: 'success', title: 'Sucesso', message: 'EPI excluído do catálogo.' });
-                                if (onRefresh) onRefresh();
-                              } catch (e: any) {
-                                toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao excluir.' });
-                              }
-                            }} 
+                            onClick={() => setDeleteConfirmCatalog(cat)} 
                             className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors" 
                             title="Excluir EPI"
                           >
@@ -1340,6 +1334,51 @@ export function CatalogTab({
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded-md text-sm disabled:opacity-50 transition-colors"
               >
                 {isSubmittingDiscard ? 'Processando...' : 'Confirmar Descarte'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmar Exclusão de EPI do Catálogo */}
+      {deleteConfirmCatalog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-500" /> Confirmar Exclusão
+            </h3>
+            <p className="text-sm text-muted mb-6">
+              Deseja realmente excluir o EPI <strong className="text-foreground">{deleteConfirmCatalog.name}</strong> do catálogo NR-6? Esta ação removerá o modelo permanentemente.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                disabled={isDeletingCatalog}
+                onClick={() => setDeleteConfirmCatalog(null)}
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-foreground hover:bg-surface-hover rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingCatalog}
+                onClick={async () => {
+                  setIsDeletingCatalog(true);
+                  try {
+                    await deleteCatalog(deleteConfirmCatalog.id);
+                    toast({ type: 'success', title: 'Sucesso', message: 'EPI excluído do catálogo.' });
+                    if (onRefresh) onRefresh();
+                    setDeleteConfirmCatalog(null);
+                  } catch (e: any) {
+                    toast({ type: 'error', title: 'Erro', message: e.message || 'Falha ao excluir.' });
+                  } finally {
+                    setIsDeletingCatalog(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isDeletingCatalog && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isDeletingCatalog ? 'Excluindo...' : 'Excluir EPI'}
               </button>
             </div>
           </div>
