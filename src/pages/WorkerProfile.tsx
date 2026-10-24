@@ -174,6 +174,12 @@ export function WorkerProfile() {
         doctor_name: asoDoctorName || undefined
       });
 
+      // Atualizar aso_date persistente na tabela workers
+      await supabase
+        .from('workers')
+        .update({ aso_date: asoIssuedAt })
+        .eq('id', worker.id);
+
       setWorker(prev => prev ? ({
         ...prev,
         apt_for_height: asoFitHeight,
@@ -333,7 +339,7 @@ export function WorkerProfile() {
     setIsAddingRole(false);
     setNewRoleName('');
     setNewRoleStartDate('');
-    window.location.reload();
+    await loadData();
   };
 
   const handleSaveSignature = async (dataUrl: string) => {

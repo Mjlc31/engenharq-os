@@ -56,7 +56,7 @@ export const inventoryService = {
 
     if (catError) throw catError;
 
-    // 2. Se houver estoque inicial e valor, registrar na tabela de compras
+    // 2. Se houver estoque inicial e valor, registrar na tabela de compras e no estoque da obra
     if (initialStock > 0 && newCatalog) {
       const { error: purchaseErr } = await supabase.from('epi_purchases').insert({
         catalog_id: newCatalog.id,
@@ -68,6 +68,15 @@ export const inventoryService = {
         notes: 'Cadastro inicial de EPI com lote inicial.'
       });
       if (purchaseErr) console.warn('Aviso ao registrar compra inicial:', purchaseErr);
+
+      if (payload.site_id) {
+        await supabase.from('site_inventory').upsert({
+          site_id: payload.site_id,
+          catalog_id: newCatalog.id,
+          quantity: initialStock,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'site_id,catalog_id' });
+      }
     }
 
     return newCatalog as EpiCatalog;

@@ -193,16 +193,20 @@ export function useEpiAssets() {
           try {
             setIsImporting(true);
             const newEpis = results.data
-              .map((row: Record<string, string>) => ({
-                category: row['Categoria'] || row['category'],
-                tracking_code: row['Código Rastreio'] || row['Codigo Rastreio'] || row['tracking_code'],
-                ca_number: row['CA'] || row['ca_number'],
-                size: row['Tamanho'] || row['size'] || 'Único',
-                ca_expiration_date: row['Validade CA'] || row['ca_expiration_date'] || null,
-                recommended_lifespan_days: parseInt(row['Vida Útil (dias)'] || row['recommended_lifespan_days'] || '180', 10),
-                status: row['Status'] || row['status'] || 'AVAILABLE'
+              .map((row: any) => ({
+                name: row['Nome'] || row['name'] || row['Nome do EPI'] || 'EPI Sem Nome',
+                category: row['Categoria'] || row['category'] || 'PROTECAO_CABECA',
+                brand: row['Marca'] || row['brand'] || null,
+                model: row['Modelo'] || row['model'] || null,
+                ca_number: row['CA'] || row['ca_number'] || null,
+                ca_validity: row['Validade CA'] || row['ca_validity'] || null,
+                lifespan_days: parseInt(row['Vida Útil (dias)'] || row['lifespan_days'] || '180', 10),
+                minimum_stock: parseInt(row['Estoque Mínimo'] || row['minimum_stock'] || '5', 10),
+                current_stock: parseInt(row['Estoque Atual'] || row['current_stock'] || '0', 10),
+                unit_price: parseFloat(row['Preço Unitário'] || row['unit_price'] || '0') || 0,
+                status: 'ACTIVE'
               }))
-              .filter((e: { category: string; tracking_code: string; ca_number: string }) => e.category && e.tracking_code && e.ca_number);
+              .filter((e: { name: string; category: string }) => e.name && e.category);
 
             if (newEpis.length === 0) {
               throw new Error('Nenhum dado válido encontrado no CSV.');
@@ -215,7 +219,7 @@ export function useEpiAssets() {
             resolve();
           } catch (err: unknown) {
             console.error('Erro ao importar CSV:', err);
-            const msg = err instanceof Error ? err.message : 'Falha ao importar EPIs. Verifique se os Códigos de Rastreio já existem.';
+            const msg = err instanceof Error ? err.message : 'Falha ao importar EPIs. Verifique se os dados estão corretos.';
             setError(msg);
             reject(err);
           } finally {
@@ -232,21 +236,26 @@ export function useEpiAssets() {
   };
 
   const exportInventoryCSV = () => {
-    const csvData = epis.map(e => ({
-      'Categoria': e.category,
-      'Código Rastreio': e.tracking_code,
-      'CA': e.ca_number,
-      'Tamanho': e.size || 'Único',
-      'Validade CA': e.ca_expiration_date || '',
-      'Vida Útil (dias)': e.recommended_lifespan_days || 180,
-      'Status': e.status
+    const csvData = catalogs.map(c => ({
+      'Código': c.code || '',
+      'Nome do EPI': c.name,
+      'Categoria': c.category,
+      'Marca': c.brand || '',
+      'Modelo': c.model || '',
+      'Número CA': c.ca_number || '',
+      'Validade CA': c.ca_validity || '',
+      'Estoque Atual': c.current_stock || 0,
+      'Estoque Mínimo': c.minimum_stock || 0,
+      'Preço Unitário (R$)': c.unit_price ? Number(c.unit_price).toFixed(2) : '0.00',
+      'Vida Útil (dias)': c.lifespan_days || 180,
+      'Status': c.status || 'ACTIVE'
     }));
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `engenharq_estoque_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `engenharq_catalogo_estoque_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

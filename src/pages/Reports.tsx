@@ -94,7 +94,7 @@ export function Reports() {
   const selectedAssignmentsList = workerAssignments.filter(a => selectedAssignmentIds.includes(a.id));
   const selectedTotalAmount = selectedAssignmentsList.reduce((acc, a) => {
     const unitPrice = Number(a.unit_price_at_delivery ?? a.catalog?.unit_price ?? 0);
-    return acc + unitPrice;
+    return acc + (unitPrice * Number(a.quantity || 1));
   }, 0);
 
   const handleGenerateSelectiveReport = async (mode: 'download' | 'preview' = 'download') => {

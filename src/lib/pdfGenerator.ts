@@ -316,7 +316,8 @@ export const generateEpiRecordPdf = async (
         const isUnif = catalog.category?.toLowerCase().includes('uniforme');
 
         // Col 1: Quantidade
-        page.drawText('1', { x: COL.qtX - 2, y: baselineY, size: 8 });
+        const itemQty = String(assignment.quantity || 1);
+        page.drawText(itemQty, { x: COL.qtX - 2, y: baselineY, size: 8 });
 
         // Col 2: Descrição do EPI
         let textName = `${isUnif ? '[UNIF]' : '[EPI]'} ${epiName}`;
@@ -347,7 +348,7 @@ export const generateEpiRecordPdf = async (
         }
 
         // Col 5: Assinatura / Foto de Evidência da Entrega
-        const deliveryEvidenceUrl = assignment.digital_signature_url || assignment.evidence_photo_url;
+        const deliveryEvidenceUrl = assignment.digital_signature_url || assignment.audit_selfie_url || assignment.evidence_photo_url;
         if (deliveryEvidenceUrl) {
           const img = await safeEmbedImage(pdfDoc, deliveryEvidenceUrl);
           if (img) {
@@ -380,8 +381,9 @@ export const generateEpiRecordPdf = async (
         }
 
         // Col 7: Foto de Devolução / Assinatura
-        if (assignment.return_photo_url) {
-          const returnImg = await safeEmbedImage(pdfDoc, assignment.return_photo_url);
+        const returnEvidenceUrl = assignment.return_signature_url || assignment.return_photo_url;
+        if (returnEvidenceUrl) {
+          const returnImg = await safeEmbedImage(pdfDoc, returnEvidenceUrl);
           if (returnImg) {
             const dims = returnImg.scaleToFit(72, 17);
             page.drawImage(returnImg, {
@@ -543,7 +545,7 @@ export const generateSelectiveLostChargePdf = async (
     const ca = catalog.ca_number || '-';
     const dateEnt = assignment.assigned_at ? format(new Date(assignment.assigned_at), 'dd/MM/yyyy') : '-';
     const status = assignment.returned_at ? 'Devolvido' : 'Em Posse / Cobrado';
-    const qty = 1;
+    const qty = Number(assignment.quantity || 1);
     const unitVal = Number(assignment.unit_price_at_delivery ?? catalog.unit_price ?? 0);
     const subtotal = qty * unitVal;
 

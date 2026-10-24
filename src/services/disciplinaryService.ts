@@ -25,6 +25,13 @@ export const disciplinaryService = {
     applied_by?: string;
     pdf_url?: string;
   }) {
+    // Garantir que applied_by seja um UUID válido para não quebrar a constraint de chave estrangeira
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUserId = authData.user?.id || null;
+
+    const isUuid = payload.applied_by && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.applied_by);
+    const appliedByUuid = isUuid ? payload.applied_by : currentUserId;
+
     const { data, error } = await supabase
       .from('disciplinary_records')
       .insert({
@@ -32,7 +39,7 @@ export const disciplinaryService = {
         type: payload.type,
         title: payload.title,
         content_html: payload.content_html,
-        applied_by: payload.applied_by || null,
+        applied_by: appliedByUuid,
         pdf_url: payload.pdf_url || null
       })
       .select()
