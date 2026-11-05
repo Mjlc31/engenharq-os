@@ -26,6 +26,9 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ defaul
 // Almoxarifado Restricted Route Guard
 const AlmoxarifadoRestrictedRoute = ({ children }: { children: React.ReactNode }) => {
   const { role, customRole } = useAuth();
+  if (role === 'ADMIN') {
+    return <>{children}</>;
+  }
   const isAlmoxarifado = role === 'ALMOXARIFADO' || (customRole && customRole.toLowerCase().includes('almoxarif'));
   if (isAlmoxarifado) {
     return <Navigate to="/almoxarifado-kds" replace />;

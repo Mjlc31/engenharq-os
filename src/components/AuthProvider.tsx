@@ -50,12 +50,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = res?.data;
 
       if (data) {
-        if (data.role) setRole(data.role as UserRole);
-        if (data.custom_role) setCustomRole(data.custom_role);
+        if (data.role) {
+          setRole(data.role as UserRole);
+        } else if (currentRole) {
+          setRole(currentRole);
+        }
+        setCustomRole(data.custom_role || null);
         if (data.permissions) {
           setPermissions(data.permissions as UserPermissions);
           return;
         }
+      } else {
+        setCustomRole(null);
       }
 
       // Fallback baseado no cargo
@@ -138,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    setRole(null);
+    setCustomRole(null);
+    setPermissions(null);
+    setSession(null);
+    setUser(null);
     await supabase.auth.signOut();
   };
 
