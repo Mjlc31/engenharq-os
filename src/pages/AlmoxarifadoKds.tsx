@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { AlmoxarifadoOrder, AlmoxarifadoOrderItem, ConstructionSite, Worker, EpiCatalog } from '../types';
 import { useAuth } from '../components/AuthProvider';
@@ -7,9 +8,13 @@ import SignatureCanvas from 'react-signature-canvas';
 import { 
   Tv, Maximize2, Minimize2, Volume2, VolumeX, Plus, CheckCircle2, 
   Clock, HardHat, User, AlertCircle, RefreshCw, X, Search, 
-  Bell, FileCheck, ArrowRight, ShieldCheck, Check
+  Bell, FileCheck, ArrowRight, ShieldCheck, Check, History,
+  SlidersHorizontal, PackagePlus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { AlmoxarifadoHistoryTab } from '../components/features/almoxarifado/AlmoxarifadoHistoryTab';
+import { AlmoxarifadoKardexTab } from '../components/features/almoxarifado/AlmoxarifadoKardexTab';
+import { AlmoxarifadoStockEntryModal } from '../components/features/almoxarifado/AlmoxarifadoStockEntryModal';
 
 // Helper Web Audio API Chime (Fast-Food Beep)
 function playKdsChime() {
@@ -47,8 +52,12 @@ function playKdsChime() {
 }
 
 export function AlmoxarifadoKds() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'tv' | 'history' | 'kardex'>('tv');
 
   // Orders State
   const [orders, setOrders] = useState<AlmoxarifadoOrder[]>([]);
@@ -77,6 +86,9 @@ export function AlmoxarifadoKds() {
   const [epiSearch, setEpiSearch] = useState('');
   const [creatingOrder, setCreatingOrder] = useState(false);
 
+  // Stock Entry Modal State
+  const [isStockEntryModalOpen, setIsStockEntryModalOpen] = useState(false);
+
   // Preview Signature Modal
   const [previewSignatureUrl, setPreviewSignatureUrl] = useState<string | null>(null);
 
@@ -86,33 +98,34 @@ export function AlmoxarifadoKds() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Sites
+  // Fetch Sites & Catalog
   useEffect(() => {
-    async function fetchSites() {
-      const { data } = await supabase
-        .from('construction_sites')
-        .select('*')
-        .is('deleted_at', null)
-        .order('name');
-      if (data) setSites(data as ConstructionSite[]);
+    async function fetchInitialData() {
+      const [sRes, cRes] = await Promise.all([
+        supabase.from('construction_sites').select('*').is('deleted_at', null).order('name'),
+        supabase.from('epi_catalog').select('*').is('deleted_at', null).order('name')
+      ]);
+      if (sRes.data) setSites(sRes.data as ConstructionSite[]);
+      if (cRes.data) setCatalogList(cRes.data as EpiCatalog[]);
     }
-    fetchSites();
+    fetchInitialData();
   }, []);
 
-  // Fetch Workers & Catalog for quick modal
+  // Fetch Workers for quick order modal
   useEffect(() => {
-    if (isNewOrderModalOpen) {
-      async function loadQuickData() {
-        const [wRes, cRes] = await Promise.all([
-          supabase.from('workers').select('*').is('deleted_at', null).order('full_name').limit(100),
-          supabase.from('epi_catalog').select('*').is('deleted_at', null).order('name')
-        ]);
-        if (wRes.data) setWorkersList(wRes.data as Worker[]);
-        if (cRes.data) setCatalogList(cRes.data as EpiCatalog[]);
+    if (isNewOrderModalOpen && workersList.length === 0) {
+      async function loadWorkers() {
+        const { data } = await supabase
+          .from('workers')
+          .select('*')
+          .is('deleted_at', null)
+          .order('full_name')
+          .limit(100);
+        if (data) setWorkersList(data as Worker[]);
       }
-      loadQuickData();
+      loadWorkers();
     }
-  }, [isNewOrderModalOpen]);
+  }, [isNewOrderModalOpen, workersList.length]);
 
   // Load Orders
   const loadOrders = useCallback(async () => {
@@ -126,7 +139,7 @@ export function AlmoxarifadoKds() {
         query = query.eq('site_id', selectedSiteId);
       }
 
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query.limit(100);
       if (error) throw error;
       setOrders((data || []) as unknown as AlmoxarifadoOrder[]);
     } catch (err: any) {
@@ -218,7 +231,7 @@ export function AlmoxarifadoKds() {
 
       if (rpcError) {
         console.warn('Fallback para atualização direta do cliente:', rpcError);
-        // Fallback defensivo caso a RPC encontre qualquer bloqueio
+        // Fallback defensivo caso a RPC encontre bloqueio
         const deliveredAt = new Date().toISOString();
         const { error: orderError } = await supabase
           .from('almoxarifado_orders')
@@ -294,6 +307,12 @@ export function AlmoxarifadoKds() {
         title: 'Entrega Concluída!',
         message: `Pedido #${deliveryModalOrder.order_number} entregue com sucesso.`
       });
+
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['epi-tracking-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['workers'] });
 
       setDeliveryModalOrder(null);
       await loadOrders();
@@ -392,7 +411,7 @@ export function AlmoxarifadoKds() {
     }
   };
 
-  // Filtragem dos pedidos
+  // Filtragem dos pedidos para o KDS TV
   const preparingOrders = orders
     .filter(o => o.status === 'PREPARING' || o.status === 'READY')
     .sort((a, b) => new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime());
@@ -451,10 +470,11 @@ export function AlmoxarifadoKds() {
   return (
     <div className={cn(
       "flex flex-col flex-1 bg-background text-foreground font-sans transition-all selection:bg-primary/30 selection:text-foreground",
-      isFullscreen ? "fixed inset-0 z-50 p-4 md:p-6 overflow-hidden h-screen bg-background" : "rounded-2xl border border-border p-4 md:p-6 bg-surface/30"
+      isFullscreen ? "fixed inset-0 z-50 p-4 md:p-6 overflow-hidden h-screen bg-background" : "space-y-4"
     )}>
+      
       {/* Top Header / TV Control Bar */}
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 shrink-0">
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4 shrink-0 bg-surface/40 p-4 rounded-2xl border border-border shadow-xs">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-primary/10 border border-primary/25 text-primary shadow-xs shadow-primary/10">
             <Tv className="w-5 h-5 animate-pulse" />
@@ -462,7 +482,7 @@ export function AlmoxarifadoKds() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground uppercase">
-                Painel TV <span className="text-primary">Almoxarifado</span>
+                Painel Almoxarifado <span className="text-primary">EngenharQ</span>
               </h1>
               <span className="flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -470,7 +490,7 @@ export function AlmoxarifadoKds() {
               </span>
             </div>
             <p className="text-xs text-muted font-mono">
-              Display de Atendimento & Expedição Rápida de EPIs (KDS)
+              Central de Atendimento, Comandas Rápidas & Histórico Transacional
             </p>
           </div>
         </div>
@@ -503,6 +523,16 @@ export function AlmoxarifadoKds() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Subir Estoque / Entrada NF */}
+          <button
+            onClick={() => setIsStockEntryModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface hover:bg-surface-hover text-foreground border border-border font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-2xs"
+            title="Registrar recebimento de carga / NF na obra"
+          >
+            <PackagePlus className="w-4 h-4 text-emerald-400" />
+            <span className="hidden sm:inline">+ Subir Estoque</span>
+          </button>
+
           {/* Nova Retirada no Balcão */}
           <button
             onClick={() => setIsNewOrderModalOpen(true)}
@@ -544,321 +574,393 @@ export function AlmoxarifadoKds() {
         </div>
       </header>
 
-      {/* Stats Summary Strip (Seguindo o padrão de design KpiGridWidget) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4 shrink-0">
-        <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-primary/40 transition-all shadow-xs">
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Em Fila / Separação</p>
-            <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{preparingOrders.length}</p>
-            <p className="text-[11px] text-muted">{preparingOrders.length > 0 ? `${preparingOrders.length} aguardando separação` : 'Fila zerada'}</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary border border-primary/20">
-            <Clock className="w-4 h-4" />
-          </div>
-        </div>
+      {/* Tabs Navigation (Not shown in Fullscreen mode to optimize TV space) */}
+      {!isFullscreen && (
+        <div className="flex gap-2 border-b border-border overflow-x-auto shrink-0">
+          <button
+            onClick={() => setActiveTab('tv')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 font-semibold text-xs uppercase tracking-wider transition-all relative cursor-pointer",
+              activeTab === 'tv' ? "text-primary" : "text-muted hover:text-foreground"
+            )}
+          >
+            <Tv className="w-4 h-4" />
+            <span>1. Telão TV Balcão (Ao Vivo)</span>
+            {activeTab === 'tv' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+          </button>
 
-        <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-emerald-500/40 transition-all shadow-xs">
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Entregues Hoje</p>
-            <p className="text-2xl font-bold font-mono tracking-tight text-emerald-400">{todayDeliveredCount}</p>
-            <p className="text-[11px] text-muted">Expedidos no turno</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-blue-500/40 transition-all shadow-xs">
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Total de Histórico</p>
-            <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{orders.length}</p>
-            <p className="text-[11px] text-muted">Movimentações gerais</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            <HardHat className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-emerald-500/40 transition-all shadow-xs">
-          <div className="space-y-0.5">
-            <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Status Balcão</p>
-            <p className="text-sm font-bold text-emerald-400 flex items-center gap-1.5 mt-1 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              OPERANDO
-            </p>
-            <p className="text-[11px] text-muted">Sincronização ativa</p>
-          </div>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Split-Screen Display (Fast-Food KDS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0 overflow-hidden">
-        
-        {/* ================= COLUNA ESQUERDA: EM SEPARAÇÃO / FILA ================= */}
-        <section className="flex flex-col bg-surface/50 border border-primary/30 rounded-2xl p-4 overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between border-b border-border pb-3 mb-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+          <button
+            onClick={() => setActiveTab('history')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 font-semibold text-xs uppercase tracking-wider transition-all relative cursor-pointer",
+              activeTab === 'history' ? "text-primary" : "text-muted hover:text-foreground"
+            )}
+          >
+            <History className="w-4 h-4" />
+            <span>2. Histórico com Data e Hora</span>
+            {orders.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-surface border border-border text-muted">
+                {orders.length}
               </span>
-              <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-foreground">
-                1. Em Separação / Fila
-              </h2>
+            )}
+            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('kardex')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 font-semibold text-xs uppercase tracking-wider transition-all relative cursor-pointer",
+              activeTab === 'kardex' ? "text-primary" : "text-muted hover:text-foreground"
+            )}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>3. Extrato & Movimentações de Estoque</span>
+            {activeTab === 'kardex' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+          </button>
+        </div>
+      )}
+
+      {/* ================= TAB 1: TELÃO TV BALCÃO (AO VIVO) ================= */}
+      {(activeTab === 'tv' || isFullscreen) && (
+        <div className="flex flex-col flex-1 min-h-0 space-y-4">
+          {/* Stats Summary Strip */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+            <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-primary/40 transition-all shadow-xs">
+              <div className="space-y-0.5">
+                <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Em Fila / Separação</p>
+                <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{preparingOrders.length}</p>
+                <p className="text-[11px] text-muted">{preparingOrders.length > 0 ? `${preparingOrders.length} aguardando separação` : 'Fila zerada'}</p>
+              </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary border border-primary/20">
+                <Clock className="w-4 h-4" />
+              </div>
             </div>
-            <span className="px-2.5 py-1 text-xs font-mono font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
-              {preparingOrders.length} aguardando
-            </span>
+
+            <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-emerald-500/40 transition-all shadow-xs">
+              <div className="space-y-0.5">
+                <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Entregues Hoje</p>
+                <p className="text-2xl font-bold font-mono tracking-tight text-emerald-400">{todayDeliveredCount}</p>
+                <p className="text-[11px] text-muted">Expedidos no turno</p>
+              </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-blue-500/40 transition-all shadow-xs">
+              <div className="space-y-0.5">
+                <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Total de Histórico</p>
+                <p className="text-2xl font-bold font-mono tracking-tight text-foreground">{orders.length}</p>
+                <p className="text-[11px] text-muted">Movimentações gerais</p>
+              </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <HardHat className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between hover:border-emerald-500/40 transition-all shadow-xs">
+              <div className="space-y-0.5">
+                <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Status Balcão</p>
+                <p className="text-sm font-bold text-emerald-400 flex items-center gap-1.5 mt-1 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  OPERANDO
+                </p>
+                <p className="text-[11px] text-muted">Sincronização ativa</p>
+              </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-            {preparingOrders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
-                <div className="w-14 h-14 rounded-2xl bg-surface flex items-center justify-center mb-3 border border-border shadow-xs">
-                  <CheckCircle2 className="w-7 h-7 text-muted" />
+          {/* Main Split-Screen Display (Fast-Food KDS) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[500px]">
+            
+            {/* ================= COLUNA ESQUERDA: EM SEPARAÇÃO / FILA ================= */}
+            <section className="flex flex-col bg-surface/50 border border-primary/30 rounded-2xl p-4 overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between border-b border-border pb-3 mb-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+                  </span>
+                  <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-foreground">
+                    1. Em Separação / Fila
+                  </h2>
                 </div>
-                <h3 className="text-base font-semibold text-foreground">Nenhum Pedido na Fila</h3>
-                <p className="text-xs text-muted mt-1 max-w-xs">
-                  O balcão de atendimento está livre. Novos pedidos registrados aparecerão aqui em tempo real.
-                </p>
-                <button
-                  onClick={() => setIsNewOrderModalOpen(true)}
-                  className="mt-4 px-4 py-2 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 rounded-xl transition-colors cursor-pointer"
-                >
-                  + Lançar Pedido Balcão
-                </button>
+                <span className="px-2.5 py-1 text-xs font-mono font-semibold rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {preparingOrders.length} aguardando
+                </span>
               </div>
-            ) : (
-              preparingOrders.map(order => {
-                const elapsed = getElapsedTime(order.requested_at);
-                const isUrgent = elapsed.totalSec > 300; // > 5 min
-                const isModerate = elapsed.totalSec > 180 && elapsed.totalSec <= 300; // 3 a 5 min
-                const isCalling = callingOrderId === order.id;
 
-                return (
-                  <div
-                    key={order.id}
-                    className={cn(
-                      "rounded-xl border p-4 bg-surface transition-all duration-200 relative shadow-sm",
-                      isCalling
-                        ? "border-primary bg-primary/10 ring-4 ring-primary/40 scale-[1.01]"
-                        : isUrgent
-                          ? "border-rose-500/50 bg-rose-950/15"
-                          : isModerate
-                            ? "border-amber-500/50 bg-amber-950/15"
-                            : "border-border hover:border-primary/40"
-                    )}
-                  >
-                    {/* Header do Card */}
-                    <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2 mb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold font-mono text-foreground tracking-tight">
-                          #{order.order_number}
-                        </span>
-                        <span className="text-xs text-muted flex items-center gap-1 font-mono">
-                          <Clock className="w-3.5 h-3.5" />
-                          {formatTime(order.requested_at)}
-                        </span>
-                      </div>
-
-                      {/* Tempo Decorrido (SLA) */}
-                      <div className={cn(
-                        "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold border flex items-center gap-1.5",
-                        isUrgent
-                          ? "bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse"
-                          : isModerate
-                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                      )}>
-                        <span>⏱️</span>
-                        <span>{elapsed.formatted}</span>
-                      </div>
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                {preparingOrders.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
+                    <div className="w-14 h-14 rounded-2xl bg-surface flex items-center justify-center mb-3 border border-border shadow-xs">
+                      <CheckCircle2 className="w-7 h-7 text-muted" />
                     </div>
+                    <h3 className="text-base font-semibold text-foreground">Nenhum Pedido na Fila</h3>
+                    <p className="text-xs text-muted mt-1 max-w-xs">
+                      O balcão de atendimento está livre. Novos pedidos registrados aparecerão aqui em tempo real.
+                    </p>
+                    <button
+                      onClick={() => setIsNewOrderModalOpen(true)}
+                      className="mt-4 px-4 py-2 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 rounded-xl transition-colors cursor-pointer"
+                    >
+                      + Lançar Pedido Balcão
+                    </button>
+                  </div>
+                ) : (
+                  preparingOrders.map(order => {
+                    const elapsed = getElapsedTime(order.requested_at);
+                    const isUrgent = elapsed.totalSec > 300; // > 5 min
+                    const isModerate = elapsed.totalSec > 180 && elapsed.totalSec <= 300; // 3 a 5 min
+                    const isCalling = callingOrderId === order.id;
 
-                    {/* Colaborador */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                        {order.worker?.reference_photo_url ? (
-                          <img 
-                            src={order.worker.reference_photo_url} 
-                            alt={order.worker.full_name} 
-                            className="w-full h-full object-cover" 
-                          />
-                        ) : (
-                          <User className="w-5 h-5 text-muted" />
+                    return (
+                      <div
+                        key={order.id}
+                        className={cn(
+                          "rounded-xl border p-4 bg-surface transition-all duration-200 relative shadow-sm",
+                          isCalling
+                            ? "border-primary bg-primary/10 ring-4 ring-primary/40 scale-[1.01]"
+                            : isUrgent
+                              ? "border-rose-500/50 bg-rose-950/15"
+                              : isModerate
+                                ? "border-amber-500/50 bg-amber-950/15"
+                                : "border-border hover:border-primary/40"
                         )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-sm font-bold text-foreground truncate leading-tight">
-                          {order.worker?.full_name || 'Colaborador não identificado'}
-                        </h4>
-                        <p className="text-xs text-muted truncate">
-                          {order.worker?.current_role || 'Função não informada'} • Matrícula: <strong className="text-foreground font-mono">{order.worker?.registration_number || 'S/N'}</strong>
-                        </p>
-                      </div>
-                    </div>
+                      >
+                        {/* Header do Card */}
+                        <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2 mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg font-bold font-mono text-foreground tracking-tight">
+                              #{order.order_number}
+                            </span>
+                            <span className="text-xs text-muted flex items-center gap-1 font-mono">
+                              <Clock className="w-3.5 h-3.5" />
+                              {formatTime(order.requested_at)}
+                            </span>
+                          </div>
 
-                    {/* Lista de Itens */}
-                    <div className="bg-background/80 rounded-xl p-2.5 border border-border/80 mb-3 space-y-1.5">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted block">
-                        Itens Solicitados ({order.items.length}):
-                      </span>
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2 truncate pr-2">
-                            <span className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono font-bold text-[11px] shrink-0">
-                              {item.quantity}x
-                            </span>
-                            <span className="text-foreground font-medium truncate">
-                              {item.name}
-                            </span>
-                            {item.size && (
-                              <span className="text-[10px] text-muted font-mono">
-                                ({item.size})
-                              </span>
+                          {/* Tempo Decorrido (SLA) */}
+                          <div className={cn(
+                            "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold border flex items-center gap-1.5",
+                            isUrgent
+                              ? "bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse"
+                              : isModerate
+                                ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                          )}>
+                            <span>⏱️</span>
+                            <span>{elapsed.formatted}</span>
+                          </div>
+                        </div>
+
+                        {/* Colaborador */}
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                            {order.worker?.reference_photo_url ? (
+                              <img 
+                                src={order.worker.reference_photo_url} 
+                                alt={order.worker.full_name} 
+                                className="w-full h-full object-cover" 
+                              />
+                            ) : (
+                              <User className="w-5 h-5 text-muted" />
                             )}
                           </div>
-                          {item.ca_number && (
-                            <span className="text-[10px] text-muted font-mono shrink-0">
-                              CA: {item.ca_number}
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-bold text-foreground truncate leading-tight">
+                              {order.worker?.full_name || 'Colaborador não identificado'}
+                            </h4>
+                            <p className="text-xs text-muted truncate">
+                              {order.worker?.current_role || 'Função não informada'} • Matrícula: <strong className="text-foreground font-mono">{order.worker?.registration_number || 'S/N'}</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Lista de Itens */}
+                        <div className="bg-background/80 rounded-xl p-2.5 border border-border/80 mb-3 space-y-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted block">
+                            Itens Solicitados ({order.items.length}):
+                          </span>
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2 truncate pr-2">
+                                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono font-bold text-[11px] shrink-0">
+                                  {item.quantity}x
+                                </span>
+                                <span className="text-foreground font-medium truncate">
+                                  {item.name}
+                                </span>
+                                {item.size && (
+                                  <span className="text-[10px] text-muted font-mono">
+                                    ({item.size})
+                                  </span>
+                                )}
+                              </div>
+                              {item.ca_number && (
+                                <span className="text-[10px] text-muted font-mono shrink-0">
+                                  CA: {item.ca_number}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Botões de Ação do Operador */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => handleCallOrder(order)}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-surface hover:bg-surface-hover text-foreground font-semibold text-xs border border-border transition-all active:scale-98 cursor-pointer shadow-2xs"
+                            title="Chamar no telão com alerta sonoro"
+                          >
+                            <Bell className="w-3.5 h-3.5 text-primary" />
+                            <span>Chamar</span>
+                          </button>
+
+                          <button
+                            onClick={() => setDeliveryModalOrder(order)}
+                            className="flex-2 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-98 cursor-pointer"
+                          >
+                            <Check className="w-4 h-4 stroke-[2.5]" />
+                            <span>ENTREGAR AGORA</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="p-2 rounded-xl bg-surface hover:bg-rose-500/15 hover:text-rose-400 text-muted border border-border transition-colors cursor-pointer"
+                            title="Cancelar Solicitação"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </section>
+
+            {/* ================= COLUNA DIREITA: ENTREGUES RECENTEMENTE ================= */}
+            <section className="flex flex-col bg-surface/50 border border-emerald-500/30 rounded-2xl p-4 overflow-hidden shadow-lg">
+              <div className="flex items-center justify-between border-b border-border pb-3 mb-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-foreground">
+                    2. Entregues Recentemente / Prontos
+                  </h2>
+                </div>
+                <span className="px-2.5 py-1 text-xs font-mono font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {deliveredOrders.length} entregas
+                </span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                {deliveredOrders.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
+                    <div className="w-14 h-14 rounded-2xl bg-surface flex items-center justify-center mb-3 border border-border shadow-xs">
+                      <Clock className="w-7 h-7 text-muted" />
+                    </div>
+                    <h3 className="text-base font-semibold text-foreground">Nenhuma Entrega Registrada</h3>
+                    <p className="text-xs text-muted mt-1 max-w-xs">
+                      Assim que os EPIs forem conferidos e entregues, os comprovantes e horários de saída aparecerão aqui.
+                    </p>
+                  </div>
+                ) : (
+                  deliveredOrders.slice(0, 15).map(order => (
+                    <div
+                      key={order.id}
+                      className="rounded-xl border border-border bg-surface p-4 transition-all hover:border-border/80 shadow-xs"
+                    >
+                      {/* Header Card Entregue */}
+                      <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2 mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-bold font-mono text-foreground">
+                            #{order.order_number}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 flex items-center gap-1 font-mono">
+                            <Check className="w-3 h-3 stroke-[2.5]" />
+                            Entregue às {formatTime(order.delivered_at)}
+                          </span>
+                        </div>
+
+                        <span className="text-[11px] text-muted font-mono">
+                          {order.delivered_at ? new Date(order.delivered_at).toLocaleDateString('pt-BR') : ''}
+                        </span>
+                      </div>
+
+                      {/* Colaborador que retirou */}
+                      <div className="flex items-center justify-between gap-3 mb-2.5">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-bold text-foreground truncate">
+                            {order.worker?.full_name || 'Colaborador'}
+                          </h4>
+                          <p className="text-xs text-muted truncate">
+                            {order.worker?.current_role || 'Função'} • Matrícula: <span className="font-mono text-foreground">{order.worker?.registration_number}</span>
+                          </p>
+                        </div>
+
+                        {/* Comprovante / Assinatura Badge */}
+                        <div>
+                          {order.signature_url ? (
+                            <button
+                              onClick={() => setPreviewSignatureUrl(order.signature_url!)}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface-hover hover:bg-border border border-border text-emerald-400 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+                              title="Clique para visualizar assinatura"
+                            >
+                              <FileCheck className="w-3.5 h-3.5" />
+                              <span>Assinado [Ver]</span>
+                            </button>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full bg-surface-hover border border-border text-muted text-[10px] font-mono">
+                              Confirmado
                             </span>
                           )}
                         </div>
-                      ))}
+                      </div>
+
+                      {/* Resumo dos Itens Entregues */}
+                      <div className="bg-background/80 rounded-xl p-2.5 text-xs border border-border/80">
+                        <div className="flex flex-wrap gap-2">
+                          {order.items.map((it, idx) => (
+                            <span key={idx} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-0.5 rounded-lg text-[11px] text-foreground">
+                              <strong className="text-emerald-400 font-mono">{it.quantity}x</strong> {it.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Botões de Ação do Operador */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        onClick={() => handleCallOrder(order)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-surface hover:bg-surface-hover text-foreground font-semibold text-xs border border-border transition-all active:scale-98 cursor-pointer shadow-2xs"
-                        title="Chamar no telão com alerta sonoro"
-                      >
-                        <Bell className="w-3.5 h-3.5 text-primary" />
-                        <span>Chamar</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeliveryModalOrder(order)}
-                        className="flex-2 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all active:scale-98 cursor-pointer"
-                      >
-                        <Check className="w-4 h-4 stroke-[2.5]" />
-                        <span>ENTREGAR AGORA</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleCancelOrder(order.id)}
-                        className="p-2 rounded-xl bg-surface hover:bg-rose-500/15 hover:text-rose-400 text-muted border border-border transition-colors cursor-pointer"
-                        title="Cancelar Solicitação"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* ================= COLUNA DIREITA: ENTREGUES RECENTEMENTE ================= */}
-        <section className="flex flex-col bg-surface/50 border border-emerald-500/30 rounded-2xl p-4 overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between border-b border-border pb-3 mb-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-foreground">
-                2. Entregues Recentemente / Prontos
-              </h2>
-            </div>
-            <span className="px-2.5 py-1 text-xs font-mono font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {deliveredOrders.length} entregas
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-            {deliveredOrders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
-                <div className="w-14 h-14 rounded-2xl bg-surface flex items-center justify-center mb-3 border border-border shadow-xs">
-                  <Clock className="w-7 h-7 text-muted" />
-                </div>
-                <h3 className="text-base font-semibold text-foreground">Nenhuma Entrega Registrada</h3>
-                <p className="text-xs text-muted mt-1 max-w-xs">
-                  Assim que os EPIs forem conferidos e entregues, os comprovantes e horários de saída aparecerão aqui.
-                </p>
+                  ))
+                )}
               </div>
-            ) : (
-              deliveredOrders.map(order => (
-                <div
-                  key={order.id}
-                  className="rounded-xl border border-border bg-surface p-4 transition-all hover:border-border/80 shadow-xs"
-                >
-                  {/* Header Card Entregue */}
-                  <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2 mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold font-mono text-foreground">
-                        #{order.order_number}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 flex items-center gap-1 font-mono">
-                        <Check className="w-3 h-3 stroke-[2.5]" />
-                        Entregue às {formatTime(order.delivered_at)}
-                      </span>
-                    </div>
+            </section>
 
-                    <span className="text-[11px] text-muted font-mono">
-                      {order.delivered_at ? new Date(order.delivered_at).toLocaleDateString('pt-BR') : ''}
-                    </span>
-                  </div>
-
-                  {/* Colaborador que retirou */}
-                  <div className="flex items-center justify-between gap-3 mb-2.5">
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-foreground truncate">
-                        {order.worker?.full_name || 'Colaborador'}
-                      </h4>
-                      <p className="text-xs text-muted truncate">
-                        {order.worker?.current_role || 'Função'} • Matrícula: <span className="font-mono text-foreground">{order.worker?.registration_number}</span>
-                      </p>
-                    </div>
-
-                    {/* Comprovante / Assinatura Badge */}
-                    <div>
-                      {order.signature_url ? (
-                        <button
-                          onClick={() => setPreviewSignatureUrl(order.signature_url!)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface-hover hover:bg-border border border-border text-emerald-400 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
-                          title="Clique para visualizar assinatura"
-                        >
-                          <FileCheck className="w-3.5 h-3.5" />
-                          <span>Assinado [Ver]</span>
-                        </button>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full bg-surface-hover border border-border text-muted text-[10px] font-mono">
-                          Confirmado
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Resumo dos Itens Entregues */}
-                  <div className="bg-background/80 rounded-xl p-2.5 text-xs border border-border/80">
-                    <div className="flex flex-wrap gap-2">
-                      {order.items.map((it, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1 bg-surface border border-border px-2 py-0.5 rounded-lg text-[11px] text-foreground">
-                          <strong className="text-emerald-400 font-mono">{it.quantity}x</strong> {it.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
-        </section>
+        </div>
+      )}
 
-      </div>
+      {/* ================= TAB 2: HISTÓRICO DETALHADO (DATA E HORA) ================= */}
+      {activeTab === 'history' && !isFullscreen && (
+        <AlmoxarifadoHistoryTab
+          orders={orders}
+          sites={sites}
+          selectedSiteId={selectedSiteId}
+          onSelectSiteId={setSelectedSiteId}
+          loading={loading}
+          onRefresh={loadOrders}
+        />
+      )}
+
+      {/* ================= TAB 3: EXTRATO & MOVIMENTAÇÕES DE ESTOQUE ================= */}
+      {activeTab === 'kardex' && !isFullscreen && (
+        <AlmoxarifadoKardexTab
+          sites={sites}
+          selectedSiteId={selectedSiteId}
+          onSelectSiteId={setSelectedSiteId}
+        />
+      )}
 
       {/* ================= MODAL: ENTREGAR & COLETAR ASSINATURA ================= */}
       {deliveryModalOrder && (
@@ -1183,6 +1285,18 @@ export function AlmoxarifadoKds() {
           </div>
         </div>
       )}
+
+      {/* ================= MODAL: SUBIR ESTOQUE / ENTRADA NF ================= */}
+      <AlmoxarifadoStockEntryModal
+        isOpen={isStockEntryModalOpen}
+        onClose={() => setIsStockEntryModalOpen(false)}
+        sites={sites}
+        catalogs={catalogList}
+        defaultSiteId={selectedSiteId}
+        onSuccess={() => {
+          loadOrders();
+        }}
+      />
 
       {/* ================= MODAL: PREVIEW DE ASSINATURA ================= */}
       {previewSignatureUrl && (

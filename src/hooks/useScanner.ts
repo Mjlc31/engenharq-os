@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Worker, EpiInventory } from '../types';
 
 export function useScanner() {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,6 +139,12 @@ export function useScanner() {
           }
         }
       }
+
+      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['epi-tracking-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['workers'] });
 
       return true;
     } catch (err: unknown) {

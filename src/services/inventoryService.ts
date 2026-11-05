@@ -161,6 +161,17 @@ export const inventoryService = {
       if (siteInvErr) throw siteInvErr;
     }
 
+    // 4. Gravar auditoria em inventory_transactions com site_id
+    const { error: transErr } = await supabase.from('inventory_transactions').insert({
+      catalog_id: params.catalog_id,
+      site_id: params.site_id || null,
+      transaction_type: 'ENTRADA_COMPRA',
+      quantity_change: params.quantity,
+      notes: `Entrada de estoque via NF ${params.invoice_number || 'S/N'} • Fornecedor: ${params.supplier || 'Geral'}${params.notes ? ` • ${params.notes}` : ''}`,
+      created_at: new Date().toISOString()
+    });
+    if (transErr) console.warn('Aviso ao registrar transação de auditoria:', transErr);
+
     return data as EpiPurchase;
   },
 

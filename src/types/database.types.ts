@@ -480,6 +480,7 @@ export type Database = {
           id: string
           notes: string | null
           quantity_change: number | null
+          site_id: string | null
           transaction_type: string
           worker_id: string | null
         }
@@ -490,6 +491,7 @@ export type Database = {
           id?: string
           notes?: string | null
           quantity_change?: number | null
+          site_id?: string | null
           transaction_type: string
           worker_id?: string | null
         }
@@ -500,6 +502,7 @@ export type Database = {
           id?: string
           notes?: string | null
           quantity_change?: number | null
+          site_id?: string | null
           transaction_type?: string
           worker_id?: string | null
         }
@@ -509,6 +512,13 @@ export type Database = {
             columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "epi_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transactions_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
             referencedColumns: ["id"]
           },
           {

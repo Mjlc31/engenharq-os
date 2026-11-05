@@ -77,7 +77,7 @@ export function useDashboard() {
       ] = await Promise.allSettled([
         supabase
           .from('epi_catalog')
-          .select('id, name, category, current_stock, min_stock, ca_number, ca_validity, status')
+          .select('id, name, category, current_stock, min_stock, minimum_stock, ca_number, ca_validity, status')
           .is('deleted_at', null),
         supabase
           .from('workers')
@@ -143,7 +143,7 @@ export function useDashboard() {
       // Se não houver itens cadastrados no catálogo, o estoque crítico é 0
       const criticalCatalogs = catalogs.length > 0 
         ? catalogs.filter((item: any) => {
-            const min = item.min_stock ?? 10;
+            const min = item.minimum_stock ?? item.min_stock ?? 10;
             return (item.current_stock ?? 0) <= min;
           })
         : [];

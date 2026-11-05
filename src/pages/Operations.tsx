@@ -41,6 +41,14 @@ export function Operations() {
     }
   });
 
+  const invalidateAllRelatedQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
+    queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['epi-tracking-assignments'] });
+    queryClient.invalidateQueries({ queryKey: ['workers'] });
+  };
+
 
   const uploadPhoto = async (photoFile?: File) => {
     if (!photoFile) return null;
@@ -128,8 +136,7 @@ export function Operations() {
       setSelectedCatalogId('');
       setQuantity(1);
       setObservations('');
-      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      invalidateAllRelatedQueries();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro na Operação', message: err.message });
     } finally {
@@ -187,8 +194,7 @@ export function Operations() {
       
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
       setPendingReturn(null);
-      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      invalidateAllRelatedQueries();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
@@ -223,8 +229,7 @@ export function Operations() {
       
       toast({ type: 'success', title: 'Sucesso', message: 'Extravio registrado com assinatura e documentado em Medidas Disciplinares.' });
       setPendingLoss(null);
-      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      invalidateAllRelatedQueries();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {
@@ -271,8 +276,7 @@ export function Operations() {
 
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
-      queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });
+      invalidateAllRelatedQueries();
     } catch (err: any) {
       toast({ type: 'error', title: 'Erro', message: err.message });
     } finally {

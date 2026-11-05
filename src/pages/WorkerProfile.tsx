@@ -415,10 +415,14 @@ export function WorkerProfile() {
         </div>
         
         {/* Conformidade */}
-        <div className="flex flex-col sm:flex-row gap-2">
-           <div className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium ${worker.apt_for_height_and_confined_space ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-surface border-border text-muted'}`}>
-             <AlertCircle className="w-4 h-4" />
-             {worker.apt_for_height_and_confined_space ? 'Apto Altura/Confinado' : 'Não Apto Altura/Confinado'}
+        <div className="flex flex-wrap gap-2">
+           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold ${worker.apt_for_height ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-surface border-border text-muted'}`}>
+             <ShieldCheck className="w-3.5 h-3.5" />
+             {worker.apt_for_height ? 'Apto Altura (NR-35)' : 'Não Apto Altura'}
+           </div>
+           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-semibold ${worker.apt_for_confined_space ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-surface border-border text-muted'}`}>
+             <ShieldCheck className="w-3.5 h-3.5" />
+             {worker.apt_for_confined_space ? 'Apto Confinado (NR-33)' : 'Não Apto Confinado'}
            </div>
         </div>
       </div>
@@ -645,16 +649,36 @@ export function WorkerProfile() {
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
                   />
                 </div>
-                <div className="space-y-2 flex items-center pt-8">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={formData.apt_for_height_and_confined_space || false}
-                      onChange={e => handleChange('apt_for_height_and_confined_space', e.target.checked)}
-                      className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary focus:ring-offset-background"
-                    />
-                    Apto para Altura e Espaço Confinado
-                  </label>
+                <div className="space-y-2 col-span-1 md:col-span-2 pt-2">
+                  <span className="text-xs font-semibold text-muted uppercase tracking-wider block mb-2">Aptidões Ocupacionais (ASO)</span>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={formData.apt_for_height || false}
+                        onChange={e => {
+                          const val = e.target.checked;
+                          handleChange('apt_for_height', val);
+                          handleChange('apt_for_height_and_confined_space', val && Boolean(formData.apt_for_confined_space));
+                        }}
+                        className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary focus:ring-offset-background"
+                      />
+                      Apto para Trabalho em Altura (NR-35)
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={formData.apt_for_confined_space || false}
+                        onChange={e => {
+                          const val = e.target.checked;
+                          handleChange('apt_for_confined_space', val);
+                          handleChange('apt_for_height_and_confined_space', val && Boolean(formData.apt_for_height));
+                        }}
+                        className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-primary focus:ring-offset-background"
+                      />
+                      Apto para Espaço Confinado (NR-33)
+                    </label>
+                  </div>
                 </div>
               </div>
 
