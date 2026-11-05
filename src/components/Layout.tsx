@@ -108,7 +108,7 @@ export function Layout() {
   return (
     <div className="flex h-screen w-full flex-col bg-background font-sans text-foreground overflow-hidden">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 md:px-8 relative z-20">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 md:px-8 relative z-40 bg-background">
         <div className="flex items-center gap-3 shrink-0">
           <Link to={isAlmoxarifado ? "/almoxarifado-kds" : "/"} className="flex items-center gap-2.5 group">
             <img 
@@ -163,14 +163,14 @@ export function Layout() {
         {/* Mobile Backdrop */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden transition-opacity" 
+            className="fixed inset-0 top-16 z-30 bg-black/50 backdrop-blur-sm md:hidden transition-opacity" 
             onClick={() => setIsSidebarOpen(false)} 
           />
         )}
 
         {/* Sidebar */}
         <aside className={cn(
-          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-40 h-full transition-all duration-300 ease-in-out shadow-2xl md:shadow-none",
+          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-50 h-full transition-all duration-300 ease-in-out shadow-2xl md:shadow-none",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         )}>
           <nav className="flex flex-col gap-1">
