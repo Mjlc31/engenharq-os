@@ -1,14 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { AlmoxarifadoOrder, ConstructionSite } from '../../../types';
+import { useAuth } from '../../../components/AuthProvider';
 import { 
   Search, Filter, Download, Calendar, Clock, CheckCircle2, 
   XCircle, User, HardHat, FileCheck, Printer, RefreshCw, Eye,
-  Building2, ArrowUpDown
+  Building2, ArrowUpDown, Trash2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AlmoxarifadoReceiptModal } from './AlmoxarifadoReceiptModal';
+import { AlmoxarifadoCancelOrderModal } from './AlmoxarifadoCancelOrderModal';
 import { cn } from '../../../lib/utils';
 
 interface AlmoxarifadoHistoryTabProps {
@@ -28,6 +30,10 @@ export function AlmoxarifadoHistoryTab({
   loading,
   onRefresh
 }: AlmoxarifadoHistoryTabProps) {
+  const { user, role, customRole } = useAuth();
+  const isAdmin = role === 'ADMIN' || role === 'SAFETY_ENGINEER' || role === 'SITE_MANAGER' || 
+    (customRole && (customRole.toLowerCase().includes('gerente') || customRole.toLowerCase().includes('coordenador') || customRole.toLowerCase().includes('admin') || customRole.toLowerCase().includes('almoxarife') || customRole.toLowerCase().includes('estoquista')));
+
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'DELIVERED' | 'PREPARING' | 'CANCELLED'>('ALL');
@@ -36,6 +42,7 @@ export function AlmoxarifadoHistoryTab({
   // Modals
   const [receiptOrder, setReceiptOrder] = useState<AlmoxarifadoOrder | null>(null);
   const [previewSignatureUrl, setPreviewSignatureUrl] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<AlmoxarifadoOrder | null>(null);
   
   // Sort
   const [sortAsc, setSortAsc] = useState(false);
@@ -496,6 +503,16 @@ export function AlmoxarifadoHistoryTab({
                           >
                             <Printer className="w-4 h-4" />
                           </button>
+
+                          {isAdmin && order.status !== 'CANCELLED' && (
+                            <button
+                              onClick={() => setOrderToDelete(order)}
+                              className="p-1.5 rounded-lg bg-surface-hover hover:bg-red-500/15 text-muted hover:text-red-400 border border-border hover:border-red-500/30 transition-colors cursor-pointer"
+                              title="Estornar / Excluir Pedido"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -533,6 +550,19 @@ export function AlmoxarifadoHistoryTab({
         <AlmoxarifadoReceiptModal
           order={receiptOrder}
           onClose={() => setReceiptOrder(null)}
+        />
+      )}
+
+      {/* Modal: Estorno / Cancelamento de Pedido */}
+      {orderToDelete && (
+        <AlmoxarifadoCancelOrderModal
+          order={orderToDelete}
+          isOpen={!!orderToDelete}
+          onClose={() => setOrderToDelete(null)}
+          onSuccess={() => {
+            setOrderToDelete(null);
+            onRefresh();
+          }}
         />
       )}
     </div>

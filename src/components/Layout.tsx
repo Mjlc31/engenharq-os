@@ -9,7 +9,30 @@ export function Layout() {
   const { signOut, user, role, customRole } = useAuth();
   const isAlmoxarifado = role === 'ALMOXARIFADO' || (customRole && customRole.toLowerCase().includes('almoxarif'));
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, [location.pathname]);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('engenharq-theme') as 'dark' | 'light') || 'dark';
@@ -149,11 +172,11 @@ export function Layout() {
             </button>
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className="text-muted ml-2 focus:outline-none focus:ring-2 focus:ring-primary rounded p-1"
-              aria-label={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={isSidebarOpen}
+              className="text-muted ml-2 focus:outline-none focus:ring-2 focus:ring-primary rounded p-1 hover:text-foreground cursor-pointer transition-colors"
+              aria-label={isSidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"}
+              title={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
             >
-              <Menu className="w-6 h-6" />
+              {isSidebarOpen ? <X className="w-5 h-5 text-primary" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -163,20 +186,33 @@ export function Layout() {
         {/* Mobile Backdrop */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 top-16 z-30 bg-black/50 backdrop-blur-sm md:hidden transition-opacity" 
+            className="fixed inset-0 top-16 z-40 bg-black/60 backdrop-blur-xs lg:hidden transition-opacity" 
             onClick={() => setIsSidebarOpen(false)} 
           />
         )}
 
         {/* Sidebar */}
         <aside className={cn(
-          "flex w-64 md:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 absolute md:relative z-50 h-full transition-all duration-300 ease-in-out shadow-2xl md:shadow-none",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
+          "flex w-64 lg:w-60 shrink-0 flex-col border-r border-border bg-[var(--color-sidebar)] p-4 h-full transition-all duration-300 ease-in-out",
+          "fixed lg:relative inset-y-0 top-16 lg:top-0 left-0 z-50 lg:z-10 shadow-2xl lg:shadow-none",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:hidden"
         )}>
+          {/* Mobile Drawer Header */}
+          <div className="flex items-center justify-between pb-3 mb-2 border-b border-border lg:hidden">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Menu de Navegação</span>
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 rounded text-muted hover:text-foreground cursor-pointer"
+              title="Fechar menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
           <nav className="flex flex-col gap-1">
             {isAlmoxarifado ? (
               <>
-                <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest px-3 mt-2 mb-1">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-widest px-3 mt-2 mb-1">
                   Módulo Almoxarifado
                 </div>
                 {navigation.map(item => {
@@ -185,13 +221,13 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn(
                         "flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer",
-                        isActive ? "bg-amber-500/15 text-amber-400 font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground"
+                        isActive ? "bg-primary/10 text-primary font-bold shadow-sm border border-primary/20" : "text-muted hover:bg-surface-hover hover:text-foreground"
                       )}
                     >
-                      <item.icon className={cn("w-4 h-4", isActive ? "text-amber-400" : "text-muted")} />
+                      <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
                       {item.name}
                     </Link>
                   );
@@ -206,7 +242,7 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                     >
                       <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
@@ -228,7 +264,7 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                     >
                       <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
@@ -250,7 +286,7 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                     >
                       <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
@@ -272,7 +308,7 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                     >
                       <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
@@ -294,7 +330,7 @@ export function Layout() {
                     <Link
                       key={item.name}
                       to={item.href}
-                      onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                      onClick={() => { if (window.innerWidth < 1024) setIsSidebarOpen(false); }}
                       className={cn("flex items-center gap-3 rounded px-3 py-2 text-sm transition-all duration-200 cursor-pointer", isActive ? "bg-surface-hover text-primary font-bold shadow-sm" : "text-muted hover:bg-surface-hover hover:text-foreground")}
                     >
                       <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted")} />
@@ -352,7 +388,7 @@ export function Layout() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex flex-1 flex-col p-4 md:p-6 overflow-auto gap-4 relative z-10">
+        <main className="flex flex-1 flex-col p-4 md:p-6 overflow-auto gap-4 relative z-10 min-w-0">
           <React.Suspense fallback={
             <div className="flex-1 flex flex-col items-center justify-center h-full gap-3 text-muted">
               <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />

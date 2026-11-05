@@ -16,7 +16,10 @@ export type Database = {
     Tables: {
       almoxarifado_orders: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_by: string | null
           created_at: string
+          deleted_at: string | null
           delivered_at: string | null
           delivered_by: string | null
           id: string
@@ -32,7 +35,10 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
+          deleted_at?: string | null
           delivered_at?: string | null
           delivered_by?: string | null
           id?: string
@@ -48,7 +54,10 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
+          deleted_at?: string | null
           delivered_at?: string | null
           delivered_by?: string | null
           id?: string
@@ -1034,6 +1043,10 @@ export type Database = {
       bulk_assign_epis: {
         Args: { p_assignments: Json; p_worker_id: string }
         Returns: boolean
+      }
+      cancel_or_delete_almoxarifado_order: {
+        Args: { p_cancelled_by: string; p_order_id: string; p_reason?: string }
+        Returns: Json
       }
       checkout_epi: {
         Args: {

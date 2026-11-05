@@ -9,12 +9,13 @@ import {
   Tv, Maximize2, Minimize2, Volume2, VolumeX, Plus, CheckCircle2, 
   Clock, HardHat, User, AlertCircle, RefreshCw, X, Search, 
   Bell, FileCheck, ArrowRight, ShieldCheck, Check, History,
-  SlidersHorizontal, PackagePlus
+  SlidersHorizontal, PackagePlus, Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AlmoxarifadoHistoryTab } from '../components/features/almoxarifado/AlmoxarifadoHistoryTab';
 import { AlmoxarifadoKardexTab } from '../components/features/almoxarifado/AlmoxarifadoKardexTab';
 import { AlmoxarifadoStockEntryModal } from '../components/features/almoxarifado/AlmoxarifadoStockEntryModal';
+import { AlmoxarifadoCancelOrderModal } from '../components/features/almoxarifado/AlmoxarifadoCancelOrderModal';
 
 // Helper Web Audio API Chime (Fast-Food Beep)
 function playKdsChime() {
@@ -53,8 +54,11 @@ function playKdsChime() {
 
 export function AlmoxarifadoKds() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, role, customRole } = useAuth();
   const { toast } = useToast();
+
+  const isAdmin = role === 'ADMIN' || role === 'SAFETY_ENGINEER' || role === 'SITE_MANAGER' || 
+    (customRole && (customRole.toLowerCase().includes('gerente') || customRole.toLowerCase().includes('coordenador') || customRole.toLowerCase().includes('admin') || customRole.toLowerCase().includes('almoxarife') || customRole.toLowerCase().includes('estoquista')));
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'tv' | 'history' | 'kardex'>('tv');
@@ -64,6 +68,9 @@ export function AlmoxarifadoKds() {
   const [loading, setLoading] = useState(true);
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
+
+  // Cancel/Delete Order Modal State
+  const [orderToDelete, setOrderToDelete] = useState<AlmoxarifadoOrder | null>(null);
 
   // TV Controls
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -133,6 +140,7 @@ export function AlmoxarifadoKds() {
       let query = supabase
         .from('almoxarifado_orders')
         .select('*, worker:workers(*), site:construction_sites(name)')
+        .is('deleted_at', null)
         .order('requested_at', { ascending: false });
 
       if (selectedSiteId !== 'ALL') {
@@ -902,8 +910,8 @@ export function AlmoxarifadoKds() {
                           </p>
                         </div>
 
-                        {/* Comprovante / Assinatura Badge */}
-                        <div>
+                        {/* Comprovante / Assinatura Badge & Estorno */}
+                        <div className="flex items-center gap-1.5">
                           {order.signature_url ? (
                             <button
                               onClick={() => setPreviewSignatureUrl(order.signature_url!)}
@@ -917,6 +925,16 @@ export function AlmoxarifadoKds() {
                             <span className="px-2.5 py-0.5 rounded-full bg-surface-hover border border-border text-muted text-[10px] font-mono">
                               Confirmado
                             </span>
+                          )}
+
+                          {isAdmin && (
+                            <button
+                              onClick={() => setOrderToDelete(order)}
+                              className="p-1 rounded-lg bg-surface-hover hover:bg-red-500/15 text-muted hover:text-red-400 border border-border hover:border-red-500/30 transition-colors cursor-pointer"
+                              title="Estornar / Excluir Entrega"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -1323,6 +1341,19 @@ export function AlmoxarifadoKds() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ================= MODAL: ESTORNO / EXCLUSÃO DE PEDIDO ================= */}
+      {orderToDelete && (
+        <AlmoxarifadoCancelOrderModal
+          order={orderToDelete}
+          isOpen={!!orderToDelete}
+          onClose={() => setOrderToDelete(null)}
+          onSuccess={() => {
+            setOrderToDelete(null);
+            loadOrders();
+          }}
+        />
       )}
     </div>
   );
