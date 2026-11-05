@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { UserPermissions } from '../types';
-import { ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS } from '../services/rbacService';
+import { UserPermissions, UserRole } from '../types';
+import { ADMIN_PERMISSIONS, DEFAULT_PERMISSIONS, ALMOXARIFADO_PERMISSIONS } from '../services/rbacService';
 
-export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER' | 'VIEWER';
+export type { UserRole };
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   role: UserRole | null;
+  customRole: string | null;
   permissions: UserPermissions | null;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   role: null,
+  customRole: null,
   permissions: null,
   signOut: async () => {},
   loading: true,
@@ -28,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [customRole, setCustomRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<UserPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const fetchPromise = supabase
         .from('users')
-        .select('role, permissions')
+        .select('role, custom_role, permissions')
         .eq('id', userId)
         .maybeSingle();
 
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data) {
         if (data.role) setRole(data.role as UserRole);
+        if (data.custom_role) setCustomRole(data.custom_role);
         if (data.permissions) {
           setPermissions(data.permissions as UserPermissions);
           return;
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Fallback baseado no cargo
       if (currentRole === 'ADMIN' || data?.role === 'ADMIN') {
         setPermissions(ADMIN_PERMISSIONS);
+      } else if (currentRole === 'ALMOXARIFADO' || data?.role === 'ALMOXARIFADO') {
+        setPermissions(ALMOXARIFADO_PERMISSIONS);
       } else {
         setPermissions(DEFAULT_PERMISSIONS);
       }
@@ -90,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setRole(null);
+          setCustomRole(null);
           setPermissions(null);
         }
       } catch (err) {
@@ -98,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setRole(null);
+          setCustomRole(null);
           setPermissions(null);
         }
       } finally {
@@ -118,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user?.id) {
         await fetchUserPermissions(session.user.id, resolvedRole);
       } else {
+        setCustomRole(null);
         setPermissions(null);
       }
     });
@@ -133,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, role, permissions, signOut, loading }}>
+    <AuthContext.Provider value={{ session, user, role, customRole, permissions, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   );

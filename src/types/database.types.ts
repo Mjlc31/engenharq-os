@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      almoxarifado_orders: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivered_by: string | null
+          id: string
+          items: Json
+          notes: string | null
+          order_number: number
+          requested_at: string
+          selfie_url: string | null
+          signature_url: string | null
+          site_id: string | null
+          status: string
+          updated_at: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number?: number
+          requested_at?: string
+          selfie_url?: string | null
+          signature_url?: string | null
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number?: number
+          requested_at?: string
+          selfie_url?: string | null
+          signature_url?: string | null
+          site_id?: string | null
+          status?: string
+          updated_at?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "almoxarifado_orders_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "construction_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "almoxarifado_orders_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -938,19 +1004,17 @@ export type Database = {
     Functions: {
       admin_create_user: {
         Args: {
+          new_custom_role?: string
           new_email: string
-          new_password: string
           new_full_name: string
-          new_role: Database["public"]["Enums"]["user_role"]
-          new_custom_role?: string | null
+          new_password: string
           new_permissions?: Json
+          new_role: Database["public"]["Enums"]["user_role"]
         }
         Returns: Json
       }
       admin_deactivate_user: {
-        Args: {
-          target_user_id: string
-        }
+        Args: { target_user_id: string }
         Returns: boolean
       }
       assign_epi: {
@@ -968,6 +1032,15 @@ export type Database = {
           p_worker_id: string
         }
         Returns: string
+      }
+      complete_almoxarifado_order: {
+        Args: {
+          p_delivered_by: string
+          p_order_id: string
+          p_selfie_url?: string
+          p_signature_url?: string
+        }
+        Returns: Json
       }
       discard_epi: {
         Args: {
@@ -1041,7 +1114,7 @@ export type Database = {
         | "LOSS"
         | "STOCK_ADJUSTMENT"
       transfer_status: "EM_TRANSITO" | "RECEBIDO" | "CANCELADO"
-      user_role: "ADMIN" | "SAFETY_ENGINEER" | "SITE_MANAGER"
+      user_role: "ADMIN" | "SAFETY_ENGINEER" | "SITE_MANAGER" | "ALMOXARIFADO"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1192,7 +1265,7 @@ export const Constants = {
         "STOCK_ADJUSTMENT",
       ],
       transfer_status: ["EM_TRANSITO", "RECEBIDO", "CANCELADO"],
-      user_role: ["ADMIN", "SAFETY_ENGINEER", "SITE_MANAGER"],
+      user_role: ["ADMIN", "SAFETY_ENGINEER", "SITE_MANAGER", "ALMOXARIFADO"],
     },
   },
 } as const

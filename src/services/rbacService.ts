@@ -21,6 +21,16 @@ export const ADMIN_PERMISSIONS: UserPermissions = {
   configuracoes: { gerenciar_usuarios: true }
 };
 
+export const ALMOXARIFADO_PERMISSIONS: UserPermissions = {
+  dashboard: { view: false },
+  cadastros: { view: true, create: false, edit: false, delete: false },
+  estoque: { view: true, create: true, edit: true, descarte: false },
+  operacoes: { entregas: true, transferencias_enviar: true, transferencias_receber: true },
+  sst: { treinamentos: false, aso: false },
+  relatorios: { ficha_epi: false, historico_financeiro: false, medidas_disciplinares: false },
+  configuracoes: { gerenciar_usuarios: false }
+};
+
 export const rbacService = {
   async fetchUsers() {
     const { data, error } = await supabase
@@ -63,7 +73,13 @@ export const rbacService = {
     permissions?: UserPermissions;
     password?: string;
   }) {
-    const userPermissions = payload.permissions || (payload.role === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS);
+    const userPermissions = payload.permissions || (
+      payload.role === 'ADMIN'
+        ? ADMIN_PERMISSIONS
+        : payload.role === 'ALMOXARIFADO'
+          ? ALMOXARIFADO_PERMISSIONS
+          : DEFAULT_PERMISSIONS
+    );
     const dbRole = (payload.role === 'VIEWER' ? 'SITE_MANAGER' : payload.role);
 
     // 1. Executa via RPC SECURITY DEFINER (não desloga a sessão do administrador e confirma o e-mail imediatamente)

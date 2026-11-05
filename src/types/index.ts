@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER' | 'VIEWER';
+export type UserRole = 'ADMIN' | 'SAFETY_ENGINEER' | 'SITE_MANAGER' | 'VIEWER' | 'ALMOXARIFADO';
 export type EpiStatus = 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'DISCARDED';
 export type TransferStatus = 'EM_TRANSITO' | 'RECEBIDO' | 'CANCELADO';
 export type AsoType = 'ADMISSIONAL' | 'PERIODICO' | 'RETORNO_TRABALHO' | 'MUDANCA_FUNCAO' | 'DEMISSIONAL';
@@ -239,4 +239,34 @@ export interface EpiAssignment {
   catalog?: EpiCatalog;
   worker?: Worker;
   epi?: EpiCatalog;
+}
+
+export interface AlmoxarifadoOrderItem {
+  catalog_id: string;
+  name: string;
+  quantity: number;
+  size?: string | null;
+  ca_number?: string | null;
+  unit_price?: number;
+}
+
+export type AlmoxarifadoOrderStatus = 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED';
+
+export interface AlmoxarifadoOrder {
+  id: string;
+  order_number: number;
+  worker_id: string;
+  site_id?: string | null;
+  status: AlmoxarifadoOrderStatus;
+  items: AlmoxarifadoOrderItem[];
+  notes?: string | null;
+  requested_at: string;
+  delivered_at?: string | null;
+  delivered_by?: string | null;
+  signature_url?: string | null;
+  selfie_url?: string | null;
+  created_at: string;
+  updated_at: string;
+  worker?: Worker;
+  site?: ConstructionSite;
 }

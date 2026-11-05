@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
-import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS } from '../services/rbacService';
+import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMISSIONS } from '../services/rbacService';
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { SystemSettingsForm } from '../components/features/settings/SystemSettingsForm';
 
 export const PRESET_FUNCTIONS: { label: string; defaultRole: UserRole }[] = [
+  { label: 'Almoxarife / Estoquista', defaultRole: 'ALMOXARIFADO' },
   { label: 'Encarregado de Obra', defaultRole: 'SITE_MANAGER' },
   { label: 'Engenheiro SST', defaultRole: 'SAFETY_ENGINEER' },
   { label: 'Técnico de Segurança do Trabalho (TST)', defaultRole: 'SAFETY_ENGINEER' },
-  { label: 'Almoxarife / Estoquista', defaultRole: 'SITE_MANAGER' },
   { label: 'Mestre de Obras', defaultRole: 'SITE_MANAGER' },
   { label: 'Engenheiro Residente', defaultRole: 'SAFETY_ENGINEER' },
   { label: 'Administrador do Sistema', defaultRole: 'ADMIN' },
@@ -173,6 +173,7 @@ export function Settings() {
     ADMIN: 'Administrador',
     SAFETY_ENGINEER: 'Engenheiro SST',
     SITE_MANAGER: 'Encarregado / Obra',
+    ALMOXARIFADO: 'Almoxarifado',
     VIEWER: 'Visualizador'
   };
 
@@ -180,6 +181,7 @@ export function Settings() {
     ADMIN: 'bg-primary/10 text-primary border-primary/20',
     SAFETY_ENGINEER: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     SITE_MANAGER: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    ALMOXARIFADO: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     VIEWER: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
   };
 
@@ -490,9 +492,16 @@ export function Settings() {
                 <label className="text-xs font-semibold text-foreground">Perfil de Acesso Geral (RBAC)</label>
                 <select
                   value={tempRole}
-                  onChange={e => setTempRole(e.target.value as UserRole)}
+                  onChange={e => {
+                    const r = e.target.value as UserRole;
+                    setTempRole(r);
+                    if (r === 'ALMOXARIFADO') {
+                      setTempPermissions(ALMOXARIFADO_PERMISSIONS);
+                    }
+                  }}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
+                  <option value="ALMOXARIFADO">Almoxarifado (Exclusivo TV KDS, Estoque & Entregas)</option>
                   <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
                   <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
                   <option value="ADMIN">Administrador (Acesso Total)</option>
@@ -785,6 +794,7 @@ export function Settings() {
                   onChange={e => setNewRole(e.target.value as UserRole)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
+                  <option value="ALMOXARIFADO">Almoxarifado (Exclusivo TV KDS, Estoque & Entregas)</option>
                   <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
                   <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
                   <option value="ADMIN">Administrador (Acesso Total)</option>
