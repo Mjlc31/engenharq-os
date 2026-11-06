@@ -17,9 +17,27 @@ export const PRESET_FUNCTIONS: { label: string; defaultRole: UserRole }[] = [
   { label: 'Visualizador / Auditor', defaultRole: 'VIEWER' }
 ];
 
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: 'ALMOXARIFADO', label: 'Almoxarifado (Exclusivo TV KDS, Estoque & Entregas)' },
+  { value: 'SITE_MANAGER', label: 'Encarregado / Obra (Almoxarifado & Entregas)' },
+  { value: 'SAFETY_ENGINEER', label: 'EPI / Técnico SST (EPI, SST e gestão de usuários)' },
+  { value: 'ADMIN', label: 'Administrador (Acesso Total)' },
+  { value: 'VIEWER', label: 'Visualizador (Somente Leitura)' }
+];
+
+// Espelha public.can_manage_role no banco: ADMIN e perfil EPI gerenciam todos os usuários
+const MANAGEABLE_ROLES: Partial<Record<UserRole, UserRole[]>> = {
+  ADMIN: ROLE_OPTIONS.map(o => o.value),
+  SAFETY_ENGINEER: ROLE_OPTIONS.map(o => o.value)
+};
+
 export function Settings() {
   const { session, role } = useAuth();
   const { toast } = useToast();
+  const manageableRoles = (role && MANAGEABLE_ROLES[role]) || [];
+  const canManage = (r: UserRole) => manageableRoles.includes(r);
+  const roleOptions = ROLE_OPTIONS.filter(o => canManage(o.value));
+  const presets = PRESET_FUNCTIONS.filter(p => canManage(p.defaultRole));
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,8 +168,7 @@ export function Settings() {
         full_name: newFullName.trim(),
         role: newRole,
         custom_role: newCustomRole.trim(),
-        password: newPassword,
-        permissions: newRole === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS
+        password: newPassword
       });
       toast({ type: 'success', title: 'Usuário Criado', message: `Novo usuário ${newFullName} registrado com sucesso!` });
       setIsNewUserModalOpen(false);
@@ -269,13 +286,16 @@ export function Settings() {
                 </h3>
                 <p className="text-xs text-muted mt-1">Controle o acesso a cada módulo e ação dentro do EngenharQ OS.</p>
               </div>
-              <button
+              {manageableRoles.length > 0 && <button
                 type="button"
-                onClick={() => setIsNewUserModalOpen(true)}
+                onClick={() => {
+                  if (!canManage(newRole)) setNewRole('ALMOXARIFADO');
+                  setIsNewUserModalOpen(true);
+                }}
                 className="px-3 py-2 bg-primary text-background font-bold rounded-md text-xs hover:bg-primary-dark transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4" /> Novo Usuário
-              </button>
+              </button>}
             </div>
 
             {/* Search and Action Bar */}
@@ -374,7 +394,7 @@ export function Settings() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="inline-flex items-center gap-2">
+                              {canManage(u.role) && <div className="inline-flex items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => openEditModal(u)}
@@ -394,7 +414,7 @@ export function Settings() {
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 )}
-                              </div>
+                              </div>}
                             </td>
                           </tr>
                         );
@@ -457,7 +477,7 @@ export function Settings() {
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 />
                 <datalist id="roles-suggestions-edit">
-                  {PRESET_FUNCTIONS.map(p => (
+                  {presets.map(p => (
                     <option key={p.label} value={p.label} />
                   ))}
                 </datalist>
@@ -466,7 +486,7 @@ export function Settings() {
                 <div className="pt-1">
                   <span className="text-[10px] text-muted block mb-1">Sugestões rápidas:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {PRESET_FUNCTIONS.map(p => (
+                    {presets.map(p => (
                       <button
                         key={p.label}
                         type="button"
@@ -501,11 +521,9 @@ export function Settings() {
                   }}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
-                  <option value="ALMOXARIFADO">Almoxarifado (Exclusivo TV KDS, Estoque & Entregas)</option>
-                  <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
-                  <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
-                  <option value="ADMIN">Administrador (Acesso Total)</option>
-                  <option value="VIEWER">Visualizador (Somente Leitura)</option>
+                  {roleOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
 
@@ -748,7 +766,7 @@ export function Settings() {
                   onChange={e => {
                     const val = e.target.value;
                     setNewCustomRole(val);
-                    const match = PRESET_FUNCTIONS.find(p => p.label.toLowerCase() === val.toLowerCase());
+                    const match = presets.find(p => p.label.toLowerCase() === val.toLowerCase());
                     if (match) {
                       setNewRole(match.defaultRole);
                     }
@@ -756,7 +774,7 @@ export function Settings() {
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 />
                 <datalist id="new-roles-suggestions">
-                  {PRESET_FUNCTIONS.map(p => (
+                  {presets.map(p => (
                     <option key={p.label} value={p.label} />
                   ))}
                 </datalist>
@@ -765,7 +783,7 @@ export function Settings() {
                 <div className="pt-1">
                   <span className="text-[10px] text-muted block mb-1">Ou selecione uma pré-cadastrada:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {PRESET_FUNCTIONS.map(p => (
+                    {presets.map(p => (
                       <button
                         key={p.label}
                         type="button"
@@ -794,11 +812,9 @@ export function Settings() {
                   onChange={e => setNewRole(e.target.value as UserRole)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
                 >
-                  <option value="ALMOXARIFADO">Almoxarifado (Exclusivo TV KDS, Estoque & Entregas)</option>
-                  <option value="SITE_MANAGER">Encarregado / Obra (Almoxarifado & Entregas)</option>
-                  <option value="SAFETY_ENGINEER">Engenheiro / Técnico SST (Treinamentos & ASO)</option>
-                  <option value="ADMIN">Administrador (Acesso Total)</option>
-                  <option value="VIEWER">Visualizador (Somente Leitura)</option>
+                  {roleOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
                 <p className="text-[11px] text-muted">
                   Você poderá customizar permissões individuais detalhadas após o cadastro.

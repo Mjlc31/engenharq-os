@@ -29,3 +29,7 @@ fix_*.cjs
 update_*.cjs
 *.xlsm
 !public/modelo_colaboradores.xlsm
+
+# Instruções locais do Claude (contêm credenciais de teste) — não versionar
+CLAUDE.md
+CLAUDE_PROJECT_INSTRUCTIONS.md
