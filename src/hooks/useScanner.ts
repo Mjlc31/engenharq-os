@@ -104,41 +104,9 @@ export function useScanner() {
         };
       });
 
+      // O banco debita a obra do colaborador e grava o Kardex (trigger trg_epi_assignment_stock)
       const { error: insertError } = await supabase.from('epi_assignments').insert(assignments);
       if (insertError) throw insertError;
-
-      // Update stock for each epi — subtract the actual quantity
-      for (const item of epis) {
-        const qty = item.quantity || 1;
-        if (item.current_stock !== undefined) {
-           await supabase.from('epi_catalog').update({ current_stock: Math.max(0, item.current_stock - qty) }).eq('id', item.id);
-        }
-      }
-
-      // Sincronizar estoque no canteiro de obras (site_inventory)
-      const { data: workerData } = await supabase.from('workers').select('current_site_id').eq('id', workerId).maybeSingle();
-      if (workerData?.current_site_id) {
-        for (const item of epis) {
-          const qty = item.quantity || 1;
-          const { data: siteInv } = await supabase
-            .from('site_inventory')
-            .select('quantity')
-            .eq('site_id', workerData.current_site_id)
-            .eq('catalog_id', item.id)
-            .maybeSingle();
-
-          if (siteInv) {
-            await supabase
-              .from('site_inventory')
-              .update({
-                quantity: Math.max(0, (siteInv.quantity || 0) - qty),
-                updated_at: new Date().toISOString()
-              })
-              .eq('site_id', workerData.current_site_id)
-              .eq('catalog_id', item.id);
-          }
-        }
-      }
 
       queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
       queryClient.invalidateQueries({ queryKey: ['active-epi-assignments'] });

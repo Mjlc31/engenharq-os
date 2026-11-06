@@ -101,35 +101,9 @@ export function Operations() {
         audit_selfie_url: photoUrl
       }));
 
+      // O banco debita a obra do colaborador e grava o Kardex (trigger trg_epi_assignment_stock)
       const { error: insertError } = await supabase.from('epi_assignments').insert(assignmentsToInsert);
       if (insertError) throw insertError;
-
-      const { error: stockError } = await supabase.from('epi_catalog')
-        .update({ current_stock: catalog.current_stock - quantity })
-        .eq('id', selectedCatalogId);
-      if (stockError) throw stockError;
-
-      // Sincronizar saída no canteiro de obras do colaborador
-      const assignedWorker = workers.find(w => w.id === selectedWorkerId);
-      if (assignedWorker?.current_site_id) {
-        const { data: siteInv } = await supabase
-          .from('site_inventory')
-          .select('quantity')
-          .eq('site_id', assignedWorker.current_site_id)
-          .eq('catalog_id', selectedCatalogId)
-          .maybeSingle();
-
-        if (siteInv) {
-          await supabase
-            .from('site_inventory')
-            .update({
-              quantity: Math.max(0, (siteInv.quantity || 0) - quantity),
-              updated_at: new Date().toISOString()
-            })
-            .eq('site_id', assignedWorker.current_site_id)
-            .eq('catalog_id', selectedCatalogId);
-        }
-      }
 
       toast({ type: 'success', title: 'Sucesso', message: `${quantity} EPI(s) entregues, assinados e registrados na ficha.` });
       setSelectedWorkerId('');
@@ -151,10 +125,8 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
-      
-      const { data: assignmentData, error: fetchErr } = await supabase.from('epi_assignments').select('catalog_id').eq('id', pendingReturn.assignmentId).single();
-      if (fetchErr) throw fetchErr;
-      
+
+      // Devolução em bom estado: o banco credita a obra de origem da entrega e grava o Kardex
       const { error } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
         condition_on_return: 'GOOD',
@@ -162,36 +134,7 @@ export function Operations() {
         audit_selfie_url: photoUrl
       }).eq('id', pendingReturn.assignmentId);
       if (error) throw error;
-      
-      if (assignmentData) {
-        const catalog = catalogs.find(c => c.id === assignmentData.catalog_id);
-        if (catalog) {
-          const { error: catErr } = await supabase.from('epi_catalog').update({ current_stock: catalog.current_stock + 1 }).eq('id', catalog.id);
-          if (catErr) console.warn('Aviso ao atualizar estoque catálogo:', catErr);
-        }
 
-        // Restocar na obra do colaborador
-        const worker = workers.find(w => w.id === pendingReturn.workerId);
-        if (worker?.current_site_id) {
-          const { data: siteInv } = await supabase
-            .from('site_inventory')
-            .select('quantity')
-            .eq('site_id', worker.current_site_id)
-            .eq('catalog_id', assignmentData.catalog_id)
-            .maybeSingle();
-
-          const { error: siteInvErr } = await supabase
-            .from('site_inventory')
-            .upsert({
-              site_id: worker.current_site_id,
-              catalog_id: assignmentData.catalog_id,
-              quantity: (siteInv?.quantity || 0) + 1,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'site_id,catalog_id' });
-          if (siteInvErr) console.warn('Aviso ao atualizar estoque da obra:', siteInvErr);
-        }
-      }
-      
       toast({ type: 'success', title: 'Sucesso', message: 'Devolução registrada com sucesso.' });
       setPendingReturn(null);
       invalidateAllRelatedQueries();
@@ -244,19 +187,10 @@ export function Operations() {
     try {
       const photoUrl = await uploadPhoto(photoFile);
 
-      // 1. Devolve o antigo (como DAMAGED)
-      const { error: returnError } = await supabase.from('epi_assignments').update({
-        returned_at: new Date().toISOString(),
-        condition_on_return: 'DAMAGED',
-        return_signature_url: signatureDataUrl,
-      }).eq('id', pendingReplacement.oldEpiId);
-      if (returnError) throw returnError;
-
-      // 2. Entrega o novo
       const catalog = catalogs.find(c => c.id === pendingReplacement.newEpiId);
       if (!catalog) throw new Error("Novo EPI não encontrado no catálogo.");
-      if (catalog.current_stock < 1) throw new Error("Estoque insuficiente para substituição.");
 
+      // 1. Entrega o novo primeiro: se faltar saldo na obra, o banco recusa e o antigo continua com o colaborador
       const { error: assignError } = await supabase.from('epi_assignments').insert({
         worker_id: pendingReplacement.workerId,
         catalog_id: pendingReplacement.newEpiId,
@@ -268,11 +202,13 @@ export function Operations() {
       });
       if (assignError) throw assignError;
 
-      // 3. Atualiza estoque do novo EPI
-      const { error: stockError } = await supabase.from('epi_catalog')
-        .update({ current_stock: catalog.current_stock - 1 })
-        .eq('id', pendingReplacement.newEpiId);
-      if (stockError) throw stockError;
+      // 2. Devolve o antigo como avariado (não volta ao estoque)
+      const { error: returnError } = await supabase.from('epi_assignments').update({
+        returned_at: new Date().toISOString(),
+        condition_on_return: 'DAMAGED',
+        return_signature_url: signatureDataUrl,
+      }).eq('id', pendingReplacement.oldEpiId);
+      if (returnError) throw returnError;
 
       toast({ type: 'success', title: 'Sucesso', message: 'Substituição concluída e assinada com sucesso.' });
       setPendingReplacement(null);
@@ -307,7 +243,7 @@ export function Operations() {
             className={`px-4 py-2 font-medium text-sm transition-colors whitespace-nowrap relative ${activeTab === tab.id ? 'text-primary' : 'text-muted hover:text-foreground'}`}
           >
             {tab.label}
-            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
         ))}
       </div>
@@ -322,14 +258,14 @@ export function Operations() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Funcionário</label>
-                  <select required value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
+                  <select aria-label="Funcionário" required value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
                     <option value="">Selecione o Trabalhador</option>
                     {workers.map(w => <option key={w.id} value={w.id}>{w.full_name} - Mat: {w.registration_number}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">EPI (Modelo)</label>
-                  <select required value={selectedCatalogId} onChange={e => setSelectedCatalogId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
+                  <select aria-label="EPI (Modelo)" required value={selectedCatalogId} onChange={e => setSelectedCatalogId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
                     <option value="">Selecione o EPI</option>
                     {catalogs.map(c => <option key={c.id} value={c.id}>{c.name} (CA: {c.ca_number || 'N/A'})</option>)}
                   </select>
@@ -339,11 +275,11 @@ export function Operations() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Quantidade</label>
-                  <input type="number" min="1" required value={quantity} onChange={e => setQuantity(Number(e.target.value))} className="w-full px-4 py-2 bg-background border border-border rounded-md" />
+                  <input aria-label="Quantidade" type="number" min="1" required value={quantity} onChange={e => setQuantity(Number(e.target.value))} className="w-full px-4 py-2 bg-background border border-border rounded-md" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Data da Entrega</label>
-                  <input 
+                  <input aria-label="Data da Entrega" 
                     type="date" 
                     required 
                     value={deliveryDate} 
@@ -361,11 +297,11 @@ export function Operations() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted">Observações</label>
-                <textarea value={observations} onChange={e => setObservations(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-md" placeholder="Detalhes adicionais..." />
+                <textarea aria-label="Observações" value={observations} onChange={e => setObservations(e.target.value)} rows={3} className="w-full px-4 py-2 bg-background border border-border rounded-md" placeholder="Detalhes adicionais..." />
               </div>
 
               <div className="flex justify-end pt-4">
-                <button type="submit" disabled={submitting || !selectedCatalogId || availableStock < quantity} className="px-6 py-2 bg-primary text-background font-medium rounded-md hover:bg-primary-dark disabled:opacity-50">
+                <button type="submit" disabled={submitting || !selectedCatalogId || availableStock < quantity} className="px-6 py-2 bg-primary-dark text-background font-medium rounded-md hover:bg-primary-darker disabled:opacity-50">
                   {submitting ? 'Registrando...' : 'Confirmar Entrega'}
                 </button>
               </div>

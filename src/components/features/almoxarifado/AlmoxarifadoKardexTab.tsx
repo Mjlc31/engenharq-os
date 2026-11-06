@@ -91,9 +91,10 @@ export function AlmoxarifadoKardexTab({
     return transactions.filter(t => {
       // Type Filter
       if (typeFilter !== 'ALL') {
-        if (typeFilter === 'OUT' && !(t.transaction_type.includes('OUT') || t.transaction_type.includes('SAIDA'))) return false;
-        if (typeFilter === 'IN' && !(t.transaction_type.includes('IN') || t.transaction_type.includes('ENTRADA'))) return false;
-        if (typeFilter === 'ADJUST' && !t.transaction_type.includes('AJUSTE')) return false;
+        // Pelo sinal: tipos como DEVOLUCAO, DESCARTE e TRANSFERENCIA_* não cabem em busca por texto
+        if (typeFilter === 'OUT' && !((t.quantity_change || 0) < 0)) return false;
+        if (typeFilter === 'IN' && !((t.quantity_change || 0) > 0)) return false;
+        if (typeFilter === 'ADJUST' && !['AJUSTE', 'SALDO_INICIAL'].includes(t.transaction_type)) return false;
       }
 
       // Search Filter
@@ -192,10 +193,10 @@ export function AlmoxarifadoKardexTab({
         <div className="bg-surface border border-border rounded-xl p-3.5 flex items-center justify-between shadow-xs">
           <div>
             <p className="text-[11px] text-muted uppercase tracking-wider font-semibold">Total Saídas (-)</p>
-            <p className="text-2xl font-bold font-mono tracking-tight text-rose-400">-{metrics.totalOut}</p>
+            <p className="text-2xl font-bold font-mono tracking-tight text-red-400">-{metrics.totalOut}</p>
             <p className="text-[11px] text-muted">Peças entregues / baixadas</p>
           </div>
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-red-500/10 text-red-400 border border-red-500/20">
             <ArrowUpRight className="w-4 h-4" />
           </div>
         </div>
@@ -223,7 +224,7 @@ export function AlmoxarifadoKardexTab({
           {/* Search Box */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
-            <input
+            <input aria-label="Buscar por EPI, CA, colaborador ou documento"
               type="text"
               placeholder="Buscar por EPI, CA, colaborador ou documento..."
               value={searchTerm}
@@ -235,7 +236,7 @@ export function AlmoxarifadoKardexTab({
           {/* Obra Filter */}
           <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1.5">
             <Building2 className="w-3.5 h-3.5 text-muted shrink-0" />
-            <select
+            <select aria-label="Filtrar por obra"
               value={selectedSiteId}
               onChange={e => onSelectSiteId(e.target.value)}
               className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
@@ -250,7 +251,7 @@ export function AlmoxarifadoKardexTab({
           {/* Type Filter */}
           <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1.5">
             <Filter className="w-3.5 h-3.5 text-muted shrink-0" />
-            <select
+            <select aria-label="Filtrar por tipo de movimentação"
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
               className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
@@ -325,12 +326,12 @@ export function AlmoxarifadoKardexTab({
                       {/* Tipo */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         {isPositive ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                             <ArrowDownLeft className="w-3 h-3" />
                             {t.transaction_type}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/25">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/25">
                             <ArrowUpRight className="w-3 h-3" />
                             {t.transaction_type}
                           </span>
@@ -343,7 +344,7 @@ export function AlmoxarifadoKardexTab({
                           <p className="font-bold text-foreground truncate max-w-[220px]">
                             {t.catalog?.name || 'Equipamento'}
                           </p>
-                          <p className="text-[10px] text-muted font-mono">
+                          <p className="text-[11px] text-muted font-mono">
                             {t.catalog?.ca_number ? `CA: ${t.catalog.ca_number}` : 'S/ CA'} • {t.catalog?.category || 'EPI'}
                           </p>
                         </div>
@@ -360,7 +361,7 @@ export function AlmoxarifadoKardexTab({
                           "px-2.5 py-0.5 rounded text-xs inline-block",
                           isPositive 
                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            : "bg-red-500/10 text-red-400 border border-red-500/20"
                         )}>
                           {isPositive ? `+${t.quantity_change}` : t.quantity_change} un
                         </span>
@@ -373,7 +374,7 @@ export function AlmoxarifadoKardexTab({
                             <span className="font-semibold text-foreground block truncate max-w-[180px]">
                               {t.worker.full_name}
                             </span>
-                            <span className="text-[10px] text-muted font-mono">
+                            <span className="text-[11px] text-muted font-mono">
                               Mat: {t.worker.registration_number || 'S/N'}
                             </span>
                           </div>

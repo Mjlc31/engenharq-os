@@ -99,76 +99,73 @@ export function useEpiAssets() {
 
   const saveCatalog = async (payload: Partial<EpiCatalog>, id?: string, initialStock?: number, siteId?: string) => {
     setError(null);
+    // Estoque só muda por RPC (Kardex + saldo por obra); epi_catalog.current_stock é a soma das obras, calculada no banco.
     try {
       if (id) {
-        const updatePayload: any = { ...payload };
-        if (initialStock !== undefined) {
-          updatePayload.current_stock = initialStock;
-        }
-        const { error: updateError } = await supabase.from('epi_catalog').update(updatePayload).eq('id', id);
+        const { error: updateError } = await supabase.from('epi_catalog').update(payload as any).eq('id', id);
         if (updateError) throw updateError;
 
-        // Se uma obra foi selecionada, atualizar ou inserir no site_inventory
-        if (siteId && initialStock !== undefined) {
-          await supabase.from('site_inventory').upsert({
-            site_id: siteId,
-            catalog_id: id,
-            quantity: initialStock,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'site_id,catalog_id' });
+        // O campo "Saldo em Estoque" mostra o total do catálogo: aplica só a diferença na obra escolhida
+        if (initialStock !== undefined) {
+          const { data: cat, error: catError } = await supabase.from('epi_catalog').select('current_stock').eq('id', id).single();
+          if (catError) throw catError;
+          const delta = initialStock - (cat?.current_stock ?? 0);
+          if (delta !== 0) {
+            if (!siteId) throw new Error('Selecione a obra para ajustar o saldo.');
+            const { data: inv, error: invError } = await supabase
+              .from('site_inventory').select('quantity').eq('site_id', siteId).eq('catalog_id', id).maybeSingle();
+            if (invError) throw invError;
+            const { error: rpcError } = await supabase.rpc('set_site_stock', {
+              p_catalog_id: id,
+              p_site_id: siteId,
+              p_quantity: (inv?.quantity ?? 0) + delta,
+              p_notes: 'Ajuste pelo cadastro do EPI'
+            });
+            if (rpcError) throw rpcError;
+          }
         }
       } else {
-        const payloadWithStock = { ...payload, current_stock: initialStock ?? 0 };
-        const { data: newCat, error: insertError } = await supabase.from('epi_catalog').insert([payloadWithStock as any]).select().single();
+        const hasInitialStock = !!initialStock && initialStock > 0;
+        if (hasInitialStock && !siteId) throw new Error('Selecione a obra que recebe o estoque inicial.');
+
+        const { data: newCat, error: insertError } = await supabase.from('epi_catalog').insert([payload as any]).select().single();
         if (insertError) throw insertError;
 
-        // Se houver estoque inicial, registrar no histórico de compras
-        if (newCat && initialStock && initialStock > 0) {
-          await supabase.from('epi_purchases').insert({
-            catalog_id: newCat.id,
-            site_id: siteId || null,
-            quantity: initialStock,
-            unit_price: payload.unit_price || 0,
-            invoice_number: 'INICIAL',
-            supplier: 'ESTOQUE INICIAL',
-            notes: 'Cadastro inicial de modelo com lote.'
+        if (newCat && hasInitialStock && siteId) {
+          const { error: rpcError } = await supabase.rpc('register_stock_entry', {
+            p_catalog_id: newCat.id,
+            p_site_id: siteId,
+            p_quantity: initialStock,
+            p_unit_price: payload.unit_price || 0,
+            p_invoice_number: 'INICIAL',
+            p_supplier: 'ESTOQUE INICIAL',
+            p_notes: 'Cadastro inicial de modelo com lote.'
           });
-
-          // Se houver obra vinculada, registrar também no estoque da obra
-          if (siteId) {
-            await supabase.from('site_inventory').upsert({
-              site_id: siteId,
-              catalog_id: newCat.id,
-              quantity: initialStock,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'site_id,catalog_id' });
-          }
+          if (rpcError) throw rpcError;
         }
       }
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
       await queryClient.invalidateQueries({ queryKey: ['site-inventory'] });
     } catch (err: unknown) {
       console.error('Erro ao salvar catálogo:', err);
-      throw new Error('Falha ao salvar o modelo de EPI no catálogo.');
+      throw new Error((err as { message?: string })?.message || 'Falha ao salvar o modelo de EPI no catálogo.');
     }
   };
 
   const updateSiteStock = async (siteId: string, catalogId: string, quantity: number) => {
     setError(null);
     try {
-      const qty = Math.max(0, quantity);
-      const { error: upsertError } = await supabase.from('site_inventory').upsert({
-        site_id: siteId,
-        catalog_id: catalogId,
-        quantity: qty,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'site_id,catalog_id' });
-
-      if (upsertError) throw upsertError;
+      const { error: rpcError } = await supabase.rpc('set_site_stock', {
+        p_catalog_id: catalogId,
+        p_site_id: siteId,
+        p_quantity: Math.max(0, quantity),
+        p_notes: 'Ajuste manual de saldo'
+      });
+      if (rpcError) throw rpcError;
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao atualizar estoque da obra:', err);
-      throw new Error('Falha ao atualizar estoque na obra selecionada.');
+      throw new Error((err as { message?: string })?.message || 'Falha ao atualizar estoque na obra selecionada.');
     }
   };
 
@@ -202,7 +199,6 @@ export function useEpiAssets() {
                 ca_validity: row['Validade CA'] || row['ca_validity'] || null,
                 lifespan_days: parseInt(row['Vida Útil (dias)'] || row['lifespan_days'] || '180', 10),
                 minimum_stock: parseInt(row['Estoque Mínimo'] || row['minimum_stock'] || '5', 10),
-                current_stock: parseInt(row['Estoque Atual'] || row['current_stock'] || '0', 10),
                 unit_price: parseFloat(row['Preço Unitário'] || row['unit_price'] || '0') || 0,
                 status: 'ACTIVE'
               }))

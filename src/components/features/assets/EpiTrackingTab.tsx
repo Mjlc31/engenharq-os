@@ -75,7 +75,6 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
     siteId?: string | null;
   } | null>(null);
   const [returnCondition, setReturnCondition] = useState<'GOOD' | 'DAMAGED' | 'DISCARDED'>('GOOD');
-  const [returnRestock, setReturnRestock] = useState(true);
   const [returnNotes, setReturnNotes] = useState('');
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
@@ -273,7 +272,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
     if (!returnModalData) return;
     setIsSubmittingReturn(true);
     try {
-      // 1. Atualizar epi_assignments
+      // Bom estado volta à obra de origem da entrega; avariado/descarte não. O banco move o estoque e grava o Kardex.
       const { error: updateError } = await supabase
         .from('epi_assignments')
         .update({
@@ -284,43 +283,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
 
       if (updateError) throw updateError;
 
-      // 2. Se for bom estado e restock ativado, somar de volta ao estoque do catálogo
-      if (returnRestock && returnCondition === 'GOOD') {
-        const { data: currentCat } = await supabase
-          .from('epi_catalog')
-          .select('current_stock')
-          .eq('id', returnModalData.catalogId)
-          .single();
-
-        if (currentCat) {
-          await supabase
-            .from('epi_catalog')
-            .update({ current_stock: (currentCat.current_stock || 0) + (returnModalData.quantity || 1) })
-            .eq('id', returnModalData.catalogId);
-        }
-
-        // Se houver obra vinculada, restocar também no estoque da obra (site_inventory)
-        if (returnModalData.siteId) {
-          const { data: currentSiteInv } = await supabase
-            .from('site_inventory')
-            .select('quantity')
-            .eq('site_id', returnModalData.siteId)
-            .eq('catalog_id', returnModalData.catalogId)
-            .maybeSingle();
-
-          const qtyToAdd = returnModalData.quantity || 1;
-          await supabase
-            .from('site_inventory')
-            .upsert({
-              site_id: returnModalData.siteId,
-              catalog_id: returnModalData.catalogId,
-              quantity: (currentSiteInv?.quantity || 0) + qtyToAdd,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'site_id,catalog_id' });
-        }
-      }
-
-      toast({ 
+      toast({
         type: 'success', 
         title: 'Devolução Registrada', 
         message: `Equipamento devolvido por ${returnModalData.workerName} com sucesso.` 
@@ -394,7 +357,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
               onClick={() => { setStatusFilter('IN_USE'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                 statusFilter === 'IN_USE'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  ? 'bg-primary-dark text-primary-foreground shadow-sm'
                   : 'text-muted hover:text-foreground'
               }`}
             >
@@ -442,7 +405,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
           <div className="flex flex-wrap gap-2 items-center justify-end">
             <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-1.5">
               <Building2 className="w-4 h-4 text-primary shrink-0" />
-              <select
+              <select aria-label="Filtrar por obra"
                 value={selectedSiteId}
                 onChange={e => { setSelectedSiteId(e.target.value); setCurrentPage(1); }}
                 className="bg-transparent text-xs font-medium text-foreground focus:outline-none cursor-pointer pr-1"
@@ -471,7 +434,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
         <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/60">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input
+            <input aria-label="Buscar por colaborador, CPF, EPI, CA, código de rastreio ou cargo"
               type="text"
               placeholder="Buscar por colaborador, CPF, EPI, CA, código de rastreio ou cargo..."
               value={search}
@@ -481,7 +444,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
           </div>
 
           <div className="w-full sm:w-64">
-            <select
+            <select aria-label="Filtrar por categoria"
               value={selectedCategory}
               onChange={e => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
               className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -583,7 +546,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                             )}
                           </div>
                           <div className="mt-1">
-                            <span className="text-[10px] bg-primary/10 text-primary font-medium px-1.5 py-0.5 rounded border border-primary/20">
+                            <span className="text-[11px] bg-primary/10 text-primary font-medium px-1.5 py-0.5 rounded border border-primary/20">
                               📍 {workerSiteName}
                             </span>
                           </div>
@@ -611,14 +574,14 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                             {item.catalog?.brand || ''} {item.catalog?.model ? `• ${item.catalog.model}` : ''}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="font-mono text-[10px] text-muted">
+                            <span className="font-mono text-[11px] text-muted">
                               CA: {item.catalog?.ca_number || item.ca_number || 'S/N'}
                             </span>
                             {item.catalog?.ca_validity && (
                               <ValidityBadge date={item.catalog.ca_validity} />
                             )}
                             {item.tracking_code && (
-                              <span className="text-[10px] font-mono bg-background px-1 rounded border border-border text-foreground">
+                              <span className="text-[11px] font-mono bg-background px-1 rounded border border-border text-foreground">
                                 #{item.tracking_code}
                               </span>
                             )}
@@ -778,7 +741,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                 <RotateCcw className="w-5 h-5" />
                 <h3 className="text-lg text-foreground">Registrar Devolução de EPI</h3>
               </div>
-              <button onClick={() => setReturnModalData(null)} className="text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={() => setReturnModalData(null)} className="text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -792,7 +755,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Condição do EPI na Devolução *</label>
-                <select
+                <select aria-label="Condição do EPI na Devolução"
                   value={returnCondition}
                   onChange={e => setReturnCondition(e.target.value as any)}
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground text-sm"
@@ -804,20 +767,14 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
               </div>
 
               {returnCondition === 'GOOD' && (
-                <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none bg-background p-2.5 rounded-lg border border-border">
-                  <input
-                    type="checkbox"
-                    checked={returnRestock}
-                    onChange={e => setReturnRestock(e.target.checked)}
-                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <span>Retornar {returnModalData.quantity} un ao saldo de estoque disponível</span>
-                </label>
+                <p className="text-xs text-muted bg-background p-2.5 rounded-lg border border-border">
+                  {returnModalData.quantity} un voltam ao saldo da obra de onde saíram.
+                </p>
               )}
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Observações (Opcional)</label>
-                <textarea
+                <textarea aria-label="Observações (Opcional)"
                   rows={2}
                   value={returnNotes}
                   onChange={e => setReturnNotes(e.target.value)}
@@ -839,7 +796,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                 type="button"
                 onClick={handleConfirmReturn}
                 disabled={isSubmittingReturn}
-                className="px-4 py-2 bg-primary text-primary-foreground font-semibold rounded-md text-sm disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-primary-dark text-primary-foreground font-semibold rounded-md text-sm disabled:opacity-50 transition-colors"
               >
                 {isSubmittingReturn ? 'Salvando...' : 'Confirmar Devolução'}
               </button>
@@ -857,7 +814,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
                 <h3 className="text-base font-bold text-foreground">Comprovante de Entrega & Assinatura</h3>
                 <p className="text-xs text-muted">Auditoria de conformidade com a NR-6.</p>
               </div>
-              <button onClick={() => setEvidenceModalData(null)} className="text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={() => setEvidenceModalData(null)} className="text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>

@@ -265,9 +265,11 @@ export type Database = {
           generated_pdf_url: string | null
           id: string
           liveness_verified: boolean | null
+          order_id: string | null
           quantity: number
           return_signature_url: string | null
           returned_at: string | null
+          site_id: string | null
           tracking_code: string | null
           unit_price_at_delivery: number
           worker_id: string
@@ -289,9 +291,11 @@ export type Database = {
           generated_pdf_url?: string | null
           id?: string
           liveness_verified?: boolean | null
+          order_id?: string | null
           quantity?: number
           return_signature_url?: string | null
           returned_at?: string | null
+          site_id?: string | null
           tracking_code?: string | null
           unit_price_at_delivery?: number
           worker_id: string
@@ -313,9 +317,11 @@ export type Database = {
           generated_pdf_url?: string | null
           id?: string
           liveness_verified?: boolean | null
+          order_id?: string | null
           quantity?: number
           return_signature_url?: string | null
           returned_at?: string | null
+          site_id?: string | null
           tracking_code?: string | null
           unit_price_at_delivery?: number
           worker_id?: string
@@ -1088,12 +1094,33 @@ export type Database = {
         }[]
       }
       is_valid_cpf: { Args: { cpf: string }; Returns: boolean }
+      register_stock_entry: {
+        Args: {
+          p_catalog_id: string
+          p_invoice_number?: string
+          p_notes?: string
+          p_quantity: number
+          p_site_id: string
+          p_supplier?: string
+          p_unit_price?: number
+        }
+        Returns: Json
+      }
       return_epi: {
         Args: {
           p_assignment_id: string
           p_condition?: Database["public"]["Enums"]["item_condition"]
         }
         Returns: boolean
+      }
+      set_site_stock: {
+        Args: {
+          p_catalog_id: string
+          p_notes?: string
+          p_quantity: number
+          p_site_id: string
+        }
+        Returns: number
       }
       transfer_epi_receive: {
         Args: {

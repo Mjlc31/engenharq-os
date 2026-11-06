@@ -229,85 +229,15 @@ export function AlmoxarifadoKds() {
 
       const deliveredBy = user?.email || 'Almoxarife';
 
-      // 1. Executar a Stored Procedure transacional ACID no Supabase
-      const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('complete_almoxarifado_order', {
+      // Entrega atômica: cautelas, baixa na obra e Kardex numa transação. Sem fallback no cliente:
+      // se o banco recusar (ex.: saldo insuficiente), a comanda continua na fila e o erro aparece no toast.
+      const { error: rpcError } = await (supabase.rpc as any)('complete_almoxarifado_order', {
         p_order_id: deliveryModalOrder.id,
         p_delivered_by: deliveredBy,
         p_signature_url: signatureUrl || undefined,
         p_selfie_url: undefined
       });
-
-      if (rpcError) {
-        console.warn('Fallback para atualização direta do cliente:', rpcError);
-        // Fallback defensivo caso a RPC encontre bloqueio
-        const deliveredAt = new Date().toISOString();
-        const { error: orderError } = await supabase
-          .from('almoxarifado_orders')
-          .update({
-            status: 'DELIVERED',
-            delivered_at: deliveredAt,
-            delivered_by: deliveredBy,
-            signature_url: signatureUrl,
-            updated_at: deliveredAt
-          })
-          .eq('id', deliveryModalOrder.id);
-
-        if (orderError) throw orderError;
-
-        // Registra em epi_assignments e desconta estoque
-        const assignments = deliveryModalOrder.items.map(item => {
-          const expectedReturn = new Date();
-          expectedReturn.setDate(expectedReturn.getDate() + 180);
-          return {
-            catalog_id: item.catalog_id,
-            worker_id: deliveryModalOrder.worker_id,
-            quantity: item.quantity || 1,
-            unit_price_at_delivery: Number(item.unit_price ?? 0),
-            expected_return_date: expectedReturn.toISOString(),
-            digital_signature_url: signatureUrl,
-            condition_on_delivery: 'GOOD' as const
-          };
-        });
-
-        if (assignments.length > 0) {
-          await supabase.from('epi_assignments').insert(assignments);
-
-          for (const item of deliveryModalOrder.items) {
-            const { data: catData } = await supabase
-              .from('epi_catalog')
-              .select('current_stock')
-              .eq('id', item.catalog_id)
-              .maybeSingle();
-
-            if (catData && catData.current_stock !== undefined) {
-              await supabase
-                .from('epi_catalog')
-                .update({ current_stock: Math.max(0, catData.current_stock - item.quantity) })
-                .eq('id', item.catalog_id);
-            }
-
-            if (deliveryModalOrder.site_id) {
-              const { data: siteInv } = await supabase
-                .from('site_inventory')
-                .select('quantity')
-                .eq('site_id', deliveryModalOrder.site_id)
-                .eq('catalog_id', item.catalog_id)
-                .maybeSingle();
-
-              if (siteInv) {
-                await supabase
-                  .from('site_inventory')
-                  .update({
-                    quantity: Math.max(0, (siteInv.quantity || 0) - item.quantity),
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('site_id', deliveryModalOrder.site_id)
-                  .eq('catalog_id', item.catalog_id);
-              }
-            }
-          }
-        }
-      }
+      if (rpcError) throw rpcError;
 
       if (soundEnabled) playKdsChime();
       toast({
@@ -407,10 +337,13 @@ export function AlmoxarifadoKds() {
   const handleCancelOrder = async (orderId: string) => {
     if (!confirm('Deseja realmente cancelar esta solicitação da fila?')) return;
     try {
-      await supabase
-        .from('almoxarifado_orders')
-        .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
-        .eq('id', orderId);
+      // Cancelamento só pela RPC (registra autor e motivo); o banco recusa update direto para CANCELLED
+      const { error } = await supabase.rpc('cancel_or_delete_almoxarifado_order', {
+        p_order_id: orderId,
+        p_cancelled_by: user?.email || 'Almoxarife',
+        p_reason: 'Cancelado na fila do KDS'
+      });
+      if (error) throw error;
 
       toast({ type: 'info', title: 'Pedido Cancelado', message: 'A solicitação foi removida da fila.' });
       await loadOrders();
@@ -492,7 +425,7 @@ export function AlmoxarifadoKds() {
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground uppercase">
                 Painel Almoxarifado <span className="text-primary">EngenharQ</span>
               </h1>
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                 Ao Vivo
               </span>
@@ -507,7 +440,7 @@ export function AlmoxarifadoKds() {
         <div className="flex items-center gap-3">
           <div className="bg-surface border border-border rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xs">
             <span className="text-xs text-muted font-medium">Obra:</span>
-            <select
+            <select aria-label="Filtrar por obra"
               value={selectedSiteId}
               onChange={e => setSelectedSiteId(e.target.value)}
               className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
@@ -523,7 +456,7 @@ export function AlmoxarifadoKds() {
             <div className="text-xl md:text-2xl font-bold text-primary tracking-wider">
               {currentTime.toLocaleTimeString('pt-BR')}
             </div>
-            <div className="text-[10px] text-muted uppercase tracking-widest font-sans">
+            <div className="text-[11px] text-muted uppercase tracking-widest font-sans">
               {currentTime.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
             </div>
           </div>
@@ -544,7 +477,7 @@ export function AlmoxarifadoKds() {
           {/* Nova Retirada no Balcão */}
           <button
             onClick={() => setIsNewOrderModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary-dark text-white font-semibold text-xs md:text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-dark hover:bg-primary-darker text-white font-semibold text-xs md:text-sm shadow-md shadow-primary/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>+ Nova Solicitação</span>
@@ -594,7 +527,7 @@ export function AlmoxarifadoKds() {
           >
             <Tv className="w-4 h-4" />
             <span>1. Telão TV Balcão (Ao Vivo)</span>
-            {activeTab === 'tv' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+            {activeTab === 'tv' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
 
           <button
@@ -607,11 +540,11 @@ export function AlmoxarifadoKds() {
             <History className="w-4 h-4" />
             <span>2. Histórico com Data e Hora</span>
             {orders.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-surface border border-border text-muted">
+              <span className="px-1.5 py-0.2 rounded-full text-[11px] font-mono bg-surface border border-border text-muted">
                 {orders.length}
               </span>
             )}
-            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+            {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
 
           <button
@@ -623,7 +556,7 @@ export function AlmoxarifadoKds() {
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>3. Extrato & Movimentações de Estoque</span>
-            {activeTab === 'kardex' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+            {activeTab === 'kardex' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
         </div>
       )}
@@ -689,8 +622,8 @@ export function AlmoxarifadoKds() {
               <div className="flex items-center justify-between border-b border-border pb-3 mb-3 shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="flex h-2.5 w-2.5 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-dark opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary-dark" />
                   </span>
                   <h2 className="text-base md:text-lg font-bold uppercase tracking-tight text-foreground">
                     1. Em Separação / Fila
@@ -733,7 +666,7 @@ export function AlmoxarifadoKds() {
                           isCalling
                             ? "border-primary bg-primary/10 ring-4 ring-primary/40 scale-[1.01]"
                             : isUrgent
-                              ? "border-rose-500/50 bg-rose-950/15"
+                              ? "border-red-500/50 bg-red-950/15"
                               : isModerate
                                 ? "border-amber-500/50 bg-amber-950/15"
                                 : "border-border hover:border-primary/40"
@@ -755,7 +688,7 @@ export function AlmoxarifadoKds() {
                           <div className={cn(
                             "px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold border flex items-center gap-1.5",
                             isUrgent
-                              ? "bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse"
+                              ? "bg-red-500/15 text-red-400 border-red-500/30 animate-pulse"
                               : isModerate
                                 ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
                                 : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
@@ -790,7 +723,7 @@ export function AlmoxarifadoKds() {
 
                         {/* Lista de Itens */}
                         <div className="bg-background/80 rounded-xl p-2.5 border border-border/80 mb-3 space-y-1.5">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted block">
+                          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted block">
                             Itens Solicitados ({order.items.length}):
                           </span>
                           {order.items.map((item, idx) => (
@@ -803,13 +736,13 @@ export function AlmoxarifadoKds() {
                                   {item.name}
                                 </span>
                                 {item.size && (
-                                  <span className="text-[10px] text-muted font-mono">
+                                  <span className="text-[11px] text-muted font-mono">
                                     ({item.size})
                                   </span>
                                 )}
                               </div>
                               {item.ca_number && (
-                                <span className="text-[10px] text-muted font-mono shrink-0">
+                                <span className="text-[11px] text-muted font-mono shrink-0">
                                   CA: {item.ca_number}
                                 </span>
                               )}
@@ -836,9 +769,9 @@ export function AlmoxarifadoKds() {
                             <span>ENTREGAR AGORA</span>
                           </button>
 
-                          <button
+                          <button aria-label="Cancelar solicitação"
                             onClick={() => handleCancelOrder(order.id)}
-                            className="p-2 rounded-xl bg-surface hover:bg-rose-500/15 hover:text-rose-400 text-muted border border-border transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-surface hover:bg-red-500/15 hover:text-red-400 text-muted border border-border transition-colors cursor-pointer"
                             title="Cancelar Solicitação"
                           >
                             <X className="w-4 h-4" />
@@ -922,7 +855,7 @@ export function AlmoxarifadoKds() {
                               <span>Assinado [Ver]</span>
                             </button>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full bg-surface-hover border border-border text-muted text-[10px] font-mono">
+                            <span className="px-2.5 py-0.5 rounded-full bg-surface-hover border border-border text-muted text-[11px] font-mono">
                               Confirmado
                             </span>
                           )}
@@ -984,7 +917,7 @@ export function AlmoxarifadoKds() {
       {deliveryModalOrder && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150 text-foreground">
-            <button
+            <button aria-label="Fechar"
               onClick={() => setDeliveryModalOrder(null)}
               className="absolute top-4 right-4 text-muted hover:text-foreground p-1.5 rounded-xl bg-surface-hover transition-colors"
             >
@@ -1050,7 +983,7 @@ export function AlmoxarifadoKds() {
                   }}
                 />
               </div>
-              <p className="text-[10px] text-muted text-center">
+              <p className="text-[11px] text-muted text-center">
                 O colaborador deve assinar na área acima confirmando o recebimento dos EPIs em perfeitas condições.
               </p>
             </div>
@@ -1091,7 +1024,7 @@ export function AlmoxarifadoKds() {
       {isNewOrderModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150 text-foreground">
-            <button
+            <button aria-label="Fechar"
               onClick={() => setIsNewOrderModalOpen(false)}
               className="absolute top-4 right-4 text-muted hover:text-foreground p-1.5 rounded-xl bg-surface-hover transition-colors"
             >
@@ -1141,7 +1074,7 @@ export function AlmoxarifadoKds() {
                   <div>
                     <div className="relative mb-2">
                       <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
-                      <input
+                      <input aria-label="Buscar colaborador por nome, matrícula ou CPF"
                         type="text"
                         placeholder="Buscar colaborador por nome, matrícula ou CPF..."
                         value={workerSearch}
@@ -1178,7 +1111,7 @@ export function AlmoxarifadoKds() {
                 </label>
                 <div className="relative mb-2">
                   <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
-                  <input
+                  <input aria-label="Filtrar catálogo de EPIs"
                     type="text"
                     placeholder="Filtrar catálogo de EPIs..."
                     value={epiSearch}
@@ -1208,7 +1141,7 @@ export function AlmoxarifadoKds() {
                             return [...prev, { catalog: epi, quantity: 1, size: '' }];
                           });
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary hover:text-white text-primary font-semibold border border-primary/20 transition-all text-xs shrink-0 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary-dark hover:text-white text-primary font-semibold border border-primary/20 transition-all text-xs shrink-0 cursor-pointer"
                       >
                         + Adicionar
                       </button>
@@ -1229,7 +1162,7 @@ export function AlmoxarifadoKds() {
                         <span className="font-medium text-foreground">{item.catalog.name}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <input
+                        <input aria-label="Tamanho"
                           type="text"
                           placeholder="Tam (Ex: G, 42)"
                           value={item.size}
@@ -1260,10 +1193,10 @@ export function AlmoxarifadoKds() {
                             +
                           </button>
                         </div>
-                        <button
+                        <button aria-label="Remover item"
                           type="button"
                           onClick={() => setSelectedItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-muted hover:text-rose-400 p-1"
+                          className="text-muted hover:text-red-400 p-1"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1295,7 +1228,7 @@ export function AlmoxarifadoKds() {
                 type="button"
                 disabled={creatingOrder || !selectedWorker || selectedItems.length === 0}
                 onClick={() => handleCreateQuickOrder(true)}
-                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md shadow-primary/20 transition-all disabled:opacity-50 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-primary-dark hover:bg-primary-darker text-white font-bold text-sm shadow-md shadow-primary/20 transition-all disabled:opacity-50 cursor-pointer"
               >
                 Entregar Agora →
               </button>
@@ -1320,7 +1253,7 @@ export function AlmoxarifadoKds() {
       {previewSignatureUrl && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-center text-foreground">
-            <button
+            <button aria-label="Fechar"
               onClick={() => setPreviewSignatureUrl(null)}
               className="absolute top-4 right-4 text-muted hover:text-foreground p-1.5 rounded-xl bg-surface-hover transition-colors"
             >

@@ -12,76 +12,6 @@ export const inventoryService = {
     return (data || []) as EpiCatalog[];
   },
 
-  async createEpi(payload: {
-    name: string;
-    category: string;
-    brand?: string;
-    model?: string;
-    ca_number?: string;
-    ca_validity?: string;
-    lifespan_days?: number;
-    minimum_stock?: number;
-    current_stock?: number;
-    unit_price?: number;
-    observations?: string;
-    image_url?: string;
-    initial_stock?: number;
-    supplier?: string;
-    invoice_number?: string;
-    site_id?: string;
-  }) {
-    const unitPrice = payload.unit_price || 0;
-    const initialStock = payload.initial_stock || payload.current_stock || 0;
-
-    // 1. Inserir no catálogo
-    const { data: newCatalog, error: catError } = await supabase
-      .from('epi_catalog')
-      .insert({
-        name: payload.name,
-        category: payload.category,
-        brand: payload.brand || null,
-        model: payload.model || null,
-        ca_number: payload.ca_number || null,
-        ca_validity: payload.ca_validity || null,
-        lifespan_days: payload.lifespan_days || 180,
-        minimum_stock: payload.minimum_stock || 0,
-        current_stock: initialStock,
-        unit_price: unitPrice,
-        observations: payload.observations || null,
-        image_url: payload.image_url || null,
-        status: 'ACTIVE'
-      })
-      .select()
-      .single();
-
-    if (catError) throw catError;
-
-    // 2. Se houver estoque inicial e valor, registrar na tabela de compras e no estoque da obra
-    if (initialStock > 0 && newCatalog) {
-      const { error: purchaseErr } = await supabase.from('epi_purchases').insert({
-        catalog_id: newCatalog.id,
-        site_id: payload.site_id || null,
-        quantity: initialStock,
-        unit_price: unitPrice,
-        invoice_number: payload.invoice_number || 'INICIAL',
-        supplier: payload.supplier || 'ESTOQUE INICIAL',
-        notes: 'Cadastro inicial de EPI com lote inicial.'
-      });
-      if (purchaseErr) console.warn('Aviso ao registrar compra inicial:', purchaseErr);
-
-      if (payload.site_id) {
-        await supabase.from('site_inventory').upsert({
-          site_id: payload.site_id,
-          catalog_id: newCatalog.id,
-          quantity: initialStock,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'site_id,catalog_id' });
-      }
-    }
-
-    return newCatalog as EpiCatalog;
-  },
-
   async discardStock(params: {
     catalogId: string;
     quantity: number;
@@ -107,72 +37,18 @@ export const inventoryService = {
     supplier?: string;
     notes?: string;
   }) {
-    // 1. Inserir compra
-    const { data, error } = await supabase
-      .from('epi_purchases')
-      .insert({
-        catalog_id: params.catalog_id,
-        site_id: params.site_id || null,
-        quantity: params.quantity,
-        unit_price: params.unit_price,
-        invoice_number: params.invoice_number || null,
-        supplier: params.supplier || null,
-        notes: params.notes || null
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // 2. Atualizar estoque do catálogo e preço unitário
-    const { data: currentCat } = await supabase
-      .from('epi_catalog')
-      .select('current_stock')
-      .eq('id', params.catalog_id)
-      .single();
-
-    const newStock = (currentCat?.current_stock || 0) + params.quantity;
-
-    const { error: updateErr } = await supabase
-      .from('epi_catalog')
-      .update({
-        current_stock: newStock,
-        unit_price: params.unit_price
-      })
-      .eq('id', params.catalog_id);
-    if (updateErr) throw updateErr;
-
-    // 3. Se houver obra vinculada, atualizar site_inventory
-    if (params.site_id) {
-      const { data: existingSiteInv } = await supabase
-        .from('site_inventory')
-        .select('quantity')
-        .eq('site_id', params.site_id)
-        .eq('catalog_id', params.catalog_id)
-        .maybeSingle();
-
-      const currentSiteQty = existingSiteInv?.quantity || 0;
-      const { error: siteInvErr } = await supabase.from('site_inventory').upsert({
-        site_id: params.site_id,
-        catalog_id: params.catalog_id,
-        quantity: currentSiteQty + params.quantity,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'site_id,catalog_id' });
-      if (siteInvErr) throw siteInvErr;
-    }
-
-    // 4. Gravar auditoria em inventory_transactions com site_id
-    const { error: transErr } = await supabase.from('inventory_transactions').insert({
-      catalog_id: params.catalog_id,
-      site_id: params.site_id || null,
-      transaction_type: 'ENTRADA_COMPRA',
-      quantity_change: params.quantity,
-      notes: `Entrada de estoque via NF ${params.invoice_number || 'S/N'} • Fornecedor: ${params.supplier || 'Geral'}${params.notes ? ` • ${params.notes}` : ''}`,
-      created_at: new Date().toISOString()
+    // Compra, saldo da obra, preço e Kardex numa transação no banco (obra obrigatória)
+    const { data, error } = await supabase.rpc('register_stock_entry', {
+      p_catalog_id: params.catalog_id,
+      p_site_id: params.site_id as string,
+      p_quantity: params.quantity,
+      p_unit_price: params.unit_price,
+      p_invoice_number: params.invoice_number || undefined,
+      p_supplier: params.supplier || undefined,
+      p_notes: params.notes || undefined
     });
-    if (transErr) console.warn('Aviso ao registrar transação de auditoria:', transErr);
-
-    return data as EpiPurchase;
+    if (error) throw error;
+    return data as unknown as EpiPurchase;
   },
 
   async fetchPurchases(catalogId?: string) {

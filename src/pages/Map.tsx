@@ -156,12 +156,9 @@ export function MapTracking() {
         { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString(), condition_on_delivery: 'GOOD' }
       ]);
       
+      // O banco debita a obra do colaborador e grava o Kardex (trigger trg_epi_assignment_stock)
       if (assignError) throw assignError;
 
-      const catalogItem = availableEpis.find(e => e.id === selectedEpi);
-      if (catalogItem) {
-         await supabase.from('epi_catalog').update({ current_stock: Math.max(0, (catalogItem.current_stock || 0) - 1) }).eq('id', selectedEpi);
-      }
       toast({ type: 'success', title: 'Sucesso', message: 'EPI alocado com sucesso!' });
 
       // Reload Data
@@ -192,7 +189,7 @@ export function MapTracking() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted" />
-            <select 
+            <select aria-label="Filtrar por equipamento" 
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
               className="bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -205,7 +202,7 @@ export function MapTracking() {
           </div>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm"
+            className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm"
           >
             <Plus className="w-4 h-4" /> Alocar EPI
           </button>
@@ -281,7 +278,7 @@ export function MapTracking() {
                   </p>
                 </div>
               </div>
-              <button 
+              <button aria-label="Fechar" 
                 onClick={() => setSelectedSiteId(null)}
                 className="text-muted hover:text-red-500 transition-colors p-1"
               >
@@ -324,7 +321,7 @@ export function MapTracking() {
                         </div>
                         <div className="overflow-hidden">
                           <p className="text-sm font-medium text-foreground leading-none mb-1 truncate" title={w.full_name}>{w.full_name}</p>
-                          <p className="text-[10px] text-muted truncate">{w.role || 'Sem cargo'}</p>
+                          <p className="text-[11px] text-muted truncate">{w.role || 'Sem cargo'}</p>
                         </div>
                       </div>
                     ))
@@ -386,14 +383,14 @@ export function MapTracking() {
           <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
             <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
               <h3 className="font-bold text-foreground">Registrar Entrega de EPI</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted hover:text-red-500">
+              <button aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="text-muted hover:text-red-500">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleAssignFromMap} className="p-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted uppercase tracking-wider">Selecionar Colaborador / Obra</label>
-                <select 
+                <select aria-label="Selecionar Colaborador / Obra" 
                   required
                   value={selectedWorker}
                   onChange={e => setSelectedWorker(e.target.value)}
@@ -410,7 +407,7 @@ export function MapTracking() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted uppercase tracking-wider">Selecionar EPI Disponível</label>
-                <select 
+                <select aria-label="Selecionar EPI Disponível" 
                   required
                   value={selectedEpi}
                   onChange={e => setSelectedEpi(e.target.value)}
@@ -436,7 +433,7 @@ export function MapTracking() {
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-primary text-white hover:bg-primary-dark py-3 rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
+                  className="flex-1 bg-primary-dark text-white hover:bg-primary-darker py-3 rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
                 >
                   {isSubmitting ? 'Salvando...' : 'Confirmar Alocação'}
                 </button>
