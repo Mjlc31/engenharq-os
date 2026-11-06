@@ -33,6 +33,9 @@ const TONES: Record<Tone, { icon: React.ElementType; color: string }> = {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+// Abre a tela de destino já filtrada na situação mais grave presente.
+const withSituacao = (path: string, situacao: string | false) => situacao ? `${path}?situacao=${situacao}` : path;
+
 function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetProps['unavailable']>): Cell[] {
   const expiry = (expired: number, expiring: number, extra: string[] = []) => [
     expired > 0 ? plural(expired, 'vencido', 'vencidos') : '',
@@ -43,7 +46,7 @@ function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetPro
   return [
     {
       title: 'CA dos EPIs',
-      href: '/assets',
+      href: withSituacao('/assets', c.ca.expired + c.ca.expiring > 0 && 'ca'),
       critical: c.ca.expired,
       warning: c.ca.expiring,
       parts: expiry(c.ca.expired, c.ca.expiring),
@@ -53,7 +56,7 @@ function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetPro
     },
     {
       title: 'ASO (NR-7)',
-      href: '/aso',
+      href: withSituacao('/aso', c.aso.expired > 0 ? 'vencidos' : c.aso.missing > 0 ? 'sem-aso' : c.aso.expiring > 0 && 'vencendo'),
       critical: c.aso.expired + c.aso.missing,
       warning: c.aso.expiring,
       parts: expiry(c.aso.expired, c.aso.expiring, c.aso.missing > 0 ? [`${c.aso.missing} sem ASO`] : []),
@@ -62,7 +65,7 @@ function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetPro
     },
     {
       title: 'Treinamentos (NR)',
-      href: '/trainings',
+      href: withSituacao('/trainings', c.trainings.expired > 0 ? 'vencidos' : c.trainings.expiring > 0 && 'vencendo'),
       critical: c.trainings.expired,
       warning: c.trainings.expiring,
       parts: expiry(c.trainings.expired, c.trainings.expiring),
@@ -71,7 +74,7 @@ function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetPro
     },
     {
       title: 'Estoque de EPIs',
-      href: '/assets',
+      href: withSituacao('/assets', c.stock.out + c.stock.low > 0 && 'estoque'),
       critical: c.stock.out,
       warning: c.stock.low,
       parts: [

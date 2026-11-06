@@ -5,6 +5,12 @@ import { useWorkers } from '../hooks/useWorkers';
 import { useToast } from '../components/ui/Toast';
 import { HeartPulse, Plus, Search, Calendar, UserCheck, CheckCircle2, XCircle, FileText, X } from 'lucide-react';
 import { ValidityBadge } from '../components/ui/ValidityBadge';
+import { StatusFilter } from '../components/ui/StatusFilter';
+import { useSituacaoParam } from '../hooks/useSituacaoParam';
+import { activeWorkerIds, classifyValidity, latestBy } from '../lib/compliance';
+
+const SITUACOES = ['todos', 'vencidos', 'vencendo', 'sem-aso'] as const;
+type Situacao = typeof SITUACOES[number];
 
 export function Aso() {
   const { workers, sites } = useWorkers();
@@ -13,6 +19,7 @@ export function Aso() {
   const [asos, setAsos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [situacao, setSituacao] = useSituacaoParam<Situacao>(SITUACOES, 'todos');
 
   // Modal Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -86,13 +93,43 @@ export function Aso() {
     }
   };
 
-  const filteredAsos = asos.filter(a => {
-    const q = search.toLowerCase();
+  // Mesma regra do Dashboard: vale o ASO mais recente de cada colaborador ativo.
+  const situacaoGroups = React.useMemo(() => {
+    const today = new Date();
+    const activeIds = activeWorkerIds(workers);
+    const latest = latestBy(asos.filter(a => activeIds.has(a.worker_id)), a => a.worker_id);
+    const withAso = new Set(latest.map(a => a.worker_id));
+    return {
+      vencidos: latest.filter(a => classifyValidity(a.valid_until, today) === 'expired'),
+      vencendo: latest.filter(a => classifyValidity(a.valid_until, today) === 'expiring'),
+      semAso: workers.filter(w => activeIds.has(w.id) && !withAso.has(w.id)),
+    };
+  }, [asos, workers]);
+
+  const q = search.toLowerCase();
+  const baseAsos = situacao === 'vencidos' ? situacaoGroups.vencidos : situacao === 'vencendo' ? situacaoGroups.vencendo : asos;
+  const filteredAsos = situacao === 'sem-aso' ? [] : baseAsos.filter(a => {
     const workerName = a.worker?.full_name?.toLowerCase() || '';
     const regNum = a.worker?.registration_number?.toLowerCase() || '';
     const asoType = a.type?.toLowerCase() || '';
     return workerName.includes(q) || regNum.includes(q) || asoType.includes(q);
   });
+  const filteredWithoutAso = situacao !== 'sem-aso' ? [] : situacaoGroups.semAso.filter(w =>
+    (w.full_name || '').toLowerCase().includes(q) || (w.registration_number || '').toLowerCase().includes(q)
+  );
+
+  const emptyMessage = loading ? 'Carregando atestados...' : {
+    todos: 'Nenhum ASO registrado.',
+    vencidos: 'Nenhum colaborador ativo com ASO vencido.',
+    vencendo: 'Nenhum ASO vence nos próximos 30 dias.',
+    'sem-aso': 'Todos os colaboradores ativos têm ASO registrado.',
+  }[situacao];
+
+  const openNewAsoFor = (workerId: string) => {
+    setSelectedWorkerId(workerId);
+    setType('ADMISSIONAL');
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -111,6 +148,18 @@ export function Aso() {
           <Plus className="w-4 h-4" /> + Novo ASO
         </button>
       </div>
+
+      <StatusFilter
+        label="Filtrar por situação do ASO"
+        value={situacao}
+        onChange={setSituacao}
+        options={[
+          { value: 'todos', label: 'Todos os registros', count: asos.length },
+          { value: 'vencidos', label: 'Vencidos', count: situacaoGroups.vencidos.length },
+          { value: 'vencendo', label: 'Vencem em 30 dias', count: situacaoGroups.vencendo.length },
+          { value: 'sem-aso', label: 'Sem ASO', count: situacaoGroups.semAso.length },
+        ]}
+      />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
@@ -189,10 +238,35 @@ export function Aso() {
                 </tr>
               ))}
 
-              {filteredAsos.length === 0 && (
+              {filteredWithoutAso.map(w => (
+                <tr key={w.id} className="border-b border-border hover:bg-surface-hover/30 transition-colors">
+                  <td className="p-4">
+                    <div className="font-bold text-foreground">{w.full_name}</div>
+                    <div className="text-xs text-muted font-mono">
+                      Mat: {w.registration_number || 'S/N'} • CPF: {w.cpf || 'S/N'}
+                    </div>
+                  </td>
+                  {/* Ação junto do selo: a tabela rola na horizontal e a última coluna some da vista. */}
+                  <td colSpan={6} className="p-4">
+                    <div className="flex items-center gap-4">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
+                        <XCircle className="w-3.5 h-3.5" /> Sem ASO registrado
+                      </span>
+                      <button
+                        onClick={() => openNewAsoFor(w.id)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Registrar ASO
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {filteredAsos.length === 0 && filteredWithoutAso.length === 0 && (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted">
-                    {loading ? 'Carregando atestados...' : 'Nenhum ASO registrado.'}
+                    {emptyMessage}
                   </td>
                 </tr>
               )}

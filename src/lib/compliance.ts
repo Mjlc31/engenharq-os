@@ -1,14 +1,19 @@
-// Pendências de conformidade do Dashboard. Mesma régua do ValidityBadge:
-// vencido < 0 dias, vencendo de 0 a 30 dias.
+// Pendências de conformidade. Mesma régua do ValidityBadge: vencido < 0 dias,
+// vencendo de 0 a 30 dias. Usado pelo Dashboard e pelos filtros das telas de destino.
 export const EXPIRING_WINDOW_DAYS = 30;
-const DEFAULT_MIN_STOCK = 10;
+
+export type Validity = 'expired' | 'expiring' | 'ok';
+export type StockLevel = 'out' | 'low' | 'ok';
+
+type CatalogLike = { name: string; ca_validity?: string | null; current_stock?: number | null; min_stock?: number | null; minimum_stock?: number | null };
+type Dated = { valid_until: string | null };
 
 export interface ComplianceInput {
   today: Date;
-  catalogs: { name: string; ca_validity?: string | null; current_stock?: number | null; min_stock?: number | null; minimum_stock?: number | null }[];
+  catalogs: CatalogLike[];
   workers: { id: string; status?: string | null }[];
-  asos: { worker_id: string; valid_until: string | null }[];
-  trainings: { worker_id: string; training_id: string; valid_until: string | null }[];
+  asos: ({ worker_id: string } & Dated)[];
+  trainings: ({ worker_id: string; training_id: string } & Dated)[];
 }
 
 export interface ComplianceSummary {
@@ -18,8 +23,6 @@ export interface ComplianceSummary {
   stock: { out: number; low: number; names: string[] };
 }
 
-type Validity = 'expired' | 'expiring' | 'ok';
-
 // 'YYYY-MM-DD' (ou ISO completo) comparado só pela data, no fuso local.
 function daysUntil(date: string, today: Date): number {
   const [y, m, d] = date.slice(0, 10).split('-').map(Number);
@@ -28,7 +31,8 @@ function daysUntil(date: string, today: Date): number {
   return Math.round((target - base) / 86_400_000);
 }
 
-function classify(date: string, today: Date): Validity {
+export function classifyValidity(date: string | null | undefined, today: Date): Validity | null {
+  if (!date) return null;
   const days = daysUntil(date, today);
   if (days < 0) return 'expired';
   if (days <= EXPIRING_WINDOW_DAYS) return 'expiring';
@@ -36,15 +40,24 @@ function classify(date: string, today: Date): Validity {
 }
 
 // Só o registro mais recente vale: um ASO antigo vencido não conta se já existe um novo.
-function latestValidity<T extends { valid_until: string | null }>(rows: T[], keyOf: (row: T) => string) {
-  const latest = new Map<string, string>();
+export function latestBy<T extends Dated>(rows: T[], keyOf: (row: T) => string): T[] {
+  const latest = new Map<string, T>();
   for (const row of rows) {
     if (!row.valid_until) continue;
     const key = keyOf(row);
     const current = latest.get(key);
-    if (!current || row.valid_until > current) latest.set(key, row.valid_until);
+    if (!current || row.valid_until > (current.valid_until as string)) latest.set(key, row);
   }
-  return latest;
+  return [...latest.values()];
+}
+
+// Sem mínimo cadastrado não existe "abaixo do mínimo": só esgotado conta.
+export function stockLevel(item: CatalogLike): StockLevel {
+  const qty = item.current_stock ?? 0;
+  if (qty <= 0) return 'out';
+  const min = item.minimum_stock ?? item.min_stock;
+  if (min != null && qty <= min) return 'low';
+  return 'ok';
 }
 
 export function isActiveWorker(status?: string | null): boolean {
@@ -52,42 +65,41 @@ export function isActiveWorker(status?: string | null): boolean {
   return st === 'ACTIVE' || st === 'ATIVO';
 }
 
+export function activeWorkerIds(workers: { id: string; status?: string | null }[]): Set<string> {
+  return new Set(workers.filter(w => isActiveWorker(w.status)).map(w => w.id));
+}
+
 export function computeCompliance({ today, catalogs, workers, asos, trainings }: ComplianceInput): ComplianceSummary {
-  const activeIds = new Set(workers.filter(w => isActiveWorker(w.status)).map(w => w.id));
+  const activeIds = activeWorkerIds(workers);
 
   const ca = { expired: 0, expiring: 0, names: [] as string[] };
+  const stock = { out: 0, low: 0, names: [] as string[] };
   for (const item of catalogs) {
-    if (!item.ca_validity) continue;
-    const v = classify(item.ca_validity, today);
-    if (v === 'ok') continue;
-    ca[v] += 1;
-    ca.names.push(item.name);
+    const v = classifyValidity(item.ca_validity, today);
+    if (v === 'expired' || v === 'expiring') {
+      ca[v] += 1;
+      ca.names.push(item.name);
+    }
+    const level = stockLevel(item);
+    if (level !== 'ok') {
+      stock[level] += 1;
+      stock.names.push(item.name);
+    }
   }
 
   const aso = { expired: 0, expiring: 0, missing: 0 };
-  const latestAso = latestValidity(asos.filter(a => activeIds.has(a.worker_id)), a => a.worker_id);
+  const latestAso = new Map(latestBy(asos.filter(a => activeIds.has(a.worker_id)), a => a.worker_id).map(a => [a.worker_id, a]));
   for (const id of activeIds) {
-    const validUntil = latestAso.get(id);
-    if (!validUntil) { aso.missing += 1; continue; }
-    const v = classify(validUntil, today);
-    if (v !== 'ok') aso[v] += 1;
+    const record = latestAso.get(id);
+    if (!record) { aso.missing += 1; continue; }
+    const v = classifyValidity(record.valid_until, today);
+    if (v === 'expired' || v === 'expiring') aso[v] += 1;
   }
 
   const training = { expired: 0, expiring: 0 };
-  const latestTraining = latestValidity(trainings.filter(t => activeIds.has(t.worker_id)), t => `${t.worker_id}:${t.training_id}`);
-  for (const validUntil of latestTraining.values()) {
-    const v = classify(validUntil, today);
-    if (v !== 'ok') training[v] += 1;
-  }
-
-  const stock = { out: 0, low: 0, names: [] as string[] };
-  for (const item of catalogs) {
-    const qty = item.current_stock ?? 0;
-    const min = item.minimum_stock ?? item.min_stock ?? DEFAULT_MIN_STOCK;
-    if (qty <= 0) stock.out += 1;
-    else if (qty <= min) stock.low += 1;
-    else continue;
-    stock.names.push(item.name);
+  for (const record of latestBy(trainings.filter(t => activeIds.has(t.worker_id)), t => `${t.worker_id}:${t.training_id}`)) {
+    const v = classifyValidity(record.valid_until, today);
+    if (v === 'expired' || v === 'expiring') training[v] += 1;
   }
 
   return { ca, aso, trainings: training, stock };

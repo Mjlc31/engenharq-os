@@ -1,6 +1,6 @@
 // Autoteste das pendências do Dashboard. Rodar: node scripts/test_compliance.ts
 import assert from 'node:assert/strict';
-import { computeCompliance } from '../src/lib/compliance.ts';
+import { computeCompliance, stockLevel, latestBy } from '../src/lib/compliance.ts';
 
 const today = new Date(2026, 10, 6); // 06/11/2026
 
@@ -11,7 +11,8 @@ const result = computeCompliance({
     { name: 'Luva', ca_validity: '2026-11-06', current_stock: 3, minimum_stock: 5 },     // vence hoje, abaixo do mínimo
     { name: 'Bota', ca_validity: '2026-12-06', current_stock: 20, minimum_stock: 5 },    // vence em 30 dias
     { name: 'Óculos', ca_validity: '2026-12-07', current_stock: 20, min_stock: 5 },      // 31 dias: ok
-    { name: 'Protetor', ca_validity: null, current_stock: 10 },                          // sem mínimo: padrão 10, conta como baixo
+    { name: 'Protetor', ca_validity: null, current_stock: 10 },                          // sem mínimo cadastrado: ok
+    { name: 'Respirador', ca_validity: null, current_stock: 2, min_stock: 4 },           // campo legado min_stock: abaixo
   ],
   workers: [
     { id: 'a', status: 'ACTIVE' },
@@ -38,6 +39,15 @@ const result = computeCompliance({
 assert.deepEqual(result.ca, { expired: 1, expiring: 2, names: ['Capacete', 'Luva', 'Bota'] });
 assert.deepEqual(result.aso, { expired: 0, expiring: 1, missing: 1 });
 assert.deepEqual(result.trainings, { expired: 1, expiring: 1 });
-assert.deepEqual(result.stock, { out: 1, low: 2, names: ['Capacete', 'Luva', 'Protetor'] });
+assert.deepEqual(result.stock, { out: 1, low: 2, names: ['Capacete', 'Luva', 'Respirador'] });
+
+assert.equal(stockLevel({ name: 'x', current_stock: 0 }), 'out');
+assert.equal(stockLevel({ name: 'x', current_stock: 5, minimum_stock: 5 }), 'low');
+assert.equal(stockLevel({ name: 'x', current_stock: 6, minimum_stock: 5 }), 'ok');
+assert.equal(stockLevel({ name: 'x', current_stock: 1 }), 'ok');
+assert.deepEqual(
+  latestBy([{ k: 'a', valid_until: '2025-01-01' }, { k: 'a', valid_until: '2027-01-01' }, { k: 'b', valid_until: null }], r => r.k),
+  [{ k: 'a', valid_until: '2027-01-01' }]
+);
 
 console.log('compliance: ok');

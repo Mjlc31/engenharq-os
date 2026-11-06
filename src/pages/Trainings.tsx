@@ -6,6 +6,12 @@ import { useToast } from '../components/ui/Toast';
 import { uploadImage } from '../lib/storage';
 import { Award, Plus, Calendar, Clock, User, CheckCircle2, Image as ImageIcon, X, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { ValidityBadge } from '../components/ui/ValidityBadge';
+import { StatusFilter } from '../components/ui/StatusFilter';
+import { useSituacaoParam } from '../hooks/useSituacaoParam';
+import { activeWorkerIds, classifyValidity, latestBy } from '../lib/compliance';
+
+const SITUACOES = ['todos', 'vencidos', 'vencendo'] as const;
+type Situacao = typeof SITUACOES[number];
 
 export function Trainings() {
   const { workers } = useWorkers();
@@ -18,6 +24,7 @@ export function Trainings() {
 
   // Filter
   const [searchWorker, setSearchWorker] = useState('');
+  const [situacao, setSituacao] = useSituacaoParam<Situacao>(SITUACOES, 'todos');
 
   // Modal: Registrar Treinamento
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -148,7 +155,25 @@ export function Trainings() {
     }
   };
 
-  const filteredTrainings = trainings.filter(t => {
+  // Mesma regra do Dashboard: vale o registro mais recente por colaborador ativo e treinamento.
+  const situacaoGroups = React.useMemo(() => {
+    const today = new Date();
+    const activeIds = activeWorkerIds(workers);
+    const latest = latestBy(trainings.filter(t => activeIds.has(t.worker_id)), t => `${t.worker_id}:${t.training_id}`);
+    return {
+      vencidos: latest.filter(t => classifyValidity(t.valid_until, today) === 'expired'),
+      vencendo: latest.filter(t => classifyValidity(t.valid_until, today) === 'expiring'),
+    };
+  }, [trainings, workers]);
+
+  const baseTrainings = situacao === 'vencidos' ? situacaoGroups.vencidos : situacao === 'vencendo' ? situacaoGroups.vencendo : trainings;
+  const emptyMessage = loading ? 'Carregando treinamentos...' : {
+    todos: 'Nenhum treinamento registrado.',
+    vencidos: 'Nenhum treinamento vencido entre colaboradores ativos.',
+    vencendo: 'Nenhum treinamento vence nos próximos 30 dias.',
+  }[situacao];
+
+  const filteredTrainings = baseTrainings.filter(t => {
     const q = searchWorker.toLowerCase();
     const workerName = t.worker?.full_name?.toLowerCase() || '';
     const regNum = t.worker?.registration_number?.toLowerCase() || '';
@@ -207,6 +232,16 @@ export function Trainings() {
       {/* Tab: Histórico por Colaborador */}
       {activeTab === 'history' && (
         <div className="space-y-4">
+          <StatusFilter
+            label="Filtrar por situação do treinamento"
+            value={situacao}
+            onChange={setSituacao}
+            options={[
+              { value: 'todos', label: 'Todos os registros', count: trainings.length },
+              { value: 'vencidos', label: 'Vencidos', count: situacaoGroups.vencidos.length },
+              { value: 'vencendo', label: 'Vencem em 30 dias', count: situacaoGroups.vencendo.length },
+            ]}
+          />
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
             <input
@@ -284,7 +319,7 @@ export function Trainings() {
                   {filteredTrainings.length === 0 && (
                     <tr>
                       <td colSpan={6} className="p-8 text-center text-muted">
-                        {loading ? 'Carregando treinamentos...' : 'Nenhum treinamento registrado.'}
+                        {emptyMessage}
                       </td>
                     </tr>
                   )}

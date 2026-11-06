@@ -25,6 +25,12 @@ import { uploadImage } from '../../../lib/storage';
 import { supabase } from '../../../lib/supabase';
 import { useToast } from '../../../components/ui/Toast';
 import { ValidityBadge } from '../../../components/ui/ValidityBadge';
+import { StatusFilter } from '../../ui/StatusFilter';
+import { useSituacaoParam } from '../../../hooks/useSituacaoParam';
+import { classifyValidity, stockLevel } from '../../../lib/compliance';
+
+const SITUACOES = ['todos', 'ca', 'estoque'] as const;
+type Situacao = typeof SITUACOES[number];
 import { inventoryService } from '../../../services/inventoryService';
 
 interface CatalogTabProps {
@@ -66,6 +72,7 @@ export function CatalogTab({
   // Search and Filters
   const [search, setSearch] = useState('');
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState('Todas as categorias');
+  const [situacao, setSituacao] = useSituacaoParam<Situacao>(SITUACOES, 'todos');
   const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
   const [onlyWithStockInSite, setOnlyWithStockInSite] = useState(false);
   const [catalogCurrentPage, setCatalogCurrentPage] = useState(1);
@@ -163,9 +170,26 @@ export function CatalogTab({
     return sites.find(s => s.id === selectedSiteId) || null;
   }, [selectedSiteId, sites]);
 
+  // Mesma regra do Dashboard (estoque central do catálogo, não o da obra).
+  const situacaoMatch = useMemo(() => {
+    const today = new Date();
+    const caPending = (c: EpiCatalog) => {
+      const v = classifyValidity(c.ca_validity, today);
+      return v === 'expired' || v === 'expiring';
+    };
+    const stockPending = (c: EpiCatalog) => stockLevel(c) !== 'ok';
+    return {
+      ca: caPending,
+      estoque: stockPending,
+      caCount: catalogs.filter(caPending).length,
+      estoqueCount: catalogs.filter(stockPending).length,
+    };
+  }, [catalogs]);
+
   // Filtered Catalogs
   const filteredCatalogs = useMemo(() => {
     return catalogs.filter(c => {
+      if (situacao !== 'todos' && !situacaoMatch[situacao](c)) return false;
       const searchL = search.toLowerCase();
       const matchesSearch = c.name.toLowerCase().includes(searchL) || 
                             (c.brand && c.brand.toLowerCase().includes(searchL)) ||
@@ -184,7 +208,7 @@ export function CatalogTab({
 
       return matchesSearch && matchesCategory && matchesSite;
     });
-  }, [catalogs, search, catalogCategoryFilter, selectedSiteId, onlyWithStockInSite, siteInventoryMap]);
+  }, [catalogs, search, catalogCategoryFilter, selectedSiteId, onlyWithStockInSite, siteInventoryMap, situacao, situacaoMatch]);
 
   const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalogs.length / catalogItemsPerPage));
   const paginatedCatalogs = filteredCatalogs.slice(
@@ -516,6 +540,17 @@ export function CatalogTab({
             </button>
           </div>
         </div>
+
+        <StatusFilter
+          label="Filtrar por situação do EPI"
+          value={situacao}
+          onChange={value => { setSituacao(value); setCatalogCurrentPage(1); }}
+          options={[
+            { value: 'todos', label: 'Todas as situações', count: catalogs.length },
+            { value: 'ca', label: 'CA vencido ou a vencer', count: situacaoMatch.caCount },
+            { value: 'estoque', label: 'Esgotado ou abaixo do mínimo', count: situacaoMatch.estoqueCount },
+          ]}
+        />
 
         {/* Linha de Busca e Categoria */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/60">
