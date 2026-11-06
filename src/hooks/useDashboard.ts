@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { computeCompliance, isActiveWorker, ComplianceSummary } from '../lib/compliance';
 
 export interface DashboardDeliveryItem {
   id: string;
@@ -23,23 +24,11 @@ export interface MonthlyDeliveryStat {
   count: number;
 }
 
-export interface DashboardAlert {
-  id: string;
-  type: 'CA_EXPIRATION' | 'CRITICAL_STOCK' | 'SCHEDULED_REPLACEMENT' | 'PENDING_ORDER' | 'ASO_EXPIRATION';
-  severity: 'CRITICAL' | 'WARNING' | 'INFO';
-  title: string;
-  description: string;
-  badgeColor: string;
-  bgLight: string;
-}
-
 export interface DashboardStats {
   activeWorkers: number;
   inactiveWorkers: number;
   totalWorkers: number;
   inUse: number;
-  expiringEpis: number;
-  criticalStock: number;
   totalStock: number;
   returnedMonth: number;
   lostCount: number;
@@ -73,7 +62,9 @@ export function useDashboard() {
       const [
         catalogsReq,
         workersReq,
-        allAssignmentsReq
+        allAssignmentsReq,
+        asosReq,
+        trainingsReq
       ] = await Promise.allSettled([
         supabase
           .from('epi_catalog')
@@ -88,14 +79,31 @@ export function useDashboard() {
           .select('id, assigned_at, returned_at, condition_on_return, quantity, catalog:epi_catalog!catalog_id(id, name, category, ca_number, lifespan_days, deleted_at), worker:workers!worker_id(id, full_name, reference_photo_url, deleted_at)')
           .is('deleted_at', null)
           .order('assigned_at', { ascending: false })
-          .limit(300)
+          .limit(300),
+        // shortcut: traz o histórico inteiro e filtra o mais recente no cliente; passa do limite de 1000 linhas do PostgREST com volume real, então mover para uma view/RPC.
+        supabase.from('worker_asos').select('worker_id, valid_until'),
+        supabase.from('worker_trainings').select('worker_id, training_id, valid_until')
       ]);
 
       const getData = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.data || [] : [];
+      const failed = (req: PromiseSettledResult<any>) => req.status === 'rejected' || !!req.value.error;
+      // Fonte que falhou vira "indisponível" na tela, nunca zero: lista vazia de ASOs viraria "todos sem ASO".
+      const complianceUnavailable = {
+        catalog: failed(catalogsReq),
+        aso: failed(workersReq) || failed(asosReq),
+        trainings: failed(workersReq) || failed(trainingsReq)
+      };
 
       const catalogs = getData(catalogsReq);
       const workers = getData(workersReq);
       const rawAssignments = getData(allAssignmentsReq);
+      const compliance: ComplianceSummary = computeCompliance({
+        today: now,
+        catalogs,
+        workers,
+        asos: getData(asosReq),
+        trainings: getData(trainingsReq)
+      });
 
       // Filtra apenas atribuições cujo colaborador e catálogo continuam ativos (não deletados)
       const assignments = rawAssignments.filter((a: any) => {
@@ -107,10 +115,7 @@ export function useDashboard() {
       });
 
       // Contagem real de trabalhadores
-      const activeWorkers = workers.filter((w: any) => {
-        const st = (w.status || 'ACTIVE').toUpperCase();
-        return st === 'ACTIVE' || st === 'ATIVO';
-      }).length;
+      const activeWorkers = workers.filter((w: any) => isActiveWorker(w.status)).length;
 
       const inactiveWorkers = workers.filter((w: any) => {
         const st = (w.status || '').toUpperCase();
@@ -138,25 +143,6 @@ export function useDashboard() {
         const cond = (a.condition_on_return || '').toUpperCase();
         return cond === 'LOST' || cond === 'EXTRAVIADO' || cond === 'PERDA';
       }).length;
-
-      // Estoque crítico (abaixo do mínimo definido pelo usuário no catálogo)
-      // Se não houver itens cadastrados no catálogo, o estoque crítico é 0
-      const criticalCatalogs = catalogs.length > 0 
-        ? catalogs.filter((item: any) => {
-            const min = item.minimum_stock ?? item.min_stock ?? 10;
-            return (item.current_stock ?? 0) <= min;
-          })
-        : [];
-      const criticalStock = criticalCatalogs.length;
-
-      // EPIs vencendo nos próximos 30 dias (baseado na data de validade do CA do catálogo ativo)
-      const expiringCatalogs = catalogs.filter((item: any) => {
-        if (!item.ca_validity) return false;
-        const exp = new Date(item.ca_validity);
-        const days = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return days <= 30 && days >= -365;
-      });
-      const expiringEpis = expiringCatalogs.length;
 
       // Retenção média
       let totalDaysHeld = 0;
@@ -237,56 +223,11 @@ export function useDashboard() {
         };
       });
 
-      // Alertas Dinâmicos baseados estritamente na realidade do sistema
-      const alerts: DashboardAlert[] = [];
-
-      if (expiringEpis > 0) {
-        alerts.push({
-          id: 'alert-ca',
-          type: 'CA_EXPIRATION',
-          severity: 'WARNING',
-          title: `${expiringEpis} EPI(s) com CA vencendo`,
-          description: 'Certificados de Aprovação (CA) expiram nos próximos 30 dias.',
-          badgeColor: 'text-amber-500 border-amber-500/30',
-          bgLight: 'bg-amber-500/10'
-        });
-      }
-
-      if (criticalStock > 0) {
-        const criticalNames = criticalCatalogs.slice(0, 3).map((c: any) => c.name).join(', ');
-        alerts.push({
-          id: 'alert-stock',
-          type: 'CRITICAL_STOCK',
-          severity: 'CRITICAL',
-          title: `${criticalStock} item(ns) com estoque crítico`,
-          description: `Abaixo da cota mínima: ${criticalNames}`,
-          badgeColor: 'text-rose-500 border-rose-500/30',
-          bgLight: 'bg-rose-500/10'
-        });
-      }
-
-      // Se não houver nenhum alerta crítico, exibe status de conformidade
-      if (alerts.length === 0) {
-        alerts.push({
-          id: 'alert-ok',
-          type: 'SCHEDULED_REPLACEMENT',
-          severity: 'INFO',
-          title: 'Operação em conformidade',
-          description: catalogs.length === 0 
-            ? 'Inventário inicial aguardando novos cadastros de EPIs no almoxarifado.'
-            : 'Nenhum estoque crítico ou vencimento iminente de CA detectado.',
-          badgeColor: 'text-emerald-500 border-emerald-500/30',
-          bgLight: 'bg-emerald-500/10'
-        });
-      }
-
       const stats: DashboardStats = {
         activeWorkers,
         inactiveWorkers,
         totalWorkers,
         inUse,
-        expiringEpis,
-        criticalStock,
         totalStock,
         returnedMonth,
         lostCount,
@@ -298,7 +239,8 @@ export function useDashboard() {
         categoryDistribution,
         monthlyDeliveries,
         recentDeliveries,
-        alerts
+        compliance,
+        complianceUnavailable
       };
     }
   });

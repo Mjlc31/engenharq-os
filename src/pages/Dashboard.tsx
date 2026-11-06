@@ -9,7 +9,7 @@ import { KpiGridWidget } from '../components/features/dashboard/KpiGridWidget';
 import { CategoryDistributionWidget } from '../components/features/dashboard/CategoryDistributionWidget';
 import { MonthlyDeliveriesWidget } from '../components/features/dashboard/MonthlyDeliveriesWidget';
 import { RecentDeliveriesWidget } from '../components/features/dashboard/RecentDeliveriesWidget';
-import { DashboardAlertsWidget } from '../components/features/dashboard/DashboardAlertsWidget';
+import { ActionRequiredWidget } from '../components/features/dashboard/ActionRequiredWidget';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -45,8 +45,6 @@ export function Dashboard() {
     inactiveWorkers: 0,
     totalWorkers: 0,
     inUse: 0,
-    expiringEpis: 0,
-    criticalStock: 0,
     totalStock: 0,
     returnedMonth: 0,
     lostCount: 0,
@@ -56,7 +54,6 @@ export function Dashboard() {
   const categoryDistribution = data?.categoryDistribution || [];
   const monthlyDeliveries = data?.monthlyDeliveries || [];
   const recentDeliveries = data?.recentDeliveries || [];
-  const alerts = data?.alerts || [];
 
   const todayFormatted = format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 
@@ -81,8 +78,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* 8 Cards de KPIs Principais (Imagens 1 e 4) */}
-      <KpiGridWidget stats={stats} />
+      <ActionRequiredWidget compliance={data?.compliance} unavailable={data?.complianceUnavailable} loading={loading} />
+
+      <KpiGridWidget stats={stats} loading={loading} />
 
       {/* Painel Médio: EPIs por Categoria & Entregas por Mês */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -90,11 +88,7 @@ export function Dashboard() {
         <MonthlyDeliveriesWidget data={monthlyDeliveries} />
       </div>
 
-      {/* Painel Inferior: Últimas Entregas & Alertas Operacionais */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RecentDeliveriesWidget deliveries={recentDeliveries} />
-        <DashboardAlertsWidget alerts={alerts} />
-      </div>
+      <RecentDeliveriesWidget deliveries={recentDeliveries} />
     </motion.div>
   );
 }
