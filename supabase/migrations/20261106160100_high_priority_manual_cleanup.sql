@@ -3,7 +3,20 @@
 -- RODAR MANUALMENTE NO SQL EDITOR: o MCP do Supabase recusa DROP/REVOKE/UPDATE.
 -- As proteções já valem sem este arquivo (triggers + policies restritivas); aqui só se
 -- remove o que ficou obsoleto e se fecha o resto.
+-- Inclui a parte 2 pendente de 20261106120000_epi_profile_user_management.
+-- Depois de rodar, conferir com supabase/tests/20261106_direct_write_attacks.sql.
 -- =====================================================================================
+
+-- Parte 2 de 20261106120000: anon sem EXECUTE, policy antiga de users e perfil do Thiago
+REVOKE ALL ON FUNCTION public.current_user_role() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.can_manage_role(user_role) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_create_user(text, text, text, user_role, text, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.admin_deactivate_user(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.complete_almoxarifado_order(uuid, text, text, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.cancel_or_delete_almoxarifado_order(uuid, text, text) FROM PUBLIC, anon;
+DROP POLICY IF EXISTS "Admins can update users" ON public.users;
+UPDATE public.users SET role = 'SAFETY_ENGINEER', updated_at = NOW()
+WHERE email = 'thiagolima@engenharq.com.br' AND role = 'ADMIN';
 
 -- Triggers antigos de Kardex (já inertes)
 DROP TRIGGER IF EXISTS trg_log_epi_assignment ON public.epi_assignments;
