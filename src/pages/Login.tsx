@@ -162,7 +162,7 @@ export function Login() {
           className="relative z-10 flex items-center gap-4 text-sm font-mono text-zinc-600 uppercase tracking-widest"
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>Industrial Security Protocol • v2.4.0</span>
+          <span>Industrial Security Protocol</span>
         </motion.div>
       </div>
 

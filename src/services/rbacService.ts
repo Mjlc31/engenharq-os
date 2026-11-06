@@ -31,6 +31,14 @@ export const ALMOXARIFADO_PERMISSIONS: UserPermissions = {
   configuracoes: { gerenciar_usuarios: false }
 };
 
+export const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: 'Administrador',
+  SAFETY_ENGINEER: 'Engenheiro SST',
+  SITE_MANAGER: 'Encarregado / Obra',
+  ALMOXARIFADO: 'Almoxarifado',
+  VIEWER: 'Visualizador'
+};
+
 export const rbacService = {
   async fetchUsers() {
     const { data, error } = await supabase

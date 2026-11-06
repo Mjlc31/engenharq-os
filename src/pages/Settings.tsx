@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthProvider';
 import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
-import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMISSIONS } from '../services/rbacService';
+import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMISSIONS, ROLE_LABELS } from '../services/rbacService';
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { SystemSettingsForm } from '../components/features/settings/SystemSettingsForm';
@@ -82,7 +82,7 @@ export function Settings() {
   const openEditModal = (u: User) => {
     setEditingUser(u);
     setTempRole(u.role);
-    setTempCustomRole(u.custom_role || roleLabels[u.role] || '');
+    setTempCustomRole(u.custom_role || ROLE_LABELS[u.role] || '');
     setTempFullName(u.full_name || '');
     setTempPermissions(u.permissions || (u.role === 'ADMIN' ? ADMIN_PERMISSIONS : DEFAULT_PERMISSIONS));
   };
@@ -186,14 +186,6 @@ export function Settings() {
     }
   };
 
-  const roleLabels: Record<UserRole, string> = {
-    ADMIN: 'Administrador',
-    SAFETY_ENGINEER: 'Engenheiro SST',
-    SITE_MANAGER: 'Encarregado / Obra',
-    ALMOXARIFADO: 'Almoxarifado',
-    VIEWER: 'Visualizador'
-  };
-
   const roleColors: Record<UserRole, string> = {
     ADMIN: 'bg-primary/10 text-primary border-primary/20',
     SAFETY_ENGINEER: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -209,7 +201,7 @@ export function Settings() {
       (u.full_name && u.full_name.toLowerCase().includes(q)) ||
       (u.email && u.email.toLowerCase().includes(q)) ||
       (u.custom_role && u.custom_role.toLowerCase().includes(q)) ||
-      (roleLabels[u.role] && roleLabels[u.role].toLowerCase().includes(q))
+      (ROLE_LABELS[u.role] && ROLE_LABELS[u.role].toLowerCase().includes(q))
     );
   });
 
@@ -257,7 +249,7 @@ export function Settings() {
             </div>
             <h3 className="font-bold text-foreground text-lg truncate">{session?.user?.email}</h3>
             <span className={`inline-block mt-2 px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider border ${role ? roleColors[role as UserRole] || 'bg-zinc-500/10 text-zinc-400' : 'bg-zinc-500/10 text-zinc-400'}`}>
-              {role ? roleLabels[role as UserRole] || role : 'Visualizador'}
+              {role ? ROLE_LABELS[role as UserRole] || role : 'Visualizador'}
             </span>
             <div className="mt-4 pt-4 border-t border-border text-xs text-muted text-left space-y-2">
               <div><strong className="text-foreground">Sessão:</strong> Ativa</div>
@@ -350,7 +342,7 @@ export function Settings() {
                           })
                           .map(([key]) => key);
 
-                        const displayedCustomRole = u.custom_role || roleLabels[u.role] || u.role;
+                        const displayedCustomRole = u.custom_role || ROLE_LABELS[u.role] || u.role;
                         const isCurrentUser = u.id === session?.user?.id;
 
                         return (
@@ -374,7 +366,7 @@ export function Settings() {
                             </td>
                             <td className="px-6 py-4">
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${roleColors[u.role] || 'bg-zinc-500/10 text-zinc-400'}`}>
-                                {roleLabels[u.role] || u.role}
+                                {ROLE_LABELS[u.role] || u.role}
                               </span>
                             </td>
                             <td className="px-6 py-4">
