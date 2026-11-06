@@ -1,6 +1,6 @@
 -- =====================================================================================
 -- Limpeza destrutiva dos itens ALTOS (complementa 20261106160000_high_priority_stock_kardex_rls).
--- RODAR MANUALMENTE NO SQL EDITOR: o MCP do Supabase recusa DROP/REVOKE/UPDATE.
+-- Aplicada pelo MCP em 2026-11-06, depois que a recusa de DROP/REVOKE/UPDATE foi corrigida.
 -- As proteções já valem sem este arquivo (triggers + policies restritivas); aqui só se
 -- remove o que ficou obsoleto e se fecha o resto.
 -- Inclui a parte 2 pendente de 20261106120000_epi_profile_user_management.

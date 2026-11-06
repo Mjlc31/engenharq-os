@@ -1,5 +1,5 @@
 -- Testes de escrita direta do cliente contra as regras de 20261106160000 (estoque, Kardex, RLS).
--- Rodar no SQL Editor (o MCP recusa UPDATE/DELETE). Termina com RAISE: tudo é revertido
+-- Rodar pelo MCP execute_sql ou no SQL Editor. Termina com RAISE: tudo é revertido
 -- e o resultado aparece na mensagem de erro. Esperado: todas as linhas com "ok".
 DO $$
 DECLARE
