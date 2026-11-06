@@ -32,7 +32,7 @@ export function Assets() {
             onClick={() => setActiveTab('catalog')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all ${
               activeTab === 'catalog'
-                ? 'bg-primary text-white shadow-sm font-semibold'
+                ? 'bg-primary-dark text-white shadow-sm font-semibold'
                 : 'text-muted hover:text-foreground'
             }`}
           >
@@ -43,7 +43,7 @@ export function Assets() {
             onClick={() => setActiveTab('tracking')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all ${
               activeTab === 'tracking'
-                ? 'bg-primary text-white shadow-sm font-semibold'
+                ? 'bg-primary-dark text-white shadow-sm font-semibold'
                 : 'text-muted hover:text-foreground'
             }`}
           >

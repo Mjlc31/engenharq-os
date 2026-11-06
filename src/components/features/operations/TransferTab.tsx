@@ -130,7 +130,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-xs font-semibold text-muted">EPI / Modelo *</label>
-              <select 
+              <select aria-label="EPI / Modelo" 
                 required 
                 value={selectedCatalogId} 
                 onChange={e => setSelectedCatalogId(e.target.value)} 
@@ -147,7 +147,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted">Quantidade a Transferir *</label>
-              <input 
+              <input aria-label="Quantidade a Transferir" 
                 type="number" 
                 min="1" 
                 required 
@@ -161,7 +161,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted">Obra de Origem (Remetente) *</label>
-              <select 
+              <select aria-label="Obra de Origem (Remetente)" 
                 required 
                 value={originSiteId} 
                 onChange={e => setOriginSiteId(e.target.value)} 
@@ -174,7 +174,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-muted">Obra de Destino (Recebedor) *</label>
-              <select 
+              <select aria-label="Obra de Destino (Recebedor)" 
                 required 
                 value={destinationSiteId} 
                 onChange={e => setDestinationSiteId(e.target.value)} 
@@ -188,7 +188,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted">Observações / Motivo da Transferência</label>
-            <textarea 
+            <textarea aria-label="Observações / Motivo da Transferência" 
               rows={2} 
               value={notes} 
               onChange={e => setNotes(e.target.value)} 
@@ -201,7 +201,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
             <button 
               type="submit" 
               disabled={sending || !selectedCatalogId || !originSiteId || !destinationSiteId || quantity < 1} 
-              className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center gap-2 text-sm shadow-md"
+              className="px-6 py-2.5 bg-primary-dark text-primary-foreground font-semibold rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center gap-2 text-sm shadow-md"
             >
               <Send className="w-4 h-4" />
               {sending ? 'Despachando...' : 'Confirmar Envio (Em Trânsito)'}
@@ -317,7 +317,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
                   Ao confirmar, o lote de <strong>{receivingTransfer.quantity} un</strong> do EPI <strong>{receivingTransfer.catalog?.name}</strong> será creditado no estoque da obra <strong>{receivingTransfer.destination_site?.name}</strong>.
                 </p>
               </div>
-              <button onClick={() => setReceivingTransfer(null)} className="text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={() => setReceivingTransfer(null)} className="text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -325,7 +325,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
             <div className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Nome do Responsável pelo Recebimento *</label>
-                <input 
+                <input aria-label="Nome do Responsável pelo Recebimento" 
                   type="text" 
                   required
                   value={receiverName} 

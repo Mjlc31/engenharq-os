@@ -79,14 +79,14 @@ export function ReportPreviewModal({
             {onDownloadPdf && (
               <button
                 onClick={onDownloadPdf}
-                className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-primary-dark hover:bg-primary/90 text-primary-foreground text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Gerar PDF
               </button>
             )}
 
-            <button
+            <button aria-label="Fechar"
               onClick={onClose}
               className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors ml-2 cursor-pointer"
             >
@@ -99,7 +99,7 @@ export function ReportPreviewModal({
         <div className="p-4 border-b border-border bg-surface flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input
+            <input aria-label="Buscar nesta pré-visualização"
               type="text"
               placeholder="Buscar nesta pré-visualização..."
               value={searchTerm}

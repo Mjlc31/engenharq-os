@@ -18,8 +18,8 @@ export function RealTimeLogWidget({ recentMovements, loading }: RealTimeLogWidge
     <motion.div variants={itemVariants} className="bg-surface border border-border rounded-xl flex flex-col overflow-hidden shadow-sm max-h-[350px] lg:max-h-none">
       <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30 shrink-0">
           <h3 className="text-xs uppercase font-bold tracking-widest text-muted">Log Recente</h3>
-          <span className="text-[9px] font-bold text-primary animate-pulse flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary" /> LIVE
+          <span className="text-[11px] font-bold text-primary animate-pulse flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary-dark" /> LIVE
           </span>
       </div>
       <div className="flex-1 overflow-y-auto p-0">
@@ -45,15 +45,15 @@ export function RealTimeLogWidget({ recentMovements, loading }: RealTimeLogWidge
                     <div>
                       <div className="flex items-center gap-2">
                         {movement.returned_at ? (
-                          <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold">DEVOLUÇÃO</span>
+                          <span className="text-[11px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold">DEVOLUÇÃO</span>
                         ) : (
-                          <span className="text-[9px] bg-primary/20 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-bold">ENTREGA</span>
+                          <span className="text-[11px] bg-primary/20 text-primary border border-primary/20 px-1.5 py-0.5 rounded font-bold">ENTREGA</span>
                         )}
                         <span className="text-xs font-bold text-foreground">{epiInfo?.tracking_code}</span>
                       </div>
-                      <p className="text-[10px] text-muted font-mono mt-1 truncate max-w-[150px]">{workerInfo?.full_name}</p>
+                      <p className="text-[11px] text-muted font-mono mt-1 truncate max-w-[150px]">{workerInfo?.full_name}</p>
                     </div>
-                    <div className="text-[10px] text-zinc-500 font-mono">
+                    <div className="text-[11px] text-zinc-500 font-mono">
                       {format(new Date(movement.returned_at || movement.assigned_at), 'HH:mm')}
                     </div>
                   </motion.div>

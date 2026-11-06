@@ -277,25 +277,25 @@ export function Sites() {
               <h3 className="text-lg font-semibold border-b border-border pb-2">Informações Gerais</h3>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Razão Social *</label>
-                <input type="text" value={compName} onChange={e => setCompName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Razão Social" type="text" value={compName} onChange={e => setCompName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Nome Fantasia</label>
-                <input type="text" value={compTradeName} onChange={e => setCompTradeName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Nome Fantasia" type="text" value={compTradeName} onChange={e => setCompTradeName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">CNPJ *</label>
-                  <input type="text" value={compCnpj} onChange={e => setCompCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                  <input aria-label="CNPJ" type="text" value={compCnpj} onChange={e => setCompCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Insc. Estadual</label>
-                  <input type="text" value={compIE} onChange={e => setCompIE(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                  <input aria-label="Insc. Estadual" type="text" value={compIE} onChange={e => setCompIE(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Representante Legal</label>
-                <input type="text" value={compRep} onChange={e => setCompRep(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Representante Legal" type="text" value={compRep} onChange={e => setCompRep(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
             </div>
 
@@ -303,21 +303,21 @@ export function Sites() {
               <h3 className="text-lg font-semibold border-b border-border pb-2">Contato e Endereço</h3>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Endereço Completo</label>
-                <input type="text" value={compAddress} onChange={e => setCompAddress(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Endereço Completo" type="text" value={compAddress} onChange={e => setCompAddress(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Telefone Comercial</label>
-                  <input type="text" value={compPhone} onChange={e => setCompPhone(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                  <input aria-label="Telefone Comercial" type="text" value={compPhone} onChange={e => setCompPhone(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">E-mail Corporativo</label>
-                  <input type="email" value={compEmail} onChange={e => setCompEmail(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                  <input aria-label="E-mail Corporativo" type="email" value={compEmail} onChange={e => setCompEmail(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Site</label>
-                <input type="url" value={compWebsite} onChange={e => setCompWebsite(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Site" type="url" value={compWebsite} onChange={e => setCompWebsite(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
             </div>
           </div>
@@ -326,7 +326,7 @@ export function Sites() {
             <button 
               onClick={handleSaveCompany} 
               disabled={!compName || !compCnpj || savingCompany} 
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-md font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="bg-primary-dark text-primary-foreground px-6 py-2 rounded-md font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {savingCompany ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {savingCompany ? 'Salvando...' : 'Salvar Dados'}
@@ -341,13 +341,13 @@ export function Sites() {
     <div className="flex-1 flex flex-col gap-4">
       <div className="relative max-w-md w-full">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input type="text" placeholder="Buscar por código ou nome..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary text-foreground" />
+        <input aria-label="Buscar por código ou nome" type="text" placeholder="Buscar por código ou nome..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-primary text-foreground" />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-muted font-medium bg-background px-3 py-1.5 rounded-full border border-border">
           <Filter className="w-4 h-4" /> Filtros
         </div>
-        <select
+        <select aria-label="Filtrar por status"
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
           className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer min-w-[150px]"
@@ -356,7 +356,7 @@ export function Sites() {
           <option value="ACTIVE">Ativa</option>
           <option value="FINISHED">Finalizada</option>
         </select>
-        <select
+        <select aria-label="Filtrar por cidade"
           value={cityFilter}
           onChange={e => setCityFilter(e.target.value)}
           className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary appearance-none cursor-pointer min-w-[150px]"
@@ -366,7 +366,7 @@ export function Sites() {
         </select>
       </div>
     </div>
-    <button onClick={() => setIsAddingSite(true)} className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
+    <button onClick={() => setIsAddingSite(true)} className="bg-primary-dark text-primary-foreground px-4 py-2 rounded-md font-medium text-sm flex items-center gap-2">
               + Nova Obra
             </button>
           </div>
@@ -423,18 +423,18 @@ export function Sites() {
           <div className="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <h2 className="text-xl font-bold text-foreground">{editingSite ? 'Editar Obra' : 'Nova Obra'}</h2>
-              <button onClick={resetSiteForm} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button aria-label="Fechar" onClick={resetSiteForm} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Código</label>
-                  <input type="text" value={siteCode} onChange={e => setSiteCode(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} className="w-full bg-background border border-border rounded-md px-3 py-2" placeholder="Ex: OB01" />
+                  <input aria-label="Código" type="text" value={siteCode} onChange={e => setSiteCode(e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} className="w-full bg-background border border-border rounded-md px-3 py-2" placeholder="Ex: OB01" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Status</label>
-                  <select value={siteStatus} onChange={e => setSiteStatus(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2">
+                  <select aria-label="Status" value={siteStatus} onChange={e => setSiteStatus(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2">
                     <option value="ACTIVE">Ativa</option>
                     <option value="FINISHED">Finalizada</option>
                   </select>
@@ -443,45 +443,45 @@ export function Sites() {
               
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Nome da Obra *</label>
-                <input type="text" value={siteName} onChange={e => setSiteName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                <input aria-label="Nome da Obra" type="text" value={siteName} onChange={e => setSiteName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Responsável (Eng. Residente)</label>
-                  <input type="text" value={siteManager} onChange={e => setSiteManager(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="Responsável (Eng. Residente)" type="text" value={siteManager} onChange={e => setSiteManager(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Cidade / UF</label>
-                  <input type="text" value={siteCity} onChange={e => setSiteCity(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="Cidade / UF" type="text" value={siteCity} onChange={e => setSiteCity(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">CNPJ Específico (se houver)</label>
-                  <input type="text" value={siteCnpj} onChange={e => setSiteCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="CNPJ Específico (se houver)" type="text" value={siteCnpj} onChange={e => setSiteCnpj(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">CNO</label>
-                  <input type="text" value={siteCno} onChange={e => setSiteCno(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="CNO" type="text" value={siteCno} onChange={e => setSiteCno(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Data de Início</label>
-                  <input type="date" value={siteStart} onChange={e => setSiteStart(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="Data de Início" type="date" value={siteStart} onChange={e => setSiteStart(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Previsão de Término</label>
-                  <input type="date" value={siteEnd} onChange={e => setSiteEnd(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                  <input aria-label="Previsão de Término" type="date" value={siteEnd} onChange={e => setSiteEnd(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
                 </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Endereço</label>
-                <input type="text" value={siteAddress} onChange={e => setSiteAddress(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
+                <input aria-label="Endereço" type="text" value={siteAddress} onChange={e => setSiteAddress(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2" />
               </div>
               
               <div>
@@ -499,7 +499,7 @@ export function Sites() {
             
             <div className="p-6 border-t border-border flex justify-end gap-3">
               <button onClick={resetSiteForm} className="px-4 py-2 bg-surface hover:bg-surface-hover text-foreground rounded-md border border-border">Cancelar</button>
-              <button onClick={handleSaveSite} disabled={!siteName} className="px-4 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90">
+              <button onClick={handleSaveSite} disabled={!siteName} className="px-4 py-2 bg-primary-dark text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90">
                 Salvar Obra
               </button>
             </div>

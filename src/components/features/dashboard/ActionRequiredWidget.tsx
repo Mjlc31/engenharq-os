@@ -135,7 +135,7 @@ export function ActionRequiredWidget({ compliance, unavailable, loading }: Actio
             <Link
               key={cell.title}
               to={cell.href}
-              className="group bg-surface p-5 flex flex-col gap-2 min-w-0 hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+              className="group bg-surface p-5 flex flex-col gap-2 min-w-0 hover:bg-surface-hover transition-colors -outline-offset-2"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-sm font-semibold text-foreground">

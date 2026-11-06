@@ -79,7 +79,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-surface-hover/30">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <button 
+          <button aria-label="Fechar" 
             type="button"
             onClick={onClose}
             disabled={isSaving}
@@ -137,7 +137,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
                       <button 
                         onClick={handleCapture}
                         disabled={isSaving}
-                        className="bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg border-4 border-background transition-transform active:scale-95 disabled:opacity-50"
+                        className="bg-primary-dark hover:bg-primary-darker text-white rounded-full p-4 shadow-lg border-4 border-background transition-transform active:scale-95 disabled:opacity-50"
                       >
                         <Camera className="w-6 h-6" />
                       </button>
@@ -191,7 +191,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-background bg-primary hover:bg-primary-dark rounded-md transition-colors shadow-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-background bg-primary-dark hover:bg-primary-darker rounded-md transition-colors shadow-sm disabled:opacity-50"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {isSaving ? 'Salvando...' : 'Confirmar'}

@@ -30,7 +30,7 @@ export function MonthlyDeliveriesWidget({ data }: MonthlyDeliveriesWidgetProps) 
                   initial={{ height: 0 }}
                   animate={{ height: `${heightPct}%` }}
                   transition={{ duration: 0.8, delay: idx * 0.1, ease: 'easeOut' }}
-                  className="w-full bg-primary/80 hover:bg-primary transition-colors rounded-t-lg"
+                  className="w-full bg-primary/80 hover:bg-primary-dark transition-colors rounded-t-lg"
                 />
               </div>
               <span className="text-xs font-medium text-muted mt-1">{item.month}</span>

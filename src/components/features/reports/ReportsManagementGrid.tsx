@@ -469,7 +469,7 @@ export function ReportsManagementGrid() {
       title: 'EPIs Vencendo',
       description: 'Equipamentos com CA próximo ao vencimento',
       icon: Calendar,
-      badgeColor: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
+      badgeColor: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
     },
     {
       id: 'forecast',
@@ -496,7 +496,7 @@ export function ReportsManagementGrid() {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-muted">Filial</label>
             <div className="relative">
-              <select
+              <select aria-label="Filial"
                 value={siteFilter}
                 onChange={(e) => setSiteFilter(e.target.value)}
                 className="w-full h-10 px-3 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
@@ -516,7 +516,7 @@ export function ReportsManagementGrid() {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-muted">Setor</label>
             <div className="relative">
-              <select
+              <select aria-label="Setor"
                 value={sectorFilter}
                 onChange={(e) => setSectorFilter(e.target.value)}
                 className="w-full h-10 px-3 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
@@ -536,7 +536,7 @@ export function ReportsManagementGrid() {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-muted">Data Início</label>
             <div className="relative">
-              <input
+              <input aria-label="Data Início"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -549,7 +549,7 @@ export function ReportsManagementGrid() {
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-muted">Data Fim</label>
             <div className="relative">
-              <input
+              <input aria-label="Data Fim"
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}

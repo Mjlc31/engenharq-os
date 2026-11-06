@@ -145,7 +145,7 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
             <div className="w-full mt-4 space-y-3">
               <div className="relative">
                 <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
-                <input 
+                <input aria-label="Senha" 
                   type="password" 
                   value={password}
                   onChange={(e) => {
@@ -171,7 +171,7 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
                 </button>
                 <button 
                   onClick={handlePasswordSubmit}
-                  className="flex-1 bg-primary hover:bg-primary-dark text-white py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                  className="flex-1 bg-primary-dark hover:bg-primary-darker text-white py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
                 >
                   Autorizar
                 </button>
@@ -275,7 +275,7 @@ export function BiometricScanner({ workerName, referencePhotoUrl, onMatchSuccess
                 <span className="text-xs font-bold font-mono text-muted">{failCount}/3</span>
              </div>
              <div>
-               <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Auditoria de Segurança</p>
+               <p className="text-[11px] uppercase tracking-widest font-bold text-muted">Auditoria de Segurança</p>
                <p className="text-xs text-foreground mt-0.5">Autorizando: <span className="font-bold">{workerName}</span></p>
              </div>
            </div>

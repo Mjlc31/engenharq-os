@@ -27,7 +27,6 @@ export function StatusFilter<T extends string>({ label, options, value, onChange
             onClick={() => onChange(option.value)}
             className={cn(
               'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
               active ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-surface text-muted hover:text-foreground hover:bg-surface-hover'
             )}
           >

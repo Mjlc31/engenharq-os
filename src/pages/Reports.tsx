@@ -239,7 +239,7 @@ export function Reports() {
               <div className="space-y-1.5 md:col-span-2">
                 <label className="text-xs font-semibold text-muted">Colaborador</label>
                 <div className="relative">
-                  <select
+                  <select aria-label="Colaborador"
                     value={selectedWorkerId}
                     onChange={(e) => handleSelectWorker(e.target.value)}
                     className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
@@ -261,7 +261,7 @@ export function Reports() {
                 <label className="text-xs font-semibold text-muted">Filtro Rápido</label>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                  <input
+                  <input aria-label="Filtro Rápido"
                     type="text"
                     placeholder="Nome, CPF ou matrícula..."
                     value={workerSearchTerm}
@@ -327,7 +327,7 @@ export function Reports() {
                   <div className="border border-border rounded-lg overflow-hidden">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-background border-b border-border font-semibold text-muted uppercase text-[10px] tracking-wider">
+                        <tr className="bg-background border-b border-border font-semibold text-muted uppercase text-[11px] tracking-wider">
                           <th className="p-3 w-10 text-center">Sel.</th>
                           <th className="p-3">Equipamento (EPI)</th>
                           <th className="p-3 text-center">C.A.</th>
@@ -364,7 +364,7 @@ export function Reports() {
                                 {a.assigned_at ? format(new Date(a.assigned_at), 'dd/MM/yyyy') : '-'}
                               </td>
                               <td className="p-3 text-center">
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
                                   a.returned_at ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                                 }`}>
                                   {a.returned_at ? 'Devolvido' : 'Em Posse'}

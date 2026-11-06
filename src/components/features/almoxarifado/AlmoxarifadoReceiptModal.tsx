@@ -52,7 +52,7 @@ export function AlmoxarifadoReceiptModal({ order, onClose }: AlmoxarifadoReceipt
               <p className="text-xs text-muted">Termo de recebimento e entrega de balcão</p>
             </div>
           </div>
-          <button
+          <button aria-label="Fechar"
             onClick={onClose}
             className="text-muted hover:text-foreground p-1 rounded-lg bg-surface-hover transition-colors"
           >
@@ -194,7 +194,7 @@ export function AlmoxarifadoReceiptModal({ order, onClose }: AlmoxarifadoReceipt
           </button>
           <button
             onClick={handlePrint}
-            className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-sm shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl bg-primary-dark hover:bg-primary-darker text-white font-bold text-sm shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimir Cupom / Termo</span>

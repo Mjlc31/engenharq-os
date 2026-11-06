@@ -49,7 +49,7 @@ export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn 
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted">Funcionário</label>
-          <select value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
+          <select aria-label="Funcionário" value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
             <option value="">Selecione o Trabalhador</option>
             {workers.map(w => <option key={w.id} value={w.id}>{w.full_name}</option>)}
           </select>
@@ -79,7 +79,7 @@ export function ReturnForm({ workers, setIsSignatureModalOpen, setPendingReturn 
                     <td className="px-4 py-2">
                       <button 
                         onClick={() => handleDevolucao(a.id)}
-                        className="px-3 py-1 bg-primary text-background rounded-md hover:bg-primary-dark transition-colors font-medium text-xs"
+                        className="px-3 py-1 bg-primary-dark text-background rounded-md hover:bg-primary-darker transition-colors font-medium text-xs"
                       >
                         Devolver
                       </button>

@@ -145,7 +145,7 @@ export function AlmoxarifadoHistoryTab({
     
     let colorClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25';
     if (diffSec > 300) {
-      colorClass = 'text-rose-400 bg-rose-500/10 border-rose-500/25';
+      colorClass = 'text-red-400 bg-red-500/10 border-red-500/25';
     } else if (diffSec > 180) {
       colorClass = 'text-amber-400 bg-amber-500/10 border-amber-500/25';
     }
@@ -257,7 +257,7 @@ export function AlmoxarifadoHistoryTab({
           {/* Search Box */}
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
-            <input
+            <input aria-label="Buscar colaborador, matrícula, EPI ou #comanda"
               type="text"
               placeholder="Buscar colaborador, matrícula, EPI ou #comanda..."
               value={searchTerm}
@@ -269,7 +269,7 @@ export function AlmoxarifadoHistoryTab({
           {/* Obra Filter */}
           <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1.5">
             <Building2 className="w-3.5 h-3.5 text-muted shrink-0" />
-            <select
+            <select aria-label="Filtrar por obra"
               value={selectedSiteId}
               onChange={e => onSelectSiteId(e.target.value)}
               className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
@@ -284,7 +284,7 @@ export function AlmoxarifadoHistoryTab({
           {/* Status Filter */}
           <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1.5">
             <Filter className="w-3.5 h-3.5 text-muted shrink-0" />
-            <select
+            <select aria-label="Filtrar por status"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
               className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
@@ -299,7 +299,7 @@ export function AlmoxarifadoHistoryTab({
           {/* Period Filter */}
           <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 py-1.5">
             <Calendar className="w-3.5 h-3.5 text-muted shrink-0" />
-            <select
+            <select aria-label="Filtrar por período"
               value={periodFilter}
               onChange={e => setPeriodFilter(e.target.value as any)}
               className="bg-transparent text-xs text-foreground font-medium focus:outline-none cursor-pointer"
@@ -428,7 +428,7 @@ export function AlmoxarifadoHistoryTab({
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-foreground truncate">{order.worker?.full_name || 'Desconhecido'}</p>
-                            <p className="text-[10px] text-muted truncate">
+                            <p className="text-[11px] text-muted truncate">
                               Mat: <span className="font-mono text-foreground">{order.worker?.registration_number || 'S/N'}</span> • {order.worker?.current_role || 'Função'}
                             </p>
                           </div>
@@ -446,7 +446,7 @@ export function AlmoxarifadoHistoryTab({
                           {(order.items || []).map((it, idx) => (
                             <span 
                               key={idx} 
-                              className="inline-flex items-center gap-1 bg-background border border-border px-1.5 py-0.5 rounded text-[10px] text-foreground font-sans"
+                              className="inline-flex items-center gap-1 bg-background border border-border px-1.5 py-0.5 rounded text-[11px] text-foreground font-sans"
                             >
                               <strong className="text-primary font-mono">{it.quantity}x</strong>
                               <span className="truncate max-w-[110px]">{it.name}</span>
@@ -459,17 +459,17 @@ export function AlmoxarifadoHistoryTab({
                       {/* Status */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         {order.status === 'DELIVERED' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
                             <CheckCircle2 className="w-3 h-3" />
                             ENTREGUE
                           </span>
                         ) : order.status === 'CANCELLED' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-500/10 text-muted border border-zinc-500/25">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-zinc-500/10 text-muted border border-zinc-500/25">
                             <XCircle className="w-3 h-3" />
                             CANCELADO
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/25">
                             <Clock className="w-3 h-3 animate-pulse" />
                             EM FILA
                           </span>
@@ -493,7 +493,7 @@ export function AlmoxarifadoHistoryTab({
                               <FileCheck className="w-4 h-4" />
                             </button>
                           ) : (
-                            <span className="w-7 inline-block text-center text-muted font-mono text-[10px]">--</span>
+                            <span className="w-7 inline-block text-center text-muted font-mono text-[11px]">--</span>
                           )}
 
                           <button

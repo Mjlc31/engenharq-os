@@ -129,7 +129,7 @@ export function InventoryTab({
         <div className="hidden sm:block w-px h-6 mx-1 bg-border"></div>
         <button 
           onClick={() => setIsAdding(!isAdding)}
-          className="flex items-center gap-2 py-2 px-4 text-sm font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+          className="flex items-center gap-2 py-2 px-4 text-sm font-medium bg-primary-dark text-background rounded-md hover:bg-primary-darker transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
         >
           {isAdding ? 'Cancelar' : <><Plus className="w-4 h-4" /> Novo no Inventário</>}
         </button>
@@ -141,7 +141,7 @@ export function InventoryTab({
           <form onSubmit={handleAddSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="space-y-2 flex-1">
               <label className="text-sm font-medium text-muted">Categoria (ex: Luva, Capacete)</label>
-              <input
+              <input aria-label="Categoria (ex: Luva, Capacete)"
                 type="text"
                 required
                 value={category}
@@ -152,7 +152,7 @@ export function InventoryTab({
             </div>
             <div className="space-y-2 flex-1">
               <label className="text-sm font-medium text-muted">Número CA (Opcional)</label>
-              <input
+              <input aria-label="Número CA (Opcional)"
                 type="text"
                 value={caNumber}
                 onChange={e => setCaNumber(e.target.value)}
@@ -163,7 +163,7 @@ export function InventoryTab({
             <button
               type="submit"
               disabled={isSubmittingAdd}
-              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
+              className="py-2 px-6 h-[42px] font-medium bg-primary-dark text-background rounded-md hover:bg-primary-darker transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmittingAdd && <Loader2 className="w-4 h-4 animate-spin" />}
               {isSubmittingAdd ? 'Salvando...' : 'Salvar'}
@@ -181,7 +181,7 @@ export function InventoryTab({
           <form onSubmit={handleAssignSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="space-y-2 flex-1">
               <label className="text-sm font-medium text-muted">Selecione o Trabalhador</label>
-              <select
+              <select aria-label="Selecione o Trabalhador"
                 required
                 value={selectedWorkerId}
                 onChange={e => setSelectedWorkerId(e.target.value)}
@@ -196,7 +196,7 @@ export function InventoryTab({
             <button
               type="submit"
               disabled={isSubmittingAssign}
-              className="py-2 px-6 h-[42px] font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
+              className="py-2 px-6 h-[42px] font-medium bg-primary-dark text-background rounded-md hover:bg-primary-darker transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmittingAssign && <Loader2 className="w-4 h-4 animate-spin" />}
               {isSubmittingAssign ? 'Designando...' : 'Confirmar Designação'}
@@ -209,7 +209,7 @@ export function InventoryTab({
         <div className="p-3 border-b border-border flex gap-2 items-center bg-surface-hover/30">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input
+            <input aria-label="Buscar no inventário por rastreio, categoria ou CA"
               type="text"
               placeholder="Buscar no inventário por rastreio, categoria ou CA..."
               value={search}
@@ -275,7 +275,7 @@ export function InventoryTab({
                         {epi.status === 'AVAILABLE' && (
                           <button 
                             onClick={() => setAssigningEpiId(epi.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded cursor-pointer hover:bg-primary hover:text-white transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 rounded cursor-pointer hover:bg-primary-dark hover:text-white transition-colors"
                           >
                             <ArrowDownRight className="w-3.5 h-3.5" /> DESIGNAR
                           </button>
@@ -345,7 +345,7 @@ export function InventoryTab({
                 type="button"
                 disabled={isReturning}
                 onClick={() => handleReturnEpi(returnConfirmEpi.id)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-background rounded-md hover:bg-primary-dark transition-colors shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary-dark text-background rounded-md hover:bg-primary-darker transition-colors shadow-sm disabled:opacity-50"
               >
                 {isReturning && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isReturning ? 'Devolvendo...' : 'Confirmar Devolução'}

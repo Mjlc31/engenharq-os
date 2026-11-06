@@ -143,7 +143,7 @@ export function Aso() {
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
+          className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
         >
           <Plus className="w-4 h-4" /> + Novo ASO
         </button>
@@ -163,7 +163,7 @@ export function Aso() {
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
+        <input aria-label="Buscar por colaborador, matrícula ou tipo"
           type="text"
           placeholder="Buscar por colaborador, matrícula ou tipo..."
           value={search}
@@ -254,7 +254,7 @@ export function Aso() {
                       </span>
                       <button
                         onClick={() => openNewAsoFor(w.id)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1 cursor-pointer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark rounded px-1 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" /> Registrar ASO
                       </button>
@@ -284,13 +284,13 @@ export function Aso() {
                 <h2 className="text-xl font-bold text-foreground">Cadastrar ASO do Colaborador</h2>
                 <p className="text-xs text-muted mt-0.5">Define a vigência e as aptidões físicas do trabalhador.</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleSaveAso} className="p-6 overflow-y-auto flex-1 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Colaborador *</label>
-                <select
+                <select aria-label="Colaborador"
                   required
                   value={selectedWorkerId}
                   onChange={e => setSelectedWorkerId(e.target.value)}
@@ -315,7 +315,7 @@ export function Aso() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Tipo de ASO *</label>
-                  <select
+                  <select aria-label="Tipo de ASO"
                     value={type}
                     onChange={e => setType(e.target.value as AsoType)}
                     className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground text-sm focus:outline-none focus:border-primary"
@@ -330,7 +330,7 @@ export function Aso() {
 
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Médico Coordenador / CRM</label>
-                  <input
+                  <input aria-label="Médico Coordenador / CRM"
                     type="text"
                     placeholder="Ex: Dr. Roberto Silva - CRM/AL 1234"
                     value={doctorName}
@@ -343,7 +343,7 @@ export function Aso() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Data de Realização do Exame *</label>
-                  <input
+                  <input aria-label="Data de Realização do Exame"
                     type="date"
                     required
                     value={issuedAt}
@@ -429,7 +429,7 @@ export function Aso() {
                 <button
                   type="submit"
                   disabled={saving || !selectedWorkerId}
-                  className="px-5 py-2 bg-primary text-primary-foreground font-semibold rounded-md text-sm shadow disabled:opacity-50"
+                  className="px-5 py-2 bg-primary-dark text-primary-foreground font-semibold rounded-md text-sm shadow disabled:opacity-50"
                 >
                   {saving ? 'Gravando...' : 'Salvar ASO'}
                 </button>

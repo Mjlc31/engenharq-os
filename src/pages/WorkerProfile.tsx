@@ -116,7 +116,7 @@ export function WorkerProfile() {
     const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) {
-      return { label: `Vencido (${Math.abs(diffDays)}d)`, color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20' };
+      return { label: `Vencido (${Math.abs(diffDays)}d)`, color: 'bg-red-500/10 text-red-400 border border-red-500/20' };
     }
     if (diffDays <= 30) {
       return { label: `A Vencer (${diffDays}d)`, color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20' };
@@ -403,7 +403,7 @@ export function WorkerProfile() {
                   ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
                   : worker.status === 'VACATION'
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
               }`}>
                 {(worker.status || 'ACTIVE') === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo / Demitido' : worker.status === 'DISMISSED' ? 'Desligado' : worker.status === 'VACATION' ? 'Férias' : worker.status}
               </span>
@@ -450,7 +450,7 @@ export function WorkerProfile() {
           </button>
           <button
             onClick={() => openDisciplinaryModal('ADVERTENCIA_ESCRITA')}
-            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-md border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
             Advertência Escrita
@@ -472,14 +472,14 @@ export function WorkerProfile() {
           className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer whitespace-nowrap ${activeTab === 'profile' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Dados e Cargos
-          {activeTab === 'profile' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+          {activeTab === 'profile' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-dark rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('epi')}
           className={`pb-3 font-medium text-sm transition-colors relative cursor-pointer whitespace-nowrap ${activeTab === 'epi' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Ficha de EPI
-          {activeTab === 'epi' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+          {activeTab === 'epi' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-dark rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('disciplinary')}
@@ -487,11 +487,11 @@ export function WorkerProfile() {
         >
           Medidas Disciplinares
           {disciplinaryRecords.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded-full">
+            <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-400 text-[11px] font-bold rounded-full">
               {disciplinaryRecords.length}
             </span>
           )}
-          {activeTab === 'disciplinary' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+          {activeTab === 'disciplinary' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-dark rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('trainings')}
@@ -499,11 +499,11 @@ export function WorkerProfile() {
         >
           Treinamentos (NR)
           {trainings.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-full">
+            <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 text-[11px] font-bold rounded-full">
               {trainings.length}
             </span>
           )}
-          {activeTab === 'trainings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+          {activeTab === 'trainings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-dark rounded-t-full"></div>}
         </button>
         <button
           onClick={() => setActiveTab('aso')}
@@ -511,11 +511,11 @@ export function WorkerProfile() {
         >
           Controle de ASO
           {asos.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-teal-500/20 text-teal-400 text-[10px] font-bold rounded-full">
+            <span className="px-1.5 py-0.2 bg-teal-500/20 text-teal-400 text-[11px] font-bold rounded-full">
               {asos.length}
             </span>
           )}
-          {activeTab === 'aso' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></div>}
+          {activeTab === 'aso' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary-dark rounded-t-full"></div>}
         </button>
       </div>
 
@@ -531,7 +531,7 @@ export function WorkerProfile() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Nome Completo</label>
-                  <input
+                  <input aria-label="Nome Completo"
                     type="text"
                     required
                     value={formData.full_name || ''}
@@ -541,7 +541,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">CPF</label>
-                  <input
+                  <input aria-label="CPF"
                     type="text"
                     required
                     maxLength={14}
@@ -552,7 +552,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Matrícula</label>
-                  <input
+                  <input aria-label="Matrícula"
                     type="text"
                     required
                     value={formData.registration_number || ''}
@@ -562,7 +562,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Status do Colaborador *</label>
-                  <select
+                  <select aria-label="Status do Colaborador"
                     value={formData.status || 'ACTIVE'}
                     onChange={e => handleChange('status', e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary font-semibold"
@@ -575,7 +575,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Obra Atual</label>
-                  <select
+                  <select aria-label="Obra Atual"
                     value={formData.current_site_id || ''}
                     onChange={e => handleChange('current_site_id', e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:border-primary"
@@ -588,7 +588,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Cargo Inicial</label>
-                  <input
+                  <input aria-label="Cargo Inicial"
                     type="text"
                     value={formData.initial_role || ''}
                     onChange={e => handleChange('initial_role', e.target.value)}
@@ -597,7 +597,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Data de Admissão</label>
-                  <input
+                  <input aria-label="Data de Admissão"
                     type="date"
                     value={formData.admission_date ? formData.admission_date.split('T')[0] : ''}
                     onChange={e => handleChange('admission_date', e.target.value)}
@@ -606,7 +606,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Data de Nascimento</label>
-                  <input
+                  <input aria-label="Data de Nascimento"
                     type="date"
                     value={formData.birth_date ? formData.birth_date.split('T')[0] : ''}
                     onChange={e => handleChange('birth_date', e.target.value)}
@@ -615,7 +615,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Setor de Trabalho</label>
-                  <input
+                  <input aria-label="Setor de Trabalho"
                     type="text"
                     value={formData.work_sector || ''}
                     onChange={e => handleChange('work_sector', e.target.value)}
@@ -624,7 +624,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Tamanho Uniforme</label>
-                  <input
+                  <input aria-label="Tamanho Uniforme"
                     type="text"
                     value={formData.uniform_size || ''}
                     onChange={e => handleChange('uniform_size', e.target.value)}
@@ -633,7 +633,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Tamanho Bota</label>
-                  <input
+                  <input aria-label="Tamanho Bota"
                     type="text"
                     value={formData.boot_size || ''}
                     onChange={e => handleChange('boot_size', e.target.value)}
@@ -642,7 +642,7 @@ export function WorkerProfile() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted">Contato (Telefone)</label>
-                  <input
+                  <input aria-label="Contato (Telefone)"
                     type="text"
                     value={formData.phone_contact || ''}
                     onChange={e => handleChange('phone_contact', e.target.value)}
@@ -685,7 +685,7 @@ export function WorkerProfile() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted">URL da Foto de Referência</label>
                 <div className="flex gap-2">
-                  <input
+                  <input aria-label="URL da Foto de Referência"
                     type="text"
                     value={formData.reference_photo_url || ''}
                     onChange={e => handleChange('reference_photo_url', e.target.value)}
@@ -725,7 +725,7 @@ export function WorkerProfile() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-primary hover:bg-primary-dark text-background font-medium py-2 px-6 rounded-md transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="bg-primary-dark hover:bg-primary-darker text-background font-medium py-2 px-6 rounded-md transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {saving ? (
                     <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin"></div>
@@ -758,7 +758,7 @@ export function WorkerProfile() {
                   <h4 className="text-sm font-bold text-foreground">Novo Cargo</h4>
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted">Nome do Cargo</label>
-                    <input
+                    <input aria-label="Nome do Cargo"
                       type="text"
                       required
                       value={newRoleName}
@@ -768,7 +768,7 @@ export function WorkerProfile() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-muted">Data de Início</label>
-                    <input
+                    <input aria-label="Data de Início"
                       type="date"
                       required
                       value={newRoleStartDate}
@@ -786,7 +786,7 @@ export function WorkerProfile() {
                     </button>
                     <button
                       type="submit"
-                      className="bg-primary hover:bg-primary-dark text-background text-xs font-bold py-1.5 px-4 rounded transition-colors"
+                      className="bg-primary-dark hover:bg-primary-darker text-background text-xs font-bold py-1.5 px-4 rounded transition-colors"
                     >
                       Adicionar
                     </button>
@@ -803,7 +803,7 @@ export function WorkerProfile() {
                   {roles.map((role, idx) => (
                     <div key={role.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                       <div className="flex items-center justify-center w-5 h-5 rounded-full border border-primary bg-background text-primary shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                        <div className="w-2 h-2 bg-primary-dark rounded-full"></div>
                       </div>
                       <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] bg-background p-3 rounded border border-border shadow-sm">
                         <div className="flex items-center justify-between space-x-2 mb-1">
@@ -921,7 +921,7 @@ export function WorkerProfile() {
               </button>
               <button
                 onClick={() => openDisciplinaryModal('ADVERTENCIA_ESCRITA')}
-                className="bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 text-xs font-bold py-2 px-3 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <AlertTriangle className="w-3.5 h-3.5" /> Advertência
               </button>
@@ -946,13 +946,13 @@ export function WorkerProfile() {
                     <div key={record.id} className="p-4 hover:bg-surface-hover/30 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${
                             isOrientacao
                               ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                               : isVerbal
                               ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                               : isEscrita
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                               : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
                           }`}>
                             {isOrientacao ? 'Orientação' : isVerbal ? 'Advertência Verbal' : isEscrita ? 'Advertência Escrita' : 'Personalizado'}
@@ -1003,7 +1003,7 @@ export function WorkerProfile() {
             </div>
             <button
               onClick={() => setIsTrainingModalOpen(true)}
-              className="bg-primary hover:bg-primary-dark text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              className="bg-primary-dark hover:bg-primary-darker text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" /> Novo Treinamento
             </button>
@@ -1031,7 +1031,7 @@ export function WorkerProfile() {
                           <span className="px-2 py-0.5 rounded text-xs font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             {nrCode}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${valStatus.color}`}>
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${valStatus.color}`}>
                             {valStatus.label}
                           </span>
                           <span className="text-xs text-muted flex items-center gap-1">
@@ -1067,7 +1067,7 @@ export function WorkerProfile() {
             </div>
             <button
               onClick={() => setIsAsoModalOpen(true)}
-              className="bg-primary hover:bg-primary-dark text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              className="bg-primary-dark hover:bg-primary-darker text-background text-xs font-bold py-2 px-4 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" /> Novo ASO
             </button>
@@ -1092,7 +1092,7 @@ export function WorkerProfile() {
                           <span className="px-2.5 py-0.5 rounded text-xs font-black bg-teal-500/10 text-teal-400 border border-teal-500/20">
                             {a.type}
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${valStatus.color}`}>
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider ${valStatus.color}`}>
                             {valStatus.label}
                           </span>
                           <span className="text-xs text-muted">
@@ -1112,7 +1112,7 @@ export function WorkerProfile() {
                           <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
                             a.fit_for_height
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
                           }`}>
                             <HardHat className="w-3.5 h-3.5" />
                             {a.fit_for_height ? 'Apto Altura (NR-35)' : 'Inapto Altura (NR-35)'}
@@ -1120,7 +1120,7 @@ export function WorkerProfile() {
                           <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
                             a.fit_for_confined_space
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
                           }`}>
                             <ShieldCheck className="w-3.5 h-3.5" />
                             {a.fit_for_confined_space ? 'Apto Espaço Confinado (NR-33)' : 'Inapto Espaço Confinado (NR-33)'}
@@ -1145,7 +1145,7 @@ export function WorkerProfile() {
                 <ShieldAlert className="w-5 h-5 text-amber-500" />
                 <h3 className="font-bold text-foreground text-base">Registrar Medida Disciplinar / Segurança</h3>
               </div>
-              <button
+              <button aria-label="Fechar"
                 onClick={() => setIsDisciplinaryModalOpen(false)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
               >
@@ -1163,7 +1163,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Título do Documento</label>
-                <input
+                <input aria-label="Título do Documento"
                   type="text"
                   value={disciplinaryTitle}
                   onChange={e => setDisciplinaryTitle(e.target.value)}
@@ -1173,7 +1173,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Texto Formal / Fatos / Fundamentação Jurídica</label>
-                <textarea
+                <textarea aria-label="Texto Formal / Fatos / Fundamentação Jurídica"
                   rows={8}
                   value={disciplinaryContent}
                   onChange={e => setDisciplinaryContent(e.target.value)}
@@ -1184,7 +1184,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Responsável Técnico / Aplicador</label>
-                <input
+                <input aria-label="Responsável Técnico / Aplicador"
                   type="text"
                   value={appliedByName}
                   onChange={e => setAppliedByName(e.target.value)}
@@ -1206,7 +1206,7 @@ export function WorkerProfile() {
                 type="button"
                 disabled={savingDisciplinary || !disciplinaryTitle || !disciplinaryContent}
                 onClick={handleSaveDisciplinary}
-                className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                className="px-5 py-2 bg-primary-dark text-background text-sm font-bold rounded-md hover:bg-primary-darker disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
               >
                 {savingDisciplinary ? (
                   <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />
@@ -1229,7 +1229,7 @@ export function WorkerProfile() {
                 <GraduationCap className="w-5 h-5 text-emerald-500" />
                 <h3 className="font-bold text-foreground text-base">Registrar Treinamento (NR)</h3>
               </div>
-              <button
+              <button aria-label="Fechar"
                 onClick={() => setIsTrainingModalOpen(false)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
               >
@@ -1245,7 +1245,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Selecionar Treinamento (NR)</label>
-                <select
+                <select aria-label="Selecionar Treinamento (NR)"
                   required
                   value={trainingCatalogId}
                   onChange={e => setTrainingCatalogId(e.target.value)}
@@ -1262,7 +1262,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Instrutor / Responsável Técnico</label>
-                <input
+                <input aria-label="Instrutor / Responsável Técnico"
                   type="text"
                   required
                   value={trainingInstructor}
@@ -1274,7 +1274,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Data de Realização</label>
-                <input
+                <input aria-label="Data de Realização"
                   type="date"
                   required
                   value={trainingCompletedAt}
@@ -1285,7 +1285,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Observações</label>
-                <textarea
+                <textarea aria-label="Observações"
                   rows={3}
                   value={trainingNotes}
                   onChange={e => setTrainingNotes(e.target.value)}
@@ -1305,7 +1305,7 @@ export function WorkerProfile() {
                 <button
                   type="submit"
                   disabled={savingTraining || !trainingCatalogId}
-                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                  className="px-5 py-2 bg-primary-dark text-background text-sm font-bold rounded-md hover:bg-primary-darker disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
                 >
                   {savingTraining ? 'Salvando...' : 'Registrar Treinamento'}
                 </button>
@@ -1324,7 +1324,7 @@ export function WorkerProfile() {
                 <HeartPulse className="w-5 h-5 text-teal-500" />
                 <h3 className="font-bold text-foreground text-base">Registrar ASO (Saúde Ocupacional)</h3>
               </div>
-              <button
+              <button aria-label="Fechar"
                 onClick={() => setIsAsoModalOpen(false)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
               >
@@ -1341,7 +1341,7 @@ export function WorkerProfile() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted">Tipo de ASO</label>
-                  <select
+                  <select aria-label="Tipo de ASO"
                     value={asoType}
                     onChange={e => setAsoType(e.target.value as AsoType)}
                     className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -1356,7 +1356,7 @@ export function WorkerProfile() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted">Validade (Anos)</label>
-                  <select
+                  <select aria-label="Validade (Anos)"
                     value={asoValidityYears}
                     onChange={e => setAsoValidityYears(Number(e.target.value))}
                     className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -1369,7 +1369,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Data de Emissão do Exame</label>
-                <input
+                <input aria-label="Data de Emissão do Exame"
                   type="date"
                   required
                   value={asoIssuedAt}
@@ -1380,7 +1380,7 @@ export function WorkerProfile() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted">Médico Coordenador / Emitente</label>
-                <input
+                <input aria-label="Médico Coordenador / Emitente"
                   type="text"
                   value={asoDoctorName}
                   onChange={e => setAsoDoctorName(e.target.value)}
@@ -1422,7 +1422,7 @@ export function WorkerProfile() {
                 <button
                   type="submit"
                   disabled={savingAso}
-                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                  className="px-5 py-2 bg-primary-dark text-background text-sm font-bold rounded-md hover:bg-primary-darker disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
                 >
                   {savingAso ? 'Salvando...' : 'Salvar ASO & Atualizar'}
                 </button>

@@ -5,7 +5,9 @@
   --color-background: #09090b; /* zinc-950 */
   --color-foreground: #fafafa; /* zinc-50 */
   --color-primary: #ef4444; /* red-500, official brand color */
-  --color-primary-dark: #dc2626; /* red-600 */
+  --color-primary-dark: #dc2626; /* red-600: fundo sólido com texto branco (4.8:1) */
+  --color-primary-darker: #b91c1c; /* red-700: hover do fundo sólido */
+  --color-primary-foreground: #ffffff;
   --color-muted: #a1a1aa; /* zinc-400 */
   --color-border: #27272a; /* zinc-800 */
   --color-surface: #18181b; /* zinc-900 */
@@ -27,8 +29,9 @@ html, body {
 html.light {
   --color-background: #ffffff;
   --color-foreground: #18181b;
-  --color-primary: #ef4444;
-  --color-primary-dark: #dc2626;
+  --color-primary: #dc2626; /* red-500 sobre branco fica em 3.8:1; red-600 passa (4.8:1) */
+  --color-primary-dark: #b91c1c;
+  --color-primary-darker: #991b1b;
   --color-muted: #3f3f46;
   --color-border: #d4d4d8;
   --color-surface: #f4f4f5;
@@ -38,6 +41,21 @@ html.light {
 
 html.light .dark-tiles {
   filter: none;
+}
+
+/* Foco de teclado visível em todo o app. Em @layer base: o outline !important vence os `outline-none`
+   das classes (importante em camada anterior ganha), e o offset normal ainda pode ser ajustado por classe
+   (ex.: -outline-offset-2 onde o contêiner corta o anel). :focus-visible só aparece no teclado e em campos. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary) !important;
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline-offset: 0;
+  }
 }
 
 @keyframes scan {

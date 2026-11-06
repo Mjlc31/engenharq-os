@@ -102,7 +102,7 @@ export function Workers() {
           <button onClick={() => setIsImporting(true)} className="bg-surface border border-border hover:bg-surface-hover text-foreground font-medium py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
             <Upload className="w-4 h-4" /> Importação em Massa
           </button>
-          <button onClick={() => setIsAdding(true)} className="bg-primary text-primary-foreground font-medium py-2 px-4 rounded-md transition-all flex items-center gap-2 text-sm hover:opacity-90">
+          <button onClick={() => setIsAdding(true)} className="bg-primary-dark text-primary-foreground font-medium py-2 px-4 rounded-md transition-all flex items-center gap-2 text-sm hover:opacity-90">
             <Plus className="w-4 h-4" /> Novo Funcionário
           </button>
         </div>
@@ -112,7 +112,7 @@ export function Workers() {
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 items-center justify-between bg-surface-hover/20">
           <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input
+            <input aria-label="Buscar por nome, matrícula ou CPF"
               type="text"
               placeholder="Buscar por nome, matrícula ou CPF..."
               value={search}
@@ -121,7 +121,7 @@ export function Workers() {
             />
           </div>
           <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-            <select
+            <select aria-label="Filtrar por obra"
               value={siteFilter}
               onChange={e => setSiteFilter(e.target.value)}
               className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -129,7 +129,7 @@ export function Workers() {
               <option value="">Todas as obras</option>
               {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <select
+            <select aria-label="Filtrar por setor"
               value={sectorFilter}
               onChange={e => setSectorFilter(e.target.value)}
               className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -137,7 +137,7 @@ export function Workers() {
               <option value="">Todos os setores</option>
               {uniqueSectors.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select
+            <select aria-label="Filtrar por função"
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value)}
               className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -145,7 +145,7 @@ export function Workers() {
               <option value="">Todas as funções</option>
               {uniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
-            <select
+            <select aria-label="Filtrar por status"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
               className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -211,10 +211,10 @@ export function Workers() {
                           ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                           : worker.status === 'VACATION'
                           ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          : 'bg-red-500/10 text-red-400 border border-red-500/20'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          (worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : worker.status === 'VACATION' ? 'bg-blue-400' : 'bg-rose-400'
+                          (worker.status || 'ACTIVE') === 'ACTIVE' ? 'bg-emerald-500' : worker.status === 'VACATION' ? 'bg-blue-400' : 'bg-red-400'
                         }`}></span>
                         {(worker.status || 'ACTIVE') === 'ACTIVE' ? 'Ativo' : worker.status === 'INACTIVE' ? 'Inativo / Demitido' : worker.status === 'VACATION' ? 'Férias' : 'Desligado'}
                       </span>
@@ -248,7 +248,7 @@ export function Workers() {
         <div className="p-4 border-t border-border bg-surface flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
           <div className="flex items-center gap-3">
             <span>Por página:</span>
-            <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-background border border-border rounded px-2 py-1 focus:outline-none focus:border-primary">
+            <select aria-label="Itens por página" value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-background border border-border rounded px-2 py-1 focus:outline-none focus:border-primary">
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>

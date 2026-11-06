@@ -54,7 +54,7 @@ export function InventoryChartWidget({ stats }: InventoryChartWidgetProps) {
         {pieData.map((item, idx) => (
           <div key={idx} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-            <span className="text-[10px] text-muted font-medium uppercase tracking-wider">{item.name}</span>
+            <span className="text-[11px] text-muted font-medium uppercase tracking-wider">{item.name}</span>
           </div>
         ))}
       </div>

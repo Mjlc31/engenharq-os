@@ -92,7 +92,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
       <div className="bg-surface border border-border rounded-xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
           <h2 className="text-xl font-bold text-foreground">Novo Funcionário</h2>
-          <button onClick={onClose} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+          <button aria-label="Fechar" onClick={onClose} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
@@ -112,7 +112,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             <div className="flex-1 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Nome Completo *</label>
-                <input required type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+                <input aria-label="Nome Completo" required type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
               </div>
             </div>
           </div>
@@ -120,18 +120,18 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">CPF *</label>
-              <input required type="text" value={cpf} onChange={e => setCpf(applyCpfMask(e.target.value))} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="000.000.000-00" />
+              <input aria-label="CPF" required type="text" value={cpf} onChange={e => setCpf(applyCpfMask(e.target.value))} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="000.000.000-00" />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Matrícula *</label>
-              <input required type="text" value={registration} onChange={e => setRegistration(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Matrícula" required type="text" value={registration} onChange={e => setRegistration(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-surface border border-border rounded-lg">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Status do Colaborador *</label>
-              <select 
+              <select aria-label="Status do Colaborador" 
                 value={status} 
                 onChange={e => setStatus(e.target.value)} 
                 className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground font-semibold"
@@ -147,11 +147,11 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
                 {status === 'INACTIVE' || status === 'DISMISSED' ? 'Data de Demissão / Desligamento' : 'Situação Contratual'}
               </label>
               {status === 'INACTIVE' || status === 'DISMISSED' ? (
-                <input 
+                <input aria-label="Data de Demissão / Desligamento" 
                   type="date" 
                   value={terminationDate} 
                   onChange={e => setTerminationDate(e.target.value)} 
-                  className="w-full bg-background border border-rose-500/50 rounded-md px-3 py-2 text-foreground" 
+                  className="w-full bg-background border border-red-500/50 rounded-md px-3 py-2 text-foreground" 
                 />
               ) : (
                 <div className="text-xs text-emerald-500 font-semibold px-3 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md flex items-center gap-2">
@@ -165,47 +165,47 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Data de Admissão</label>
-              <input type="date" value={admissionDate} onChange={e => setAdmissionDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Data de Admissão" type="date" value={admissionDate} onChange={e => setAdmissionDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Data de Nascimento</label>
-              <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Data de Nascimento" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Data do ASO</label>
-              <input type="date" value={asoDate} onChange={e => setAsoDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Data do ASO" type="date" value={asoDate} onChange={e => setAsoDate(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Obra Vinculada</label>
-              <select value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
+              <select aria-label="Obra Vinculada" value={siteId} onChange={e => setSiteId(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
                 <option value="">Selecione uma obra</option>
                 {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Setor</label>
-              <input type="text" value={workSector} onChange={e => setWorkSector(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Setor" type="text" value={workSector} onChange={e => setWorkSector(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Função Inicial</label>
-              <input type="text" value={initialRole} onChange={e => setInitialRole(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="Ex: Eletricista" />
+              <input aria-label="Função Inicial" type="text" value={initialRole} onChange={e => setInitialRole(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="Ex: Eletricista" />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Contato (Telefone)</label>
-              <input type="text" value={phoneContact} onChange={e => setPhoneContact(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
+              <input aria-label="Contato (Telefone)" type="text" value={phoneContact} onChange={e => setPhoneContact(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Tamanho Fardamento</label>
-              <select value={uniformSize} onChange={e => setUniformSize(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
+              <select aria-label="Tamanho Fardamento" value={uniformSize} onChange={e => setUniformSize(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
                 <option value="">Selecione</option>
                 <option value="PP">PP</option><option value="P">P</option>
                 <option value="M">M</option><option value="G">G</option>
@@ -214,7 +214,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Número Bota</label>
-              <select value={bootSize} onChange={e => setBootSize(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
+              <select aria-label="Número Bota" value={bootSize} onChange={e => setBootSize(e.target.value)} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground">
                 <option value="">Selecione</option>
                 {[35,36,37,38,39,40,41,42,43,44,45].map(n => <option key={n} value={n.toString()}>{n}</option>)}
               </select>
@@ -237,7 +237,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
 
           <div className="pt-4 border-t border-border flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-4 py-2 bg-surface hover:bg-surface-hover text-foreground rounded-md border border-border transition-colors">Cancelar</button>
-            <button type="submit" disabled={isSubmitting || !fullName || !cpf || !registration} className="px-6 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity">
+            <button type="submit" disabled={isSubmitting || !fullName || !cpf || !registration} className="px-6 py-2 bg-primary-dark text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity">
               {isSubmitting ? 'Salvando...' : 'Salvar Funcionário'}
             </button>
           </div>

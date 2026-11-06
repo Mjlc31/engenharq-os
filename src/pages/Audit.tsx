@@ -87,7 +87,7 @@ export function Audit() {
       <div className="bg-surface border border-border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input
+          <input aria-label="Buscar nos registros"
             type="text"
             placeholder="Buscar nos registros..."
             value={searchTerm}
@@ -97,7 +97,7 @@ export function Audit() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <select
+          <select aria-label="Filtrar por tipo de ação"
             value={selectedType}
             onChange={e => { setSelectedType(e.target.value); setCurrentPage(1); }}
             className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -108,7 +108,7 @@ export function Audit() {
             ))}
           </select>
 
-          <select
+          <select aria-label="Filtrar por usuário"
             value={selectedUser}
             onChange={e => { setSelectedUser(e.target.value); setCurrentPage(1); }}
             className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -119,7 +119,7 @@ export function Audit() {
             ))}
           </select>
 
-          <input
+          <input aria-label="Filtrar por data"
             type="date"
             value={selectedDate}
             onChange={e => { setSelectedDate(e.target.value); setCurrentPage(1); }}
@@ -132,7 +132,7 @@ export function Audit() {
       <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="bg-surface-hover text-muted uppercase font-bold text-[10px] tracking-wider border-b border-border">
+            <thead className="bg-surface-hover text-muted uppercase font-bold text-[11px] tracking-wider border-b border-border">
               <tr>
                 <th className="p-4">Data/Hora</th>
                 <th className="p-4">Usuário</th>
@@ -172,7 +172,7 @@ export function Audit() {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${log.userColor}`}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${log.userColor}`}>
                             {log.userInitials}
                           </div>
                           <span className="font-semibold text-foreground">{log.userName}</span>
@@ -218,7 +218,7 @@ export function Audit() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Por página:</span>
-              <select
+              <select aria-label="Itens por página"
                 value={itemsPerPage}
                 onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
                 className="bg-background border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-primary"
@@ -245,7 +245,7 @@ export function Audit() {
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="px-3 py-1 bg-primary text-background font-bold rounded">
+              <span className="px-3 py-1 bg-primary-dark text-background font-bold rounded">
                 {currentPage}
               </span>
               <button
@@ -276,7 +276,7 @@ export function Audit() {
                 <ShieldCheck className="w-5 h-5 text-primary" />
                 <h3 className="font-bold text-foreground text-base">Detalhes da Transação de Auditoria</h3>
               </div>
-              <button
+              <button aria-label="Fechar"
                 onClick={() => setInspectingItem(null)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
               >
@@ -299,7 +299,7 @@ export function Audit() {
                 <div>
                   <span className="text-muted">Tipo de Ação:</span>
                   <div className="mt-0.5">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${inspectingItem.typeBadgeColor}`}>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${inspectingItem.typeBadgeColor}`}>
                       {inspectingItem.type}
                     </span>
                   </div>

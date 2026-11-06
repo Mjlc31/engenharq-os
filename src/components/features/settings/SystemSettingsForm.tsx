@@ -163,7 +163,7 @@ export function SystemSettingsForm() {
         <button
           type="submit"
           disabled={saving}
-          className="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-lg flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 bg-primary-dark text-primary-foreground font-medium rounded-lg flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? 'Salvando...' : 'Salvar'}
@@ -187,7 +187,7 @@ export function SystemSettingsForm() {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Razão Social da Empresa *</label>
-              <input
+              <input aria-label="Razão Social da Empresa"
                 value={values.company_name}
                 onChange={e => setValues(prev => ({ ...prev, company_name: e.target.value }))}
                 className={`w-full bg-background border ${errors.company_name ? 'border-red-500' : 'border-border'} rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50`}
@@ -198,7 +198,7 @@ export function SystemSettingsForm() {
 
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Dias de Alerta para Vencimento de CA</label>
-              <input
+              <input aria-label="Dias de Alerta para Vencimento de CA"
                 type="number"
                 value={values.default_expiration_alert_days || 30}
                 onChange={e => setValues(prev => ({ ...prev, default_expiration_alert_days: Number(e.target.value) }))}
@@ -233,7 +233,7 @@ export function SystemSettingsForm() {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Texto de Declaração de EPI</label>
-              <textarea
+              <textarea aria-label="Texto de Declaração de EPI"
                 value={values.epi_declaration_text || ''}
                 onChange={e => setValues(prev => ({ ...prev, epi_declaration_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
@@ -243,7 +243,7 @@ export function SystemSettingsForm() {
 
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Termos de Responsabilidade</label>
-              <textarea
+              <textarea aria-label="Termos de Responsabilidade"
                 value={values.epi_terms_text || ''}
                 onChange={e => setValues(prev => ({ ...prev, epi_terms_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
@@ -253,7 +253,7 @@ export function SystemSettingsForm() {
 
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Base Legal (NR, CLT)</label>
-              <textarea
+              <textarea aria-label="Base Legal (NR, CLT)"
                 value={values.epi_legal_base_text || ''}
                 onChange={e => setValues(prev => ({ ...prev, epi_legal_base_text: e.target.value }))}
                 className="w-full h-24 bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"

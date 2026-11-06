@@ -24,7 +24,7 @@ export function PredictiveAlertsWidget({ lifespanAlerts, loading }: PredictiveAl
           {lifespanAlerts.length > 0 && (
             <motion.span 
               initial={{ scale: 0.8 }} animate={{ scale: 1 }}
-              className="text-[9px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full border border-red-500/20 font-bold"
+              className="text-[11px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full border border-red-500/20 font-bold"
             >
               {lifespanAlerts.length} ALERTAS
             </motion.span>
@@ -57,7 +57,7 @@ export function PredictiveAlertsWidget({ lifespanAlerts, loading }: PredictiveAl
                   ) : (
                      <p className="text-xs font-medium text-foreground mt-1 truncate">{alert.epi?.name} {alert.epi?.ca_number ? `(CA: ${alert.epi.ca_number})` : ''}</p>
                   )}
-                  <p className="text-[10px] text-muted font-mono mt-0.5 truncate">{alert.worker?.full_name}</p>
+                  <p className="text-[11px] text-muted font-mono mt-0.5 truncate">{alert.worker?.full_name}</p>
                 </div>
               </motion.div>
             ))

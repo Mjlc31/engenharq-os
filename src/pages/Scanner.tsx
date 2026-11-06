@@ -259,36 +259,36 @@ export function Scanner() {
       <div className="flex items-center mb-8">
         {/* Step 1 */}
         <div className="flex flex-col items-center gap-1.5 shrink-0">
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${worker ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'SCAN_WORKER' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${worker ? 'bg-primary-dark text-background shadow-md shadow-primary/30' : step === 'SCAN_WORKER' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
             {worker ? <Check className="w-4 h-4" /> : '1'}
           </div>
-          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_WORKER' || worker ? 'text-foreground' : 'text-muted'}`}>Colaborador</span>
+          <span className={`text-[11px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_WORKER' || worker ? 'text-foreground' : 'text-muted'}`}>Colaborador</span>
         </div>
         
         {/* Connector 1-2 */}
         <div className="flex-1 mx-3 mb-5">
-          <div className={`h-[2px] rounded-full transition-all duration-500 ${worker ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`h-[2px] rounded-full transition-all duration-500 ${worker ? 'bg-primary-dark' : 'bg-border'}`} />
         </div>
         
         {/* Step 2 */}
         <div className="flex flex-col items-center gap-1.5 shrink-0">
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${epis.length > 0 ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'SCAN_EPI' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${epis.length > 0 ? 'bg-primary-dark text-background shadow-md shadow-primary/30' : step === 'SCAN_EPI' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
             {epis.length > 0 ? <Check className="w-4 h-4" /> : '2'}
           </div>
-          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_EPI' || epis.length > 0 ? 'text-foreground' : 'text-muted'}`}>EPI</span>
+          <span className={`text-[11px] uppercase tracking-wider font-bold transition-colors ${step === 'SCAN_EPI' || epis.length > 0 ? 'text-foreground' : 'text-muted'}`}>EPI</span>
         </div>
         
         {/* Connector 2-3 */}
         <div className="flex-1 mx-3 mb-5">
-          <div className={`h-[2px] rounded-full transition-all duration-500 ${epis.length > 0 ? 'bg-primary' : 'bg-border'}`} />
+          <div className={`h-[2px] rounded-full transition-all duration-500 ${epis.length > 0 ? 'bg-primary-dark' : 'bg-border'}`} />
         </div>
         
         {/* Step 3 */}
         <div className="flex flex-col items-center gap-1.5 shrink-0">
-          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step === 'SUCCESS' ? 'bg-primary text-background shadow-md shadow-primary/30' : step === 'PHOTO_CAPTURE' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step === 'SUCCESS' ? 'bg-primary-dark text-background shadow-md shadow-primary/30' : step === 'PHOTO_CAPTURE' ? 'bg-primary/15 text-primary ring-2 ring-primary ring-offset-2 ring-offset-background' : 'bg-surface-hover text-muted border border-border'}`}>
             {step === 'SUCCESS' ? <Check className="w-4 h-4" /> : '3'}
           </div>
-          <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${step === 'PHOTO_CAPTURE' || step === 'SUCCESS' ? 'text-foreground' : 'text-muted'}`}>Evidência</span>
+          <span className={`text-[11px] uppercase tracking-wider font-bold transition-colors ${step === 'PHOTO_CAPTURE' || step === 'SUCCESS' ? 'text-foreground' : 'text-muted'}`}>Evidência</span>
         </div>
       </div>
 
@@ -327,7 +327,7 @@ export function Scanner() {
                   Entrada Manual - Trabalhador
                 </label>
                 <div className="flex gap-2">
-                  <input 
+                  <input aria-label="Entrada Manual - Trabalhador" 
                     type="text" 
                     value={manualInputValue}
                     onChange={(e) => setManualInputValue(e.target.value)}
@@ -338,11 +338,11 @@ export function Scanner() {
                   />
                   <button 
                     onClick={submitManualInput}
-                    className="bg-primary hover:bg-primary-dark text-white px-5 py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
+                    className="bg-primary-dark hover:bg-primary-darker text-white px-5 py-3 rounded-lg text-sm font-bold shadow-sm transition-colors"
                   >
                     OK
                   </button>
-                  <button 
+                  <button aria-label="Fechar" 
                     onClick={() => { setManualInputOpen(null); setManualInputValue(''); }}
                     className="bg-surface-hover hover:bg-border text-muted hover:text-foreground px-4 py-3 rounded-lg text-sm transition-colors border border-border"
                   >
@@ -378,7 +378,7 @@ export function Scanner() {
             </div>
 
             <div className="relative">
-              <input 
+              <input aria-label="Buscar EPI por nome ou CA" 
                 type="text" 
                 value={epiSearch}
                 onChange={(e) => setEpiSearch(e.target.value)}
@@ -416,7 +416,7 @@ export function Scanner() {
                       </div>
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-xs text-muted font-mono bg-background px-2 py-0.5 rounded">CA: {item.ca_number || 'N/A'}</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                           {item.current_stock} un
                         </span>
                       </div>
@@ -432,7 +432,7 @@ export function Scanner() {
                   <h3 className="font-bold text-foreground">EPIs Selecionados ({epis.length})</h3>
                   <button 
                     onClick={() => setStep('PHOTO_CAPTURE')}
-                    className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
+                    className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2"
                   >
                     Avançar <Check className="w-4 h-4" />
                   </button>
@@ -478,7 +478,7 @@ export function Scanner() {
                           <span className="text-sm font-bold leading-none">+</span>
                         </button>
                       </div>
-                      <button 
+                      <button aria-label="Remover EPI" 
                         onClick={() => setEpis(epis.filter(item => item.id !== e.id))}
                         className="p-1.5 text-muted hover:text-red-500 transition-colors shrink-0"
                       >
@@ -498,20 +498,20 @@ export function Scanner() {
               <div className="bg-background border border-border p-4 rounded-lg flex items-start gap-3">
                 <div className="p-2 bg-surface-hover rounded-md shrink-0"><User className="w-5 h-5 text-muted" /></div>
                 <div>
-                  <p className="text-[10px] uppercase text-muted font-bold tracking-wider">Colaborador</p>
+                  <p className="text-[11px] uppercase text-muted font-bold tracking-wider">Colaborador</p>
                   <p className="font-medium text-sm mt-0.5">{worker.full_name}</p>
                   <p className="text-xs text-muted font-mono mt-1">{worker.registration_number}</p>
                 </div>
               </div>
               
               <div className="bg-background border border-border p-4 rounded-lg flex flex-col gap-2 max-h-[120px] overflow-y-auto">
-                <p className="text-[10px] uppercase text-muted font-bold tracking-wider mb-1 sticky top-0 bg-background">Equipamentos ({epis.length})</p>
+                <p className="text-[11px] uppercase text-muted font-bold tracking-wider mb-1 sticky top-0 bg-background">Equipamentos ({epis.length})</p>
                 {epis.map((e, idx) => (
                   <div key={idx} className="flex items-center gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0">
                     <Package className="w-4 h-4 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-xs truncate">{e.name}</p>
-                      <p className="text-[10px] text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
+                      <p className="text-[11px] text-muted font-mono">CA: {e.ca_number || 'N/A'}</p>
                     </div>
                     <span className="text-xs font-bold text-primary shrink-0">×{e.quantity || 1}</span>
                   </div>
@@ -548,13 +548,13 @@ export function Scanner() {
             <div className="flex gap-2 bg-surface p-1 rounded-lg border border-border">
               <button 
                 onClick={() => setEvidenceMode('photo')} 
-                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'photo' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
+                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'photo' ? 'bg-primary-dark text-white' : 'text-muted hover:text-foreground'}`}
               >
                 <Camera className="w-4 h-4" /> Tirar Foto
               </button>
               <button 
                 onClick={() => setEvidenceMode('signature')} 
-                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'signature' ? 'bg-primary text-white' : 'text-muted hover:text-foreground'}`}
+                className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-colors flex items-center justify-center gap-2 ${evidenceMode === 'signature' ? 'bg-primary-dark text-white' : 'text-muted hover:text-foreground'}`}
               >
                 <PenTool className="w-4 h-4" /> Assinatura Digital
               </button>
@@ -592,7 +592,7 @@ export function Scanner() {
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
                       <button 
                         onClick={capturePhoto}
-                        className="bg-primary hover:bg-primary-dark text-white rounded-full p-4 shadow-lg border-4 border-background transition-transform active:scale-95"
+                        className="bg-primary-dark hover:bg-primary-darker text-white rounded-full p-4 shadow-lg border-4 border-background transition-transform active:scale-95"
                       >
                         <Camera className="w-6 h-6" />
                       </button>
@@ -604,7 +604,7 @@ export function Scanner() {
               </div>
             </div>
 
-            <div className="text-[10px] text-muted leading-relaxed text-center px-4">
+            <div className="text-[11px] text-muted leading-relaxed text-center px-4">
               Ao capturar a foto, certifique-se de que o <strong>colaborador e o(s) EPI(s) em mãos estão visíveis</strong>. Esta imagem serve como declaração e evidência da entrega dos equipamentos, substituindo a assinatura física.
             </div>
             </>
@@ -615,7 +615,7 @@ export function Scanner() {
             <button
               onClick={handleConfirmPhoto}
               disabled={loading || (evidenceMode === 'photo' && !capturedPhoto)}
-              className="w-full bg-primary hover:bg-primary-dark text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary-dark hover:bg-primary-darker text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processando NR-6...' : 'Confirmar Entrega'}
             </button>

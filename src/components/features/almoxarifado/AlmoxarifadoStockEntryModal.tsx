@@ -106,7 +106,7 @@ export function AlmoxarifadoStockEntryModal({
               <p className="text-xs text-muted">Recebimento de carga, compra ou NF na obra</p>
             </div>
           </div>
-          <button
+          <button aria-label="Fechar"
             onClick={onClose}
             className="text-muted hover:text-foreground p-1 rounded-lg bg-surface-hover transition-colors"
           >
@@ -118,7 +118,7 @@ export function AlmoxarifadoStockEntryModal({
           {/* Obra de Destino */}
           <div className="space-y-1">
             <label className="font-semibold text-muted uppercase tracking-wider block">1. Canteiro de Obra / Destino *</label>
-            <select
+            <select aria-label="Canteiro de Obra / Destino"
               required
               value={selectedSiteId}
               onChange={e => setSelectedSiteId(e.target.value)}
@@ -157,7 +157,7 @@ export function AlmoxarifadoStockEntryModal({
               <div>
                 <div className="relative mb-2">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
-                  <input
+                  <input aria-label="Filtrar EPI por nome, CA ou categoria"
                     type="text"
                     placeholder="Filtrar EPI por nome, CA ou categoria..."
                     value={catalogSearch}
@@ -193,7 +193,7 @@ export function AlmoxarifadoStockEntryModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="font-semibold text-muted uppercase tracking-wider block">Quantidade Recebida *</label>
-              <input
+              <input aria-label="Quantidade Recebida"
                 type="number"
                 min="1"
                 required
@@ -206,7 +206,7 @@ export function AlmoxarifadoStockEntryModal({
 
             <div className="space-y-1">
               <label className="font-semibold text-muted uppercase tracking-wider block">Valor Unitário (R$)</label>
-              <input
+              <input aria-label="Valor Unitário (R$)"
                 type="number"
                 step="0.01"
                 min="0"
@@ -222,7 +222,7 @@ export function AlmoxarifadoStockEntryModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="font-semibold text-muted uppercase tracking-wider block">Nº da Nota Fiscal (NF-e)</label>
-              <input
+              <input aria-label="Nº da Nota Fiscal (NF-e)"
                 type="text"
                 value={invoiceNumber}
                 onChange={e => setInvoiceNumber(e.target.value)}
@@ -233,7 +233,7 @@ export function AlmoxarifadoStockEntryModal({
 
             <div className="space-y-1">
               <label className="font-semibold text-muted uppercase tracking-wider block">Fornecedor / Distribuidor</label>
-              <input
+              <input aria-label="Fornecedor / Distribuidor"
                 type="text"
                 value={supplier}
                 onChange={e => setSupplier(e.target.value)}
@@ -246,7 +246,7 @@ export function AlmoxarifadoStockEntryModal({
           {/* Observações */}
           <div className="space-y-1">
             <label className="font-semibold text-muted uppercase tracking-wider block">Observações do Recebimento</label>
-            <textarea
+            <textarea aria-label="Observações do Recebimento"
               rows={2}
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -275,7 +275,7 @@ export function AlmoxarifadoStockEntryModal({
             <button
               type="submit"
               disabled={submitting || !selectedCatalogId || !quantity}
-              className="flex-2 py-2.5 rounded-xl bg-primary hover:bg-primary-dark text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="flex-2 py-2.5 rounded-xl bg-primary-dark hover:bg-primary-darker text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <>

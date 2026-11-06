@@ -70,7 +70,7 @@ export function QRCodeScanner({ onScanSuccess, title, subtitle, manualInputLabel
             {manualInputLabel}
           </label>
           <div className="flex gap-2">
-            <input 
+            <input aria-label={manualInputLabel} 
               type="text" 
               value={manualInputValue}
               onChange={(e) => setManualInputValue(e.target.value)}
@@ -81,7 +81,7 @@ export function QRCodeScanner({ onScanSuccess, title, subtitle, manualInputLabel
             />
             <button 
               onClick={submitManualInput}
-              className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded text-sm font-bold"
+              className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded text-sm font-bold"
             >
               OK
             </button>

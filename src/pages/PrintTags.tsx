@@ -64,7 +64,7 @@ export function PrintTags() {
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input 
+            <input aria-label="Buscar" 
               type="text"
               placeholder="Buscar..."
               value={searchTerm}
@@ -73,7 +73,7 @@ export function PrintTags() {
             />
           </div>
           
-          <select 
+          <select aria-label="Tipo de etiqueta" 
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value as 'WORKERS' | 'EPIS')}
             className="bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
@@ -84,7 +84,7 @@ export function PrintTags() {
           
           <button 
             onClick={handlePrint}
-            className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+            className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
           >
             <Printer className="w-4 h-4" /> Imprimir ({filteredItems.length})
           </button>

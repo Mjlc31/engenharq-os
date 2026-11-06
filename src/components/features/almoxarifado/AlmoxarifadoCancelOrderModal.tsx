@@ -93,7 +93,7 @@ export function AlmoxarifadoCancelOrderModal({
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Fechar"
             onClick={onClose}
             disabled={submitting}
             className="p-1.5 rounded-lg text-muted hover:text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
@@ -161,7 +161,7 @@ export function AlmoxarifadoCancelOrderModal({
 
             {/* Items summary */}
             <div className="pt-2 border-t border-border/60">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted block mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted block mb-1.5">
                 Itens a serem estornados:
               </span>
               <div className="space-y-1">
@@ -172,7 +172,7 @@ export function AlmoxarifadoCancelOrderModal({
                       {item.size ? ` (${item.size})` : ''}
                     </span>
                     {item.ca_number && (
-                      <span className="text-[10px] text-muted font-mono ml-2 shrink-0">
+                      <span className="text-[11px] text-muted font-mono ml-2 shrink-0">
                         CA: {item.ca_number}
                       </span>
                     )}
@@ -187,7 +187,7 @@ export function AlmoxarifadoCancelOrderModal({
             <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1.5">
               Motivo do Estorno / Exclusão <span className="text-red-400">*</span>
             </label>
-            <textarea
+            <textarea aria-label="Motivo do Estorno / Exclusão"
               rows={2}
               value={reason}
               onChange={e => setReason(e.target.value)}
@@ -202,7 +202,7 @@ export function AlmoxarifadoCancelOrderModal({
                   key={i}
                   type="button"
                   onClick={() => setReason(qr)}
-                  className="text-[10px] px-2 py-1 rounded-md bg-surface-hover hover:bg-border border border-border text-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="text-[11px] px-2 py-1 rounded-md bg-surface-hover hover:bg-border border border-border text-muted hover:text-foreground transition-colors cursor-pointer"
                 >
                   {qr}
                 </button>

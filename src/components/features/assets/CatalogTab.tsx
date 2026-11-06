@@ -472,8 +472,8 @@ export function CatalogTab({
             <div className="flex items-center gap-2 bg-background border-2 border-primary/40 hover:border-primary rounded-lg px-3 py-1.5 transition-colors">
               <Building2 className="w-5 h-5 text-primary shrink-0" />
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold text-muted tracking-wider">Estoque por Obra:</span>
-                <select
+                <span className="text-[11px] uppercase font-bold text-muted tracking-wider">Estoque por Obra:</span>
+                <select aria-label="Estoque por obra"
                   value={selectedSiteId}
                   onChange={e => {
                     setSelectedSiteId(e.target.value);
@@ -534,7 +534,7 @@ export function CatalogTab({
 
             <button 
               onClick={openNewCatalogModal}
-              className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-lg flex items-center gap-2 text-sm shadow-md hover:opacity-90 transition-opacity"
+              className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-lg flex items-center gap-2 text-sm shadow-md hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" /> + Novo EPI
             </button>
@@ -556,7 +556,7 @@ export function CatalogTab({
         <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-border/60">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input 
+            <input aria-label="Buscar por nome, marca, modelo, código ou CA" 
               type="text" 
               placeholder="Buscar por nome, marca, modelo, código ou CA..." 
               value={search}
@@ -569,7 +569,7 @@ export function CatalogTab({
           </div>
 
           <div className="w-full sm:w-64">
-            <select 
+            <select aria-label="Filtrar por categoria" 
               value={catalogCategoryFilter}
               onChange={e => {
                 setCatalogCategoryFilter(e.target.value);
@@ -651,18 +651,18 @@ export function CatalogTab({
                           <div className="font-bold text-foreground">{cat.name}</div>
                           <div className="text-xs text-muted">
                             {cat.brand || 'Sem marca'} {cat.model ? `• ${cat.model}` : ''}
-                            {cat.code && <span className="ml-2 font-mono text-[10px] bg-background px-1.5 py-0.5 rounded border border-border">{cat.code}</span>}
+                            {cat.code && <span className="ml-2 font-mono text-[11px] bg-background px-1.5 py-0.5 rounded border border-border">{cat.code}</span>}
                           </div>
                           {/* Mini badges das obras onde está alocado quando na visão geral */}
                           {selectedSiteId === 'ALL' && distributions.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {distributions.slice(0, 3).map(dist => (
-                                <span key={dist.siteId} className="text-[10px] bg-primary/10 text-primary font-medium px-1.5 py-0.2 rounded border border-primary/20">
+                                <span key={dist.siteId} className="text-[11px] bg-primary/10 text-primary font-medium px-1.5 py-0.2 rounded border border-primary/20">
                                   {dist.siteName}: <strong>{dist.quantity}</strong>
                                 </span>
                               ))}
                               {distributions.length > 3 && (
-                                <span className="text-[10px] text-muted">+{distributions.length - 3} obras</span>
+                                <span className="text-[11px] text-muted">+{distributions.length - 3} obras</span>
                               )}
                             </div>
                           )}
@@ -685,12 +685,12 @@ export function CatalogTab({
                           {displayStock} un
                         </span>
                         {selectedSiteId !== 'ALL' ? (
-                          <span className="text-[10px] text-muted font-mono">
+                          <span className="text-[11px] text-muted font-mono">
                             Empresa: {generalStock} un
                           </span>
                         ) : (
                           cat.minimum_stock !== null && cat.minimum_stock !== undefined && (
-                            <span className="text-[10px] text-muted font-mono">Mín: {cat.minimum_stock}</span>
+                            <span className="text-[11px] text-muted font-mono">Mín: {cat.minimum_stock}</span>
                           )
                         )}
                       </div>
@@ -783,7 +783,7 @@ export function CatalogTab({
                       </p>
                       <button
                         onClick={openNewCatalogModal}
-                        className="mt-2 bg-primary text-primary-foreground text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5"
+                        className="mt-2 bg-primary-dark text-primary-foreground text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5"
                       >
                         <Plus className="w-3.5 h-3.5" /> + Cadastrar EPI Agora
                       </button>
@@ -834,7 +834,7 @@ export function CatalogTab({
                   Preencha os dados técnicos, CA, valor unitário e o saldo em estoque.
                 </p>
               </div>
-              <button onClick={resetForm} className="text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={resetForm} className="text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -843,7 +843,7 @@ export function CatalogTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Nome / Descrição Curta *</label>
-                  <input 
+                  <input aria-label="Nome / Descrição Curta" 
                     required 
                     type="text" 
                     placeholder="Ex: Capacete de Segurança com Carneira" 
@@ -854,7 +854,7 @@ export function CatalogTab({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Categoria (NR-6) *</label>
-                  <select 
+                  <select aria-label="Categoria (NR-6)" 
                     value={catCategory} 
                     onChange={e => setCatCategory(e.target.value)} 
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary"
@@ -867,7 +867,7 @@ export function CatalogTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Marca / Fabricante</label>
-                  <input 
+                  <input aria-label="Marca / Fabricante" 
                     type="text" 
                     placeholder="Ex: 3M, Volk, Delta Plus" 
                     value={catBrand} 
@@ -877,7 +877,7 @@ export function CatalogTab({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Modelo</label>
-                  <input 
+                  <input aria-label="Modelo" 
                     type="text" 
                     placeholder="Ex: H-700, Cano Longo" 
                     value={catModel} 
@@ -890,7 +890,7 @@ export function CatalogTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Número do CA</label>
-                  <input 
+                  <input aria-label="Número do CA" 
                     type="text" 
                     placeholder="Ex: 12345" 
                     value={catCaNumber} 
@@ -900,7 +900,7 @@ export function CatalogTab({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Validade do CA</label>
-                  <input 
+                  <input aria-label="Validade do CA" 
                     type="date" 
                     value={catCaValidity} 
                     onChange={e => setCatCaValidity(e.target.value)} 
@@ -924,7 +924,7 @@ export function CatalogTab({
                   {/* Valor Unitário */}
                   <div>
                     <label className="block text-sm font-medium text-muted mb-1">Valor Unitário (R$)</label>
-                    <input 
+                    <input aria-label="Valor Unitário (R$)" 
                       type="number" 
                       step="0.01" 
                       min="0"
@@ -940,7 +940,7 @@ export function CatalogTab({
                     <label className="block text-sm font-medium text-foreground font-semibold mb-1">
                       {editingCatalog ? 'Saldo em Estoque (Qtd)' : 'Estoque Inicial (Qtd) *'}
                     </label>
-                    <input 
+                    <input aria-label={editingCatalog ? 'Saldo em Estoque (Qtd)' : 'Estoque Inicial (Qtd)'} 
                       type="number" 
                       min="0"
                       placeholder="0" 
@@ -956,7 +956,7 @@ export function CatalogTab({
                   {/* Estoque Mínimo */}
                   <div>
                     <label className="block text-sm font-medium text-muted mb-1">Estoque Mínimo (Alerta)</label>
-                    <input 
+                    <input aria-label="Estoque Mínimo (Alerta)" 
                       type="number" 
                       min="0"
                       placeholder="0" 
@@ -973,7 +973,7 @@ export function CatalogTab({
                     <label className="block text-sm font-medium text-muted mb-1">
                       {editingCatalog ? 'Alocar / Vincular Saldo à Obra:' : 'Alocar Estoque Inicial na Obra:'}
                     </label>
-                    <select
+                    <select aria-label={editingCatalog ? 'Alocar / Vincular Saldo à Obra' : 'Alocar Estoque Inicial na Obra'}
                       value={catSiteId}
                       onChange={e => setCatSiteId(e.target.value)}
                       className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm"
@@ -1002,7 +1002,7 @@ export function CatalogTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Vida Útil Estimada (Dias)</label>
-                  <input 
+                  <input aria-label="Vida Útil Estimada (Dias)" 
                     type="number" 
                     placeholder="180" 
                     value={catLifespanDays} 
@@ -1012,7 +1012,7 @@ export function CatalogTab({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Status</label>
-                  <select 
+                  <select aria-label="Status" 
                     value={catStatus} 
                     onChange={e => setCatStatus(e.target.value)} 
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary"
@@ -1037,7 +1037,7 @@ export function CatalogTab({
               
               <div>
                 <label className="block text-sm font-medium text-muted mb-1">Descrição / Instruções de Uso</label>
-                <textarea 
+                <textarea aria-label="Descrição / Instruções de Uso" 
                   rows={2} 
                   value={catDescription} 
                   onChange={e => setCatDescription(e.target.value)} 
@@ -1052,7 +1052,7 @@ export function CatalogTab({
                 <button 
                   type="submit" 
                   disabled={!catName || !catCategory || isSavingCatalog} 
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50 transition-opacity"
+                  className="px-4 py-2 bg-primary-dark text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50 transition-opacity"
                 >
                   {isSavingCatalog ? 'Salvando...' : editingCatalog ? 'Atualizar EPI' : 'Salvar EPI com Estoque'}
                 </button>
@@ -1075,7 +1075,7 @@ export function CatalogTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Quantidade *</label>
-                  <input 
+                  <input aria-label="Quantidade" 
                     type="number" 
                     min="1" 
                     required 
@@ -1087,7 +1087,7 @@ export function CatalogTab({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Valor Unitário (R$)</label>
-                  <input 
+                  <input aria-label="Valor Unitário (R$)" 
                     type="number" 
                     step="0.01" 
                     min="0" 
@@ -1103,7 +1103,7 @@ export function CatalogTab({
               {sites.length > 0 && (
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Obra de Destino:</label>
-                  <select
+                  <select aria-label="Obra de Destino"
                     value={stockSiteId}
                     onChange={e => setStockSiteId(e.target.value)}
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground text-sm"
@@ -1120,7 +1120,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Fornecedor</label>
-                <input 
+                <input aria-label="Fornecedor" 
                   type="text" 
                   value={stockSupplier} 
                   onChange={e => setStockSupplier(e.target.value)} 
@@ -1131,7 +1131,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Número da Nota Fiscal (NF)</label>
-                <input 
+                <input aria-label="Número da Nota Fiscal (NF)" 
                   type="text" 
                   value={stockInvoice} 
                   onChange={e => setStockInvoice(e.target.value)} 
@@ -1186,7 +1186,7 @@ export function CatalogTab({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Selecione a Obra *</label>
-                <select
+                <select aria-label="Selecione a Obra"
                   value={adjustingSiteId}
                   onChange={e => {
                     const newSiteId = e.target.value;
@@ -1208,7 +1208,7 @@ export function CatalogTab({
                 <label className="block text-xs font-medium text-foreground font-semibold mb-1">
                   Novo Saldo na Obra (Quantidade Física) *
                 </label>
-                <input
+                <input aria-label="Novo Saldo na Obra (Quantidade Física)"
                   type="number"
                   min="0"
                   required
@@ -1240,7 +1240,7 @@ export function CatalogTab({
                 type="button"
                 onClick={handleSaveAdjustSiteStock}
                 disabled={adjustingQty === '' || isSubmittingSiteStock}
-                className="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md text-sm disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-primary-dark text-primary-foreground font-medium rounded-md text-sm disabled:opacity-50 transition-colors"
               >
                 {isSubmittingSiteStock ? 'Salvando...' : 'Salvar Saldo da Obra'}
               </button>
@@ -1264,7 +1264,7 @@ export function CatalogTab({
             <form onSubmit={handleCreateQuickSite} className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Nome da Obra *</label>
-                <input
+                <input aria-label="Nome da Obra"
                   type="text"
                   required
                   placeholder="Ex: Residencial Flores do Campo"
@@ -1276,7 +1276,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Cidade / Estado</label>
-                <input
+                <input aria-label="Cidade / Estado"
                   type="text"
                   placeholder="Ex: Maceió - AL"
                   value={quickSiteCity}
@@ -1296,7 +1296,7 @@ export function CatalogTab({
                 <button
                   type="submit"
                   disabled={!quickSiteName.trim() || isSubmittingQuickSite}
-                  className="px-4 py-2 bg-primary text-primary-foreground font-medium rounded-md text-sm disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 bg-primary-dark text-primary-foreground font-medium rounded-md text-sm disabled:opacity-50 transition-colors"
                 >
                   {isSubmittingQuickSite ? 'Criando...' : 'Criar Obra'}
                 </button>
@@ -1321,7 +1321,7 @@ export function CatalogTab({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Quantidade a Descartar *</label>
-                <input 
+                <input aria-label="Quantidade a Descartar" 
                   type="number" 
                   min="1" 
                   max={discardItem.current_stock || 1}
@@ -1334,7 +1334,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Motivo do Descarte *</label>
-                <select 
+                <select aria-label="Motivo do Descarte" 
                   value={discardReason} 
                   onChange={e => setDiscardReason(e.target.value as any)}
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground text-sm"
@@ -1349,7 +1349,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-muted mb-1">Observações do Descarte</label>
-                <textarea 
+                <textarea aria-label="Observações do Descarte" 
                   rows={2} 
                   value={discardNotes} 
                   onChange={e => setDiscardNotes(e.target.value)} 
@@ -1431,7 +1431,7 @@ export function CatalogTab({
                 </h3>
                 <p className="text-xs text-muted">Registro auditável de lotes e notas fiscais adquiridas.</p>
               </div>
-              <button onClick={() => setIsPurchasesDrawerOpen(false)} className="text-muted hover:text-foreground p-1">
+              <button aria-label="Fechar" onClick={() => setIsPurchasesDrawerOpen(false)} className="text-muted hover:text-foreground p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>

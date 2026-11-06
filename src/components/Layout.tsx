@@ -4,6 +4,7 @@ import { useAuth } from './AuthProvider';
 import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse, History, Tv } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { ROLE_LABELS } from '../services/rbacService';
 
 type NavEntry = { name: string; href: string; icon: React.ElementType; roles: string[] };
@@ -45,17 +46,18 @@ const ALMOXARIFADO_GROUPS = [
 
 const navItemClass = ({ isActive }: { isActive: boolean }) => cn(
   'flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors duration-200',
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+  '-outline-offset-2',
   isActive ? 'bg-primary/10 text-primary font-semibold' : 'text-muted hover:bg-surface-hover hover:text-foreground'
 );
 
 const groupLabelClass = 'px-3 mt-4 mb-1 text-xs font-bold uppercase tracking-wider text-muted first:mt-1';
 
-const iconButtonClass = 'h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer text-muted hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+const iconButtonClass = 'h-9 w-9 rounded-full bg-surface-hover flex items-center justify-center border border-border cursor-pointer text-muted hover:text-primary transition-colors';
 
 export function Layout() {
   const { signOut, user, role, customRole } = useAuth();
   const { isOnline } = useOfflineQueue();
+  useEscapeToClose();
   const isAlmoxarifado = role === 'ALMOXARIFADO' || (customRole && customRole.toLowerCase().includes('almoxarif'));
   const roleLabel = customRole || (role ? ROLE_LABELS[role] : '');
   const location = useLocation();
@@ -140,7 +142,7 @@ export function Layout() {
             </button>
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-muted ml-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded p-1 hover:text-foreground cursor-pointer transition-colors"
+              className="text-muted ml-2 rounded p-1 hover:text-foreground cursor-pointer transition-colors"
               aria-label={isSidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"}
               aria-expanded={isSidebarOpen}
               title={isSidebarOpen ? "Fechar menu" : "Abrir menu"}
@@ -171,7 +173,7 @@ export function Layout() {
             <span className="text-xs font-bold uppercase tracking-wider text-muted">Menu de navegação</span>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="p-1 rounded text-muted hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="p-1 rounded text-muted hover:text-foreground cursor-pointer"
               aria-label="Fechar menu lateral"
             >
               <X className="w-5 h-5" />
@@ -194,7 +196,7 @@ export function Layout() {
             <div className={groupLabelClass}>Sistema</div>
             <button
               onClick={signOut}
-              className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-colors duration-200 cursor-pointer text-muted hover:bg-red-500/10 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="flex w-full items-center gap-3 rounded px-3 py-2 text-sm transition-colors duration-200 cursor-pointer text-muted hover:bg-red-500/10 hover:text-red-500"
             >
               <LogOut className="w-4 h-4" />
               Sair

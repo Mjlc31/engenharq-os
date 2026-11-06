@@ -196,14 +196,14 @@ export function Trainings() {
           {activeTab === 'catalog' ? (
             <button
               onClick={() => setIsCatalogModalOpen(true)}
-              className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
+              className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" /> + Nova NR / Curso
             </button>
           ) : (
             <button
               onClick={() => setIsRecordModalOpen(true)}
-              className="bg-primary text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
+              className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-md flex items-center gap-2 text-sm shadow hover:opacity-90 transition-opacity"
             >
               <Plus className="w-4 h-4" /> + Registrar Treinamento
             </button>
@@ -218,14 +218,14 @@ export function Trainings() {
           className={`pb-3 font-semibold text-sm transition-colors relative ${activeTab === 'history' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Histórico por Colaborador ({trainings.length})
-          {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+          {activeTab === 'history' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
         </button>
         <button
           onClick={() => setActiveTab('catalog')}
           className={`pb-3 font-semibold text-sm transition-colors relative ${activeTab === 'catalog' ? 'text-primary' : 'text-muted hover:text-foreground'}`}
         >
           Catálogo de Cursos & NRs ({catalog.length})
-          {activeTab === 'catalog' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
+          {activeTab === 'catalog' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
         </button>
       </div>
 
@@ -244,7 +244,7 @@ export function Trainings() {
           />
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input
+            <input aria-label="Buscar por colaborador, matrícula ou NR"
               type="text"
               placeholder="Buscar por colaborador, matrícula ou NR..."
               value={searchWorker}
@@ -359,13 +359,13 @@ export function Trainings() {
                 <h2 className="text-xl font-bold text-foreground">Registrar Treinamento Realizado</h2>
                 <p className="text-xs text-muted mt-0.5">Vincule o trabalhador à capacitação com comprovação fotográfica.</p>
               </div>
-              <button onClick={() => setIsRecordModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button aria-label="Fechar" onClick={() => setIsRecordModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleSaveRecord} className="p-6 overflow-y-auto flex-1 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Colaborador *</label>
-                <select
+                <select aria-label="Colaborador"
                   required
                   value={selectedWorkerId}
                   onChange={e => setSelectedWorkerId(e.target.value)}
@@ -383,7 +383,7 @@ export function Trainings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Treinamento / Norma *</label>
-                  <select
+                  <select aria-label="Treinamento / Norma"
                     required
                     value={selectedTrainingId}
                     onChange={e => setSelectedTrainingId(e.target.value)}
@@ -400,7 +400,7 @@ export function Trainings() {
 
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Instrutor / Responsável *</label>
-                  <input
+                  <input aria-label="Instrutor / Responsável"
                     type="text"
                     required
                     placeholder="Nome do Instrutor"
@@ -414,7 +414,7 @@ export function Trainings() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Data de Realização *</label>
-                  <input
+                  <input aria-label="Data de Realização"
                     type="date"
                     required
                     value={completedAt}
@@ -425,7 +425,7 @@ export function Trainings() {
 
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Validade do Treinamento *</label>
-                  <input
+                  <input aria-label="Validade do Treinamento"
                     type="date"
                     required
                     value={validUntil}
@@ -461,7 +461,7 @@ export function Trainings() {
                     {photosUrls.map((url, idx) => (
                       <div key={idx} className="relative group">
                         <img src={url} alt="Evidência" className="w-16 h-16 rounded object-cover border border-border" />
-                        <button
+                        <button aria-label="Remover foto"
                           type="button"
                           onClick={() => setPhotosUrls(prev => prev.filter((_, i) => i !== idx))}
                           className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -476,7 +476,7 @@ export function Trainings() {
 
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Observações Adicionais</label>
-                <textarea
+                <textarea aria-label="Observações Adicionais"
                   rows={2}
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
@@ -496,7 +496,7 @@ export function Trainings() {
                 <button
                   type="submit"
                   disabled={saving || !selectedWorkerId || !selectedTrainingId}
-                  className="px-5 py-2 bg-primary text-primary-foreground font-semibold rounded-md text-sm shadow disabled:opacity-50"
+                  className="px-5 py-2 bg-primary-dark text-primary-foreground font-semibold rounded-md text-sm shadow disabled:opacity-50"
                 >
                   {saving ? 'Registrando...' : 'Salvar Treinamento'}
                 </button>
@@ -512,13 +512,13 @@ export function Trainings() {
           <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-border">
               <h3 className="text-lg font-bold text-foreground">Cadastrar Norma / Curso</h3>
-              <button onClick={() => setIsCatalogModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+              <button aria-label="Fechar" onClick={() => setIsCatalogModalOpen(false)} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
             </div>
 
             <form onSubmit={handleCreateCatalogItem} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Código da Norma / Sigla *</label>
-                <input
+                <input aria-label="Código da Norma / Sigla"
                   type="text"
                   required
                   placeholder="Ex: NR-10, NR-35, NR-12"
@@ -530,7 +530,7 @@ export function Trainings() {
 
               <div>
                 <label className="block text-xs font-semibold text-muted mb-1">Título do Treinamento *</label>
-                <input
+                <input aria-label="Título do Treinamento"
                   type="text"
                   required
                   placeholder="Ex: Segurança em Instalações e Serviços em Eletricidade"
@@ -543,7 +543,7 @@ export function Trainings() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Carga Horária (h) *</label>
-                  <input
+                  <input aria-label="Carga Horária (h)"
                     type="number"
                     min="1"
                     required
@@ -554,7 +554,7 @@ export function Trainings() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-muted mb-1">Validade Padrão (Meses) *</label>
-                  <input
+                  <input aria-label="Validade Padrão (Meses)"
                     type="number"
                     min="1"
                     required
@@ -570,7 +570,7 @@ export function Trainings() {
                 <button 
                   type="submit" 
                   disabled={isSavingCatalog}
-                  className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground font-semibold text-sm rounded-md shadow disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-primary-dark text-primary-foreground font-semibold text-sm rounded-md shadow disabled:opacity-50"
                 >
                   {isSavingCatalog && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isSavingCatalog ? 'Salvando...' : 'Salvar no Catálogo'}
@@ -586,7 +586,7 @@ export function Trainings() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <div className="relative max-w-3xl max-h-[90vh]">
             <img src={previewImage} alt="Evidência Fotográfica" className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border border-border" />
-            <button onClick={() => setPreviewImage(null)} className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black">
+            <button aria-label="Fechar" onClick={() => setPreviewImage(null)} className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black">
               <X className="w-5 h-5" />
             </button>
           </div>

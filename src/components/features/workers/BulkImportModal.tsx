@@ -149,7 +149,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
       <div className="bg-surface border border-border rounded-xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
           <h2 className="text-xl font-bold text-foreground">Importação em Massa</h2>
-          <button onClick={onClose} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
+          <button aria-label="Fechar" onClick={onClose} className="text-muted hover:text-foreground"><X className="w-5 h-5" /></button>
         </div>
         
         <div className="p-6 flex flex-col gap-6">
@@ -222,7 +222,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
           <button 
             onClick={processFile} 
             disabled={!file || isProcessing} 
-            className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity"
+            className="flex items-center gap-2 px-6 py-2 bg-primary-dark text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity"
           >
             {isProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
             {isProcessing ? 'Processando...' : 'Importar Dados'}
@@ -234,7 +234,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
           <div className="bg-surface border border-border rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
               <h2 className="text-xl font-bold text-foreground flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary"/> Manual de Preenchimento da Planilha</h2>
-              <button onClick={() => setShowManual(false)} className="p-2 hover:bg-surface-hover rounded-full transition-colors text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={() => setShowManual(false)} className="p-2 hover:bg-surface-hover rounded-full transition-colors text-muted hover:text-foreground">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -285,7 +285,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
               </div>
             </div>
             <div className="p-6 border-t border-border flex justify-end">
-              <button onClick={() => setShowManual(false)} className="px-6 py-2 bg-primary text-background font-bold rounded-md hover:bg-primary-dark transition-colors">
+              <button onClick={() => setShowManual(false)} className="px-6 py-2 bg-primary-dark text-background font-bold rounded-md hover:bg-primary-darker transition-colors">
                 Entendi
               </button>
             </div>

@@ -110,7 +110,7 @@ export function Login() {
             className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-4 text-white"
           >
             Padrão Ouro em <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-rose-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-red-400">
               Segurança Operacional
             </span>
           </motion.h1>
@@ -171,7 +171,7 @@ export function Login() {
                 <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider ml-1">Email Corporativo</label>
                 <div className="relative">
                   <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600" />
-                  <input
+                  <input aria-label="Email Corporativo"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -189,7 +189,7 @@ export function Login() {
                 </div>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600" />
-                  <input
+                  <input aria-label="Senha"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

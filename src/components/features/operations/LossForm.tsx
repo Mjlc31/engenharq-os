@@ -55,7 +55,7 @@ export function LossForm({ workers, setIsSignatureModalOpen, setPendingLoss }: {
       <div className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted">Funcionário</label>
-          <select value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
+          <select aria-label="Funcionário" value={selectedWorkerId} onChange={e => setSelectedWorkerId(e.target.value)} className="w-full px-4 py-2 bg-background border border-border rounded-md">
             <option value="">Selecione o Trabalhador</option>
             {workers.map(w => <option key={w.id} value={w.id}>{w.full_name}</option>)}
           </select>

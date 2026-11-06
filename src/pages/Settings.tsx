@@ -284,7 +284,7 @@ export function Settings() {
                   if (!canManage(newRole)) setNewRole('ALMOXARIFADO');
                   setIsNewUserModalOpen(true);
                 }}
-                className="px-3 py-2 bg-primary text-background font-bold rounded-md text-xs hover:bg-primary-dark transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-auto"
+                className="px-3 py-2 bg-primary-dark text-background font-bold rounded-md text-xs hover:bg-primary-darker transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4" /> Novo Usuário
               </button>}
@@ -294,7 +294,7 @@ export function Settings() {
             <div className="p-4 border-b border-border bg-surface-hover/20 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="relative w-full sm:w-72">
                 <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <input aria-label="Buscar por nome, email ou cargo"
                   type="text"
                   placeholder="Buscar por nome, email ou cargo..."
                   value={userSearch}
@@ -351,7 +351,7 @@ export function Settings() {
                               <div className="font-bold text-foreground text-sm flex items-center gap-1.5">
                                 {u.full_name || 'Sem Nome'}
                                 {isCurrentUser && (
-                                  <span className="text-[10px] px-1.5 py-0.2 bg-primary/20 text-primary rounded font-mono font-normal">você</span>
+                                  <span className="text-[11px] px-1.5 py-0.2 bg-primary/20 text-primary rounded font-mono font-normal">você</span>
                                 )}
                               </div>
                               <div className="text-xs text-muted font-mono">{u.email}</div>
@@ -365,7 +365,7 @@ export function Settings() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${roleColors[u.role] || 'bg-zinc-500/10 text-zinc-400'}`}>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${roleColors[u.role] || 'bg-zinc-500/10 text-zinc-400'}`}>
                                 {ROLE_LABELS[u.role] || u.role}
                               </span>
                             </td>
@@ -375,13 +375,13 @@ export function Settings() {
                                   <span className="text-muted text-[11px]">Nenhum</span>
                                 ) : (
                                   modulesAllowed.slice(0, 4).map(m => (
-                                    <span key={m} className="px-1.5 py-0.5 rounded bg-surface-hover border border-border text-[10px] text-muted capitalize">
+                                    <span key={m} className="px-1.5 py-0.5 rounded bg-surface-hover border border-border text-[11px] text-muted capitalize">
                                       {m}
                                     </span>
                                   ))
                                 )}
                                 {modulesAllowed.length > 4 && (
-                                  <span className="text-[10px] text-muted self-center">+{modulesAllowed.length - 4}</span>
+                                  <span className="text-[11px] text-muted self-center">+{modulesAllowed.length - 4}</span>
                                 )}
                               </div>
                             </td>
@@ -430,7 +430,7 @@ export function Settings() {
                 <h3 className="font-bold text-foreground text-base">Editar Usuário & Permissões: {editingUser.full_name}</h3>
                 <p className="text-xs text-muted font-mono">{editingUser.email}</p>
               </div>
-              <button
+              <button aria-label="Fechar"
                 type="button"
                 onClick={() => setEditingUser(null)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
@@ -443,7 +443,7 @@ export function Settings() {
               {/* Nome Completo */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Nome Completo</label>
-                <input
+                <input aria-label="Nome Completo"
                   type="text"
                   value={tempFullName}
                   onChange={e => setTempFullName(e.target.value)}
@@ -458,9 +458,9 @@ export function Settings() {
                   <label className="text-xs font-semibold text-foreground">
                     Cargo / Função Digitável
                   </label>
-                  <span className="text-[10px] text-muted">Personalize livremente a função</span>
+                  <span className="text-[11px] text-muted">Personalize livremente a função</span>
                 </div>
-                <input
+                <input aria-label="Cargo / Função Digitável"
                   type="text"
                   list="roles-suggestions-edit"
                   placeholder="Ex: Técnico em Segurança, Almoxarife, Encarregado..."
@@ -476,7 +476,7 @@ export function Settings() {
 
                 {/* Sugestões rápidas de cargos pré-cadastrados */}
                 <div className="pt-1">
-                  <span className="text-[10px] text-muted block mb-1">Sugestões rápidas:</span>
+                  <span className="text-[11px] text-muted block mb-1">Sugestões rápidas:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {presets.map(p => (
                       <button
@@ -486,7 +486,7 @@ export function Settings() {
                           setTempCustomRole(p.label);
                           setTempRole(p.defaultRole);
                         }}
-                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                           tempCustomRole === p.label
                             ? 'bg-primary/20 text-primary border-primary font-bold'
                             : 'bg-surface hover:bg-surface-hover text-muted hover:text-foreground border-border'
@@ -502,7 +502,7 @@ export function Settings() {
               {/* Perfil de Acesso Geral */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Perfil de Acesso Geral (RBAC)</label>
-                <select
+                <select aria-label="Perfil de Acesso Geral (RBAC)"
                   value={tempRole}
                   onChange={e => {
                     const r = e.target.value as UserRole;
@@ -678,7 +678,7 @@ export function Settings() {
                   type="button"
                   disabled={savingPermissions}
                   onClick={handleSavePermissions}
-                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                  className="px-5 py-2 bg-primary-dark text-background text-sm font-bold rounded-md hover:bg-primary-darker disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
                 >
                   {savingPermissions ? (
                     <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />
@@ -707,7 +707,7 @@ export function Settings() {
                   <p className="text-[11px] text-muted">Cadastre o colaborador e defina seus acessos no SGEPI.</p>
                 </div>
               </div>
-              <button
+              <button aria-label="Fechar"
                 type="button"
                 onClick={() => setIsNewUserModalOpen(false)}
                 className="text-muted hover:text-foreground p-1 transition-colors cursor-pointer"
@@ -719,7 +719,7 @@ export function Settings() {
             <form onSubmit={handleCreateUser} className="p-5 space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted">Nome Completo *</label>
-                <input
+                <input aria-label="Nome Completo"
                   type="text"
                   required
                   placeholder="Ex: João da Silva"
@@ -731,7 +731,7 @@ export function Settings() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted">E-mail de Acesso *</label>
-                <input
+                <input aria-label="E-mail de Acesso"
                   type="email"
                   required
                   placeholder="usuario@engenharq.com"
@@ -747,9 +747,9 @@ export function Settings() {
                   <label className="text-xs font-semibold text-muted">
                     Cargo / Função <span className="text-primary">*</span>
                   </label>
-                  <span className="text-[10px] text-primary font-medium">Área digitável</span>
+                  <span className="text-[11px] text-primary font-medium">Área digitável</span>
                 </div>
-                <input
+                <input aria-label="Cargo / Função"
                   type="text"
                   required
                   list="new-roles-suggestions"
@@ -773,7 +773,7 @@ export function Settings() {
 
                 {/* Chips de funções pré-cadastradas */}
                 <div className="pt-1">
-                  <span className="text-[10px] text-muted block mb-1">Ou selecione uma pré-cadastrada:</span>
+                  <span className="text-[11px] text-muted block mb-1">Ou selecione uma pré-cadastrada:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {presets.map(p => (
                       <button
@@ -783,7 +783,7 @@ export function Settings() {
                           setNewCustomRole(p.label);
                           setNewRole(p.defaultRole);
                         }}
-                        className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
                           newCustomRole === p.label
                             ? 'bg-primary/20 text-primary border-primary font-bold'
                             : 'bg-surface hover:bg-surface-hover text-muted hover:text-foreground border-border'
@@ -799,7 +799,7 @@ export function Settings() {
               {/* Perfil de Acesso Geral */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted">Perfil de Acesso & Permissões Base</label>
-                <select
+                <select aria-label="Perfil de Acesso & Permissões Base"
                   value={newRole}
                   onChange={e => setNewRole(e.target.value as UserRole)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
@@ -815,14 +815,14 @@ export function Settings() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted">Senha Provisória</label>
-                <input
+                <input aria-label="Senha Provisória"
                   type="text"
                   required
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
                 />
-                <p className="text-[10px] text-muted">O usuário poderá alterar a senha após o primeiro acesso.</p>
+                <p className="text-[11px] text-muted">O usuário poderá alterar a senha após o primeiro acesso.</p>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-3">
@@ -836,7 +836,7 @@ export function Settings() {
                 <button
                   type="submit"
                   disabled={creatingUser}
-                  className="px-5 py-2 bg-primary text-background text-sm font-bold rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
+                  className="px-5 py-2 bg-primary-dark text-background text-sm font-bold rounded-md hover:bg-primary-darker disabled:opacity-50 transition-colors flex items-center gap-2 cursor-pointer shadow"
                 >
                   {creatingUser ? (
                     <div className="w-4 h-4 rounded-full border-2 border-background border-t-transparent animate-spin" />

@@ -206,7 +206,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
           onClick={() => setActiveTab(activeTab === 'config' ? 'generate' : 'config')}
           className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
             activeTab === 'config'
-              ? 'bg-primary text-primary-foreground border-primary'
+              ? 'bg-primary-dark text-primary-foreground border-primary'
               : 'bg-surface hover:bg-surface-hover text-foreground border-border'
           }`}
         >
@@ -261,7 +261,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                   Funcionário
                 </label>
                 <div className="relative">
-                  <select
+                  <select aria-label="Funcionário"
                     value={selectedWorkerId}
                     onChange={(e) => setSelectedWorkerId(e.target.value)}
                     className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
@@ -280,7 +280,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
               </div>
 
               {/* Quick Search */}
-              <input
+              <input aria-label="Filtrar por nome, CPF ou matrícula"
                 type="text"
                 placeholder="Filtrar por nome, CPF ou matrícula..."
                 value={workerSearchTerm}
@@ -315,7 +315,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                 <button
                   disabled={!selectedWorkerId || isProcessingPdf || loadingAssignments}
                   onClick={() => handleAction('preview')}
-                  className="w-full h-10 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                  className="w-full h-10 rounded-lg bg-primary-dark hover:bg-primary/90 text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Eye className="w-4 h-4" />
                   Visualizar
@@ -373,7 +373,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                   </label>
                   <span className="text-xs font-mono font-bold text-primary">{offsets.firstRowY} pt</span>
                 </div>
-                <input
+                <input aria-label="Início da Tabela (1ª Linha)"
                   type="range"
                   min="340"
                   max="420"
@@ -412,7 +412,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                   </label>
                   <span className="text-xs font-mono font-bold text-primary">{offsets.rowHeight} pt</span>
                 </div>
-                <input
+                <input aria-label="Altura das Linhas (Espaçamento)"
                   type="range"
                   min="16"
                   max="28"
@@ -449,7 +449,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
                   </label>
                   <span className="text-xs font-mono font-bold text-primary">{offsets.headerY} pt</span>
                 </div>
-                <input
+                <input aria-label="Posição do Cabeçalho (Nome/Matrícula)"
                   type="range"
                   min="690"
                   max="750"
