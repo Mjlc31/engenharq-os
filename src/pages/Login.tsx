@@ -53,37 +53,6 @@ export function Login() {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (error) {
-        if (error.message === 'Failed to fetch') {
-          setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
-        } else {
-          setError(error.message);
-        }
-      } else {
-        // In a real app we might ask for email confirmation, but for this demo let's just show success
-        // If auto-confirm is enabled in Supabase, this will actually log them in.
-        setError('Registration successful. If email confirmation is off, you can now Sign In.');
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Um erro inesperado ocorreu.';
-      if (message === 'Failed to fetch') {
-        setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
-      } else {
-        setError(message);
-      }
-    }
-    setLoading(false);
-  };
-
   const handleForgotPassword = async () => {
     if (!email.trim()) {
       setError('Por favor, preencha o campo de email primeiro.');
@@ -243,15 +212,8 @@ export function Login() {
                   {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                 </span>
               </button>
-              
-              <button
-                type="button"
-                onClick={handleSignUp}
-                disabled={loading}
-                className="w-full bg-transparent hover:bg-white/5 text-zinc-400 hover:text-white cursor-pointer font-medium py-3.5 px-4 rounded-xl transition-all border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                Cadastrar Novo Usuário
-              </button>
+              {/* Sem cadastro público: contas são criadas por ADMIN/Engenharia em Configurações (o banco recusa signUp). */}
+              <p className="text-center text-xs text-zinc-500">Sem acesso? Solicite ao administrador do sistema.</p>
             </div>
           </form>
         </motion.div>
