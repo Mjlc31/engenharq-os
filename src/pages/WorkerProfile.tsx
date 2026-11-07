@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { uploadSignature } from '../lib/storage';
 import { Worker, WorkerRole, ConstructionSite, EpiAssignment, DisciplinaryType, AsoType } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat, ShieldAlert, ShieldCheck, AlertTriangle, FileText, X, GraduationCap, HeartPulse, Clock } from 'lucide-react';
@@ -345,9 +346,10 @@ export function WorkerProfile() {
   const handleSaveSignature = async (dataUrl: string) => {
     if (!selectedAssignmentId) return;
     try {
+      const signatureUrl = await uploadSignature(dataUrl);
       const { error: sigError } = await supabase
         .from('epi_assignments')
-        .update({ digital_signature_url: dataUrl })
+        .update({ digital_signature_url: signatureUrl })
         .eq('id', selectedAssignmentId);
 
       if (sigError) throw sigError;

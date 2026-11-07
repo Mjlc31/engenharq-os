@@ -1054,14 +1054,6 @@ export type Database = {
         Args: { p_cancelled_by: string; p_order_id: string; p_reason?: string }
         Returns: Json
       }
-      checkout_epi: {
-        Args: {
-          p_epi_id: string
-          p_expected_return_date?: string
-          p_worker_id: string
-        }
-        Returns: string
-      }
       complete_almoxarifado_order: {
         Args: {
           p_delivered_by: string

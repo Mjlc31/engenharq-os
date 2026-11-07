@@ -3,6 +3,7 @@ import { useEpiAssets } from '../hooks/useEpiAssets';
 import { useToast } from '../components/ui/Toast';
 import { Package, Users, FileText, CheckCircle, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { uploadSignature } from '../lib/storage';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { ReturnForm } from '../components/features/operations/ReturnForm';
 import { ReplacementForm } from '../components/features/operations/ReplacementForm';
@@ -86,6 +87,7 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
+      const signatureUrl = await uploadSignature(signatureDataUrl);
       
       const catalog = catalogs.find(c => c.id === selectedCatalogId);
       if (!catalog) throw new Error("EPI não encontrado.");
@@ -97,7 +99,7 @@ export function Operations() {
         assigned_at: new Date(deliveryDate).toISOString(),
         unit_price_at_delivery: Number(catalog.unit_price ?? 0),
         condition_on_delivery: 'GOOD' as const,
-        digital_signature_url: signatureDataUrl,
+        digital_signature_url: signatureUrl,
         audit_selfie_url: photoUrl
       }));
 
@@ -125,12 +127,13 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
+      const signatureUrl = await uploadSignature(signatureDataUrl);
 
       // Devolução em bom estado: o banco credita a obra de origem da entrega e grava o Kardex
       const { error } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
         condition_on_return: 'GOOD',
-        return_signature_url: signatureDataUrl,
+        return_signature_url: signatureUrl,
         audit_selfie_url: photoUrl
       }).eq('id', pendingReturn.assignmentId);
       if (error) throw error;
@@ -151,11 +154,12 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
+      const signatureUrl = await uploadSignature(signatureDataUrl);
       
       const { error } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
         condition_on_return: 'DAMAGED',
-        return_signature_url: signatureDataUrl,
+        return_signature_url: signatureUrl,
         audit_selfie_url: photoUrl
       }).eq('id', pendingLoss.assignmentId);
       if (error) throw error;
@@ -166,7 +170,7 @@ export function Operations() {
         title: `Termo de Extravio / Perda de EPI - ${pendingLoss.catalogName || 'Equipamento'}`,
         content_html: `<p>O colaborador declarou o extravio/perda do equipamento <strong>${pendingLoss.catalogName || 'EPI'}</strong> sob sua responsabilidade, ficando orientado sobre os procedimentos de guarda e reposição de EPIs.</p>`,
         applied_at: new Date().toISOString(),
-        pdf_url: photoUrl || signatureDataUrl
+        pdf_url: photoUrl || signatureUrl
       });
       if (discErr) console.warn('Aviso ao registrar medida disciplinar de extravio:', discErr);
       
@@ -186,6 +190,7 @@ export function Operations() {
     setSubmitting(true);
     try {
       const photoUrl = await uploadPhoto(photoFile);
+      const signatureUrl = await uploadSignature(signatureDataUrl);
 
       const catalog = catalogs.find(c => c.id === pendingReplacement.newEpiId);
       if (!catalog) throw new Error("Novo EPI não encontrado no catálogo.");
@@ -197,7 +202,7 @@ export function Operations() {
         assigned_at: new Date().toISOString(),
         unit_price_at_delivery: Number(catalog.unit_price ?? 0),
         condition_on_delivery: 'GOOD' as const,
-        digital_signature_url: signatureDataUrl,
+        digital_signature_url: signatureUrl,
         audit_selfie_url: photoUrl
       });
       if (assignError) throw assignError;
@@ -206,7 +211,7 @@ export function Operations() {
       const { error: returnError } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
         condition_on_return: 'DAMAGED',
-        return_signature_url: signatureDataUrl,
+        return_signature_url: signatureUrl,
       }).eq('id', pendingReplacement.oldEpiId);
       if (returnError) throw returnError;
 
