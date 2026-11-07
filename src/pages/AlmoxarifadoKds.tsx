@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { uploadSignature } from '../lib/storage';
 import { AlmoxarifadoOrder, AlmoxarifadoOrderItem, ConstructionSite, Worker, EpiCatalog } from '../types';
 import { useAuth } from '../components/AuthProvider';
 import { useToast } from '../components/ui/Toast';
 import SignatureCanvas from 'react-signature-canvas';
 import { 
-  Tv, Maximize2, Minimize2, Volume2, VolumeX, Plus, CheckCircle2, 
+  Tv, ExternalLink, Volume2, VolumeX, Plus, CheckCircle2,
   Clock, HardHat, User, AlertCircle, RefreshCw, X, Search, 
   Bell, FileCheck, ArrowRight, ShieldCheck, Check, History,
   SlidersHorizontal, PackagePlus, Trash2
@@ -17,40 +18,7 @@ import { AlmoxarifadoKardexTab } from '../components/features/almoxarifado/Almox
 import { AlmoxarifadoStockEntryModal } from '../components/features/almoxarifado/AlmoxarifadoStockEntryModal';
 import { AlmoxarifadoCancelOrderModal } from '../components/features/almoxarifado/AlmoxarifadoCancelOrderModal';
 
-// Helper Web Audio API Chime (Fast-Food Beep)
-function playKdsChime() {
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    
-    // First tone (G5 - 784 Hz)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(783.99, ctx.currentTime);
-    gain1.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start();
-    osc1.stop(ctx.currentTime + 0.3);
-
-    // Second tone (C6 - 1046.5 Hz)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.15);
-    gain2.gain.setValueAtTime(0.25, ctx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(ctx.currentTime + 0.15);
-    osc2.stop(ctx.currentTime + 0.55);
-  } catch (e) {
-    console.warn('AudioContext chime blocked or not supported:', e);
-  }
-}
+import { KDS_TV_CALL_EVENT, KDS_TV_CHANNEL, playKdsChime } from '../lib/kdsTv';
 
 export function AlmoxarifadoKds() {
   const queryClient = useQueryClient();
@@ -73,7 +41,6 @@ export function AlmoxarifadoKds() {
   const [orderToDelete, setOrderToDelete] = useState<AlmoxarifadoOrder | null>(null);
 
   // TV Controls
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [callingOrderId, setCallingOrderId] = useState<string | null>(null);
@@ -184,26 +151,26 @@ export function AlmoxarifadoKds() {
     };
   }, [soundEnabled, loadOrders]);
 
-  // Fullscreen Handlers
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(console.warn);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => setIsFullscreen(false)).catch(console.warn);
-      }
-    }
-  };
-
+  // Canal do telão (/kds/tv): o "Chamar" daqui destaca o pedido lá, em outra janela ou outro aparelho.
+  const tvChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   useEffect(() => {
-    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
+    const channel = supabase.channel(KDS_TV_CHANNEL).subscribe();
+    tvChannelRef.current = channel;
+    return () => {
+      tvChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Chamar Trabalhador (Highlight + Audio)
+  const openTv = () => {
+    const url = selectedSiteId === 'ALL' ? '/kds/tv' : `/kds/tv?obra=${selectedSiteId}`;
+    window.open(url, 'engenharq-telao');
+  };
+
+  // Chamar Trabalhador (Highlight + Audio + telão)
   const handleCallOrder = (order: AlmoxarifadoOrder) => {
     setCallingOrderId(order.id);
+    tvChannelRef.current?.send({ type: 'broadcast', event: KDS_TV_CALL_EVENT, payload: { orderId: order.id } });
     if (soundEnabled) {
       playKdsChime();
     }
@@ -225,10 +192,10 @@ export function AlmoxarifadoKds() {
       toast({ type: 'error', title: 'Assinatura obrigatória', message: 'O colaborador precisa assinar antes de confirmar a entrega.' });
       return;
     }
-    const signatureUrl = signatureRef.current.toDataURL('image/png');
+    const signatureDataUrl = signatureRef.current.toDataURL('image/png');
     setDelivering(true);
     try {
-
+      const signatureUrl = await uploadSignature(signatureDataUrl);
       const deliveredBy = user?.email || 'Almoxarife';
 
       // Entrega atômica: cautelas, baixa na obra e Kardex numa transação. Sem fallback no cliente:
@@ -412,8 +379,7 @@ export function AlmoxarifadoKds() {
 
   return (
     <div className={cn(
-      "flex flex-col flex-1 bg-background text-foreground font-sans transition-all selection:bg-primary/30 selection:text-foreground",
-      isFullscreen ? "fixed inset-0 z-50 p-4 md:p-6 overflow-hidden h-screen bg-background" : "space-y-4"
+      "flex flex-col flex-1 bg-background text-foreground font-sans transition-all selection:bg-primary/30 selection:text-foreground space-y-4"
     )}>
       
       {/* Top Header / TV Control Bar */}
@@ -497,13 +463,14 @@ export function AlmoxarifadoKds() {
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
-          {/* Fullscreen TV Mode */}
+          {/* Telão do balcão: página só de leitura em janela própria, para arrastar até a TV */}
           <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-xl bg-surface border border-border text-muted hover:text-foreground hover:bg-surface-hover transition-all cursor-pointer"
-            title={isFullscreen ? "Sair da Tela Cheia" : "Modo TV Tela Cheia (F11)"}
+            onClick={openTv}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-surface border border-border text-muted hover:text-foreground hover:bg-surface-hover transition-all cursor-pointer text-xs font-semibold"
+            title="Abre o telão da fila em uma nova janela (arraste para a TV)"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <ExternalLink className="w-4 h-4" aria-hidden="true" />
+            <span>Abrir telão</span>
           </button>
 
           {/* Recarregar */}
@@ -517,8 +484,7 @@ export function AlmoxarifadoKds() {
         </div>
       </header>
 
-      {/* Tabs Navigation (Not shown in Fullscreen mode to optimize TV space) */}
-      {!isFullscreen && (
+      {/* Tabs Navigation */}
         <div className="flex gap-2 border-b border-border overflow-x-auto shrink-0">
           <button
             onClick={() => setActiveTab('tv')}
@@ -528,7 +494,7 @@ export function AlmoxarifadoKds() {
             )}
           >
             <Tv className="w-4 h-4" />
-            <span>1. Telão TV Balcão (Ao Vivo)</span>
+            <span>1. Fila do Balcão (Ao Vivo)</span>
             {activeTab === 'tv' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
 
@@ -561,10 +527,9 @@ export function AlmoxarifadoKds() {
             {activeTab === 'kardex' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
         </div>
-      )}
 
-      {/* ================= TAB 1: TELÃO TV BALCÃO (AO VIVO) ================= */}
-      {(activeTab === 'tv' || isFullscreen) && (
+      {/* ================= TAB 1: FILA DO BALCÃO (AO VIVO) ================= */}
+      {activeTab === 'tv' && (
         <div className="flex flex-col flex-1 min-h-0 space-y-4">
           {/* Stats Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
@@ -895,7 +860,7 @@ export function AlmoxarifadoKds() {
       )}
 
       {/* ================= TAB 2: HISTÓRICO DETALHADO (DATA E HORA) ================= */}
-      {activeTab === 'history' && !isFullscreen && (
+      {activeTab === 'history' && (
         <AlmoxarifadoHistoryTab
           orders={orders}
           sites={sites}
@@ -907,7 +872,7 @@ export function AlmoxarifadoKds() {
       )}
 
       {/* ================= TAB 3: EXTRATO & MOVIMENTAÇÕES DE ESTOQUE ================= */}
-      {activeTab === 'kardex' && !isFullscreen && (
+      {activeTab === 'kardex' && (
         <AlmoxarifadoKardexTab
           sites={sites}
           selectedSiteId={selectedSiteId}

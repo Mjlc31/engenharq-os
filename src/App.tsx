@@ -23,6 +23,7 @@ const Settings = React.lazy(() => import('./pages/Settings').then(m => ({ defaul
 const Trainings = React.lazy(() => import('./pages/Trainings').then(m => ({ default: m.Trainings })));
 const Aso = React.lazy(() => import('./pages/Aso').then(m => ({ default: m.Aso })));
 const AlmoxarifadoKds = React.lazy(() => import('./pages/AlmoxarifadoKds').then(m => ({ default: m.AlmoxarifadoKds })));
+const KdsTv = React.lazy(() => import('./pages/KdsTv').then(m => ({ default: m.KdsTv })));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // Guarda por papel, fail-closed: papel nulo ou fora da lista não entra.
@@ -55,6 +56,8 @@ export default function App() {
         <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center text-primary font-medium">Carregando...</div>}>
           <Routes>
             <Route path="/login" element={<Login />} />
+            {/* Telão do balcão: tela cheia, fora do Layout (sem menu). */}
+            <Route path="/kds/tv" element={<ProtectedRoute><KdsTv /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route index element={<Mgmt><Dashboard /></Mgmt>} />
               <Route path="almoxarifado-kds" element={<AlmoxarifadoKds />} />
