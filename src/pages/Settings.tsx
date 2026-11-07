@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../components/AuthProvider';
 import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
 import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMISSIONS, ROLE_LABELS } from '../services/rbacService';
@@ -423,7 +424,7 @@ export function Settings() {
 
       {/* Modal Editar Permissões Granulares */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setEditingUser(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div>
@@ -690,12 +691,12 @@ export function Settings() {
               </div>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal Novo Usuário */}
       {isNewUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setIsNewUserModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -848,11 +849,11 @@ export function Settings() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
       {/* Modal: Confirmar Desativação de Usuário */}
       {deactivateConfirmUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <Modal onClose={() => setDeactivateConfirmUser(null)} closeDisabled={deactivatingId === deactivateConfirmUser.id} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" /> Confirmar Desativação
@@ -882,7 +883,7 @@ export function Settings() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

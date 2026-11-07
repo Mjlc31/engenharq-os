@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from '../../ui/Modal';
 import { ConstructionSite, EpiCatalog } from '../../../types';
 import { X, PackagePlus, Search, Building2, FileText, Check, RefreshCw } from 'lucide-react';
 import { inventoryService } from '../../../services/inventoryService';
@@ -92,7 +93,7 @@ export function AlmoxarifadoStockEntryModal({
   const calculatedTotal = (Number(quantity) || 0) * (Number(unitPrice) || Number(selectedCatalog?.unit_price) || 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+    <Modal onClose={onClose} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-foreground flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
@@ -293,6 +294,6 @@ export function AlmoxarifadoStockEntryModal({
         </form>
 
       </div>
-    </div>
+    </Modal>
   );
 }

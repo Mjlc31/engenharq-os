@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { TrainingCatalog, Worker, WorkerTraining } from '../types';
 import { sstService } from '../services/sstService';
 import { useWorkers } from '../hooks/useWorkers';
@@ -352,7 +353,7 @@ export function Trainings() {
 
       {/* Modal: Registrar Treinamento de Colaborador */}
       {isRecordModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setIsRecordModalOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <div>
@@ -503,12 +504,12 @@ export function Trainings() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Novo Curso no Catálogo */}
       {isCatalogModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setIsCatalogModalOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl p-6 space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-border">
               <h3 className="text-lg font-bold text-foreground">Cadastrar Norma / Curso</h3>
@@ -578,19 +579,19 @@ export function Trainings() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Lightbox Preview */}
       {previewImage && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+        <Modal onClose={() => setPreviewImage(null)} closeOnBackdrop className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="relative max-w-3xl max-h-[90vh]">
             <img src={previewImage} alt="Evidência Fotográfica" className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border border-border" />
             <button aria-label="Fechar" onClick={() => setPreviewImage(null)} className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black">
               <X className="w-5 h-5" />
             </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

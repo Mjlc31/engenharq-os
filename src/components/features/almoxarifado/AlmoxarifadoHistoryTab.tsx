@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../../ui/Modal';
 import { AlmoxarifadoOrder, ConstructionSite } from '../../../types';
 import { useAuth } from '../../../components/AuthProvider';
 import { 
@@ -526,7 +527,7 @@ export function AlmoxarifadoHistoryTab({
 
       {/* Modal: Preview de Assinatura */}
       {previewSignatureUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal onClose={() => setPreviewSignatureUrl(null)} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-center text-foreground">
             <h3 className="text-base font-bold text-foreground mb-1">Assinatura Digital Coletada</h3>
             <p className="text-xs text-muted mb-4">Comprovante de conferência e posse do EPI no balcão.</p>
@@ -542,7 +543,7 @@ export function AlmoxarifadoHistoryTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Impressão de Cupom / Termo */}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../../ui/Modal';
 import { 
   Plus, 
   Search, 
@@ -827,7 +828,7 @@ export function CatalogTab({
 
       {/* Modal: + Novo EPI / Editar EPI com Estoque Inicial e Obra */}
       {isAddingCatalog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={resetForm} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <div>
@@ -1065,12 +1066,16 @@ export function CatalogTab({
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
       
       {/* Modal: Adicionar Entrada / Compra Avulsa com Seleção de Obra */}
       {isAddingStock && stockItem && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => { 
+                  setIsAddingStock(false); 
+                  setStockAmount(''); 
+                  setStockSiteId('');
+                }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-1">Registrar Chegada / Compra</h3>
             <p className="text-xs text-muted mb-4">
@@ -1174,12 +1179,16 @@ export function CatalogTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Ajustar Estoque Específico de uma Obra */}
       {isAdjustingSiteStock && adjustingCatalog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => {
+                  setIsAdjustingSiteStock(false);
+                  setAdjustingCatalog(null);
+                  setAdjustingQty('');
+                }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center gap-2 text-blue-500">
               <Building2 className="w-5 h-5" />
@@ -1252,12 +1261,12 @@ export function CatalogTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Cadastro Rápido de Obra */}
       {isQuickAddingSite && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setIsQuickAddingSite(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center gap-2 text-primary">
               <Building2 className="w-5 h-5" />
@@ -1309,12 +1318,12 @@ export function CatalogTab({
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Registrar Descarte de EPI */}
       {isDiscardModalOpen && discardItem && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => { setIsDiscardModalOpen(false); setDiscardItem(null); }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="flex items-center gap-2 text-amber-500 mb-2">
               <AlertTriangle className="w-5 h-5" />
@@ -1378,12 +1387,12 @@ export function CatalogTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Confirmar Exclusão de EPI do Catálogo */}
       {deleteConfirmCatalog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <Modal onClose={() => setDeleteConfirmCatalog(null)} closeDisabled={isDeletingCatalog} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-red-500" /> Confirmar Exclusão
@@ -1423,12 +1432,12 @@ export function CatalogTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Drawer: Histórico de Compras e Entradas */}
       {isPurchasesDrawerOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end">
+        <Modal onClose={() => setIsPurchasesDrawerOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end">
           <div className="bg-surface border-l border-border w-full max-w-xl h-full flex flex-col shadow-2xl p-6">
             <div className="flex justify-between items-center pb-4 border-b border-border">
               <div>
@@ -1479,7 +1488,7 @@ export function CatalogTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

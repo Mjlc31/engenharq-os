@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { Worker, WorkerAso, AsoType } from '../types';
 import { sstService } from '../services/sstService';
 import { useWorkers } from '../hooks/useWorkers';
@@ -277,7 +278,7 @@ export function Aso() {
 
       {/* Modal: Novo ASO */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setIsModalOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <div>
@@ -436,7 +437,7 @@ export function Aso() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

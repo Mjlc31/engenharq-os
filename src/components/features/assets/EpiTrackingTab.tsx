@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../../ui/Modal';
 import { 
   Search, 
   Shield, 
@@ -734,7 +735,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
 
       {/* Modal: Devolução Rápida de EPI */}
       {returnModalData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setReturnModalData(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-primary font-bold">
@@ -802,12 +803,12 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal: Visualizar Evidência / Assinatura Digital */}
       {evidenceModalData && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setEvidenceModalData(null)} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-lg w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
@@ -855,7 +856,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -4,7 +4,6 @@ import { useAuth } from './AuthProvider';
 import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse, History, Tv } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
-import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import type { UserRole } from '../types';
 import { ALL_ROLES, effectiveRole, GOVERNANCE_ROLES, MANAGEMENT_ROLES, ROLE_LABELS } from '../services/rbacService';
 
@@ -56,7 +55,6 @@ const iconButtonClass = 'h-9 w-9 rounded-full bg-surface-hover flex items-center
 export function Layout() {
   const { signOut, user, role, customRole } = useAuth();
   const { isOnline } = useOfflineQueue();
-  useEscapeToClose();
   // Papel nulo cai no menor privilégio (menu do almoxarife), igual ao guard das rotas.
   const currentRole = effectiveRole(role, customRole) ?? 'ALMOXARIFADO';
   const isAlmoxarifado = currentRole === 'ALMOXARIFADO';

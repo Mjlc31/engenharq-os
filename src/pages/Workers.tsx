@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { Plus, Search, Upload, Download, Edit2, HardHat, ChevronLeft, ChevronRight, Trash2, MapPin, UserCircle2, Mail, Phone, MoreVertical, FileText, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkers } from '../hooks/useWorkers';
@@ -283,7 +284,7 @@ export function Workers() {
       )}
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setDeleteConfirmId(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2">Confirmar Exclusão</h3>
             <p className="text-sm text-muted mb-6">Tem certeza que deseja excluir este trabalhador? Essa ação não pode ser desfeita.</p>
@@ -306,7 +307,7 @@ export function Workers() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {isImporting && (

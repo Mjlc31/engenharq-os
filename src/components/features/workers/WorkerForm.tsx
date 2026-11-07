@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from '../../ui/Modal';
 import { ConstructionSite } from '../../../types';
 import { X, Upload, UserCircle2 } from 'lucide-react';
 import { uploadImage } from '../../../lib/storage';
@@ -88,7 +89,7 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Modal onClose={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-surface border border-border rounded-xl w-full max-w-3xl shadow-2xl max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
           <h2 className="text-xl font-bold text-foreground">Novo Funcionário</h2>
@@ -243,6 +244,6 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

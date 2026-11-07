@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { Modal } from './Modal';
 import Webcam from 'react-webcam';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, Camera, Check, Loader2, RefreshCw, PenTool, Image as ImageIcon } from 'lucide-react';
@@ -74,7 +75,7 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <Modal onClose={onClose} closeDisabled={isSaving} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-surface w-full max-w-lg rounded-xl border border-border shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-surface-hover/30">
@@ -199,6 +200,6 @@ export function SignaturePadModal({ isOpen, onClose, onSave, title = "Validaçã
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

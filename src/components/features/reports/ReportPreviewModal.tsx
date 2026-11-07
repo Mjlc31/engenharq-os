@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from '../../ui/Modal';
 import { X, Download, Printer, Search, FileText } from 'lucide-react';
 import Papa from 'papaparse';
 
@@ -50,7 +51,7 @@ export function ReportPreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <Modal onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
         className="w-full max-w-5xl max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -167,6 +168,6 @@ export function ReportPreviewModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

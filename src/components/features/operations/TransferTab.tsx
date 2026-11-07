@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal } from '../../ui/Modal';
 import { ConstructionSite, EpiCatalog, SiteTransfer } from '../../../types';
 import { transfersService } from '../../../services/transfersService';
 import { useAuth } from '../../../components/AuthProvider';
@@ -306,7 +307,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
 
       {/* Modal de Confirmação de Recebimento no Destino */}
       {receivingTransfer && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={() => setReceivingTransfer(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex justify-between items-start">
               <div>
@@ -355,7 +356,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { uploadSignature } from '../lib/storage';
@@ -1140,7 +1141,7 @@ export function WorkerProfile() {
 
       {/* Modal de Registro Disciplinar */}
       {isDisciplinaryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setIsDisciplinaryModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1219,12 +1220,12 @@ export function WorkerProfile() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal de Registro de Treinamento */}
       {isTrainingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setIsTrainingModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1314,12 +1315,12 @@ export function WorkerProfile() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Modal de Registro de ASO */}
       {isAsoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setIsAsoModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1431,7 +1432,7 @@ export function WorkerProfile() {
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       <SignaturePadModal

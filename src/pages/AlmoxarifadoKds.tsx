@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { uploadSignature } from '../lib/storage';
@@ -882,7 +883,7 @@ export function AlmoxarifadoKds() {
 
       {/* ================= MODAL: ENTREGAR & COLETAR ASSINATURA ================= */}
       {deliveryModalOrder && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal onClose={() => setDeliveryModalOrder(null)} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150 text-foreground">
             <button aria-label="Fechar"
               onClick={() => setDeliveryModalOrder(null)}
@@ -984,12 +985,12 @@ export function AlmoxarifadoKds() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ================= MODAL: NOVA SOLICITAÇÃO RÁPIDA (BALCÃO) ================= */}
       {isNewOrderModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal onClose={() => setIsNewOrderModalOpen(false)} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150 text-foreground">
             <button aria-label="Fechar"
               onClick={() => setIsNewOrderModalOpen(false)}
@@ -1201,7 +1202,7 @@ export function AlmoxarifadoKds() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ================= MODAL: SUBIR ESTOQUE / ENTRADA NF ================= */}
@@ -1218,7 +1219,7 @@ export function AlmoxarifadoKds() {
 
       {/* ================= MODAL: PREVIEW DE ASSINATURA ================= */}
       {previewSignatureUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <Modal onClose={() => setPreviewSignatureUrl(null)} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-center text-foreground">
             <button aria-label="Fechar"
               onClick={() => setPreviewSignatureUrl(null)}
@@ -1240,7 +1241,7 @@ export function AlmoxarifadoKds() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* ================= MODAL: ESTORNO / EXCLUSÃO DE PEDIDO ================= */}

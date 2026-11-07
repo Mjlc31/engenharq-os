@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { Download, Search, Clock, Eye, X, ChevronLeft, ChevronRight, ShieldCheck, Activity } from 'lucide-react';
 import { auditService, AuditLogItem } from '../services/auditService';
 
@@ -269,7 +270,7 @@ export function Audit() {
 
       {/* Modal de Detalhes da Ação */}
       {inspectingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <Modal onClose={() => setInspectingItem(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -340,7 +341,7 @@ export function Audit() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { Modal } from '../../ui/Modal';
 import { AlmoxarifadoOrder } from '../../../types';
 import { X, Printer, CheckCircle2, ShieldCheck, Clock, User, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -38,7 +39,7 @@ export function AlmoxarifadoReceiptModal({ order, onClose }: AlmoxarifadoReceipt
   const totalQuantity = (order.items || []).reduce((acc, it) => acc + (it.quantity || 1), 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:fixed print:inset-0">
+    <Modal onClose={onClose} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:fixed print:inset-0">
       <div className="bg-surface border border-border rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-foreground flex flex-col max-h-[92vh] print:border-none print:shadow-none print:max-w-none print:p-2 print:bg-white print:text-black">
         
         {/* Header - No print */}
@@ -202,6 +203,6 @@ export function AlmoxarifadoReceiptModal({ order, onClose }: AlmoxarifadoReceipt
         </div>
 
       </div>
-    </div>
+    </Modal>
   );
 }

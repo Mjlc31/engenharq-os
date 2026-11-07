@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from '../../ui/Modal';
 import { AlmoxarifadoOrder } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../components/AuthProvider';
@@ -71,7 +72,7 @@ export function AlmoxarifadoCancelOrderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <Modal onClose={onClose} closeDisabled={submitting} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div 
         className="bg-surface border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-200"
         role="dialog"
@@ -241,6 +242,6 @@ export function AlmoxarifadoCancelOrderModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

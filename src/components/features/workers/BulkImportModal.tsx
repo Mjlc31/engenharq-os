@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Modal } from '../../ui/Modal';
 import { X, Upload, Download, FileSpreadsheet, AlertTriangle, Loader2, HelpCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../../lib/supabase';
@@ -145,7 +146,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <Modal onClose={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-surface border border-border rounded-xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
           <h2 className="text-xl font-bold text-foreground">Importação em Massa</h2>
@@ -230,7 +231,7 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
         </div>
       </div>
       {showManual && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <Modal onClose={() => setShowManual(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-border flex justify-between items-center bg-surface-hover/20">
               <h2 className="text-xl font-bold text-foreground flex items-center gap-2"><FileSpreadsheet className="w-5 h-5 text-primary"/> Manual de Preenchimento da Planilha</h2>
@@ -290,8 +291,8 @@ export function BulkImportModal({ onClose, onSuccess, siteId }: BulkImportModalP
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
-    </div>
+    </Modal>
   );
 }

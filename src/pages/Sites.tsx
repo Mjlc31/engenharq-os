@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../components/AuthProvider';
 import { useSites } from '../hooks/useSites';
 import { useCompany, Company } from '../hooks/useCompany';
@@ -419,7 +420,7 @@ export function Sites() {
       )}
 
       {isAddingSite && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <Modal onClose={resetSiteForm} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <h2 className="text-xl font-bold text-foreground">{editingSite ? 'Editar Obra' : 'Nova Obra'}</h2>
@@ -504,11 +505,11 @@ export function Sites() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+        <Modal onClose={() => setDeleteConfirmId(null)} closeDisabled={isDeletingSite} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
               <Trash2 className="w-5 h-5 text-red-500" /> Confirmar Exclusão
@@ -534,7 +535,7 @@ export function Sites() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

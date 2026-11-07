@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Modal } from '../../ui/Modal';
 import { Plus, Search, Upload, Download, CheckCircle, AlertTriangle, ArrowDownRight, Package, RotateCcw, Loader2 } from 'lucide-react';
 import { EpiInventory, Worker } from '../../../types';
 import { useToast } from '../../../components/ui/Toast';
@@ -324,7 +325,7 @@ export function InventoryTab({
 
       {/* Modal de Confirmação de Devolução */}
       {returnConfirmEpi && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <Modal onClose={() => setReturnConfirmEpi(null)} closeDisabled={isReturning} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
               <RotateCcw className="w-5 h-5 text-primary" /> Confirmar Devolução
@@ -352,7 +353,7 @@ export function InventoryTab({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );
