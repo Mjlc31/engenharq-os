@@ -5,12 +5,11 @@ import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Prin
 import { cn } from '../lib/utils';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
-import { ROLE_LABELS } from '../services/rbacService';
+import type { UserRole } from '../types';
+import { ALL_ROLES, effectiveRole, GOVERNANCE_ROLES, MANAGEMENT_ROLES, ROLE_LABELS } from '../services/rbacService';
 
-type NavEntry = { name: string; href: string; icon: React.ElementType; roles: string[] };
+type NavEntry = { name: string; href: string; icon: React.ElementType; roles: UserRole[] };
 
-const MANAGEMENT_ROLES = ['ADMIN', 'SAFETY_ENGINEER', 'SITE_MANAGER'];
-const ALL_ROLES = [...MANAGEMENT_ROLES, 'ALMOXARIFADO'];
 
 const NAVIGATION: NavEntry[] = [
   { name: 'Dashboard Central', href: '/', icon: ShieldCheck, roles: MANAGEMENT_ROLES },
@@ -26,9 +25,9 @@ const NAVIGATION: NavEntry[] = [
   { name: 'Ficha de EPI', href: '/ficha-epi', icon: FileBarChart, roles: MANAGEMENT_ROLES },
   { name: 'Empresa / Obras', href: '/sites', icon: Building2, roles: MANAGEMENT_ROLES },
   { name: 'Imprimir QR Codes', href: '/tags', icon: Printer, roles: MANAGEMENT_ROLES },
-  // Mesmos papéis das rotas em App.tsx: só o almoxarife fica de fora.
-  { name: 'Configurações', href: '/settings', icon: Settings, roles: MANAGEMENT_ROLES },
-  { name: 'Auditoria', href: '/audit', icon: History, roles: MANAGEMENT_ROLES },
+  // Mesmos papéis das rotas em App.tsx.
+  { name: 'Configurações', href: '/settings', icon: Settings, roles: GOVERNANCE_ROLES },
+  { name: 'Auditoria', href: '/audit', icon: History, roles: GOVERNANCE_ROLES },
 ];
 
 const MANAGEMENT_GROUPS: { label: string; items: string[] }[] = [
@@ -58,7 +57,9 @@ export function Layout() {
   const { signOut, user, role, customRole } = useAuth();
   const { isOnline } = useOfflineQueue();
   useEscapeToClose();
-  const isAlmoxarifado = role === 'ALMOXARIFADO' || (customRole && customRole.toLowerCase().includes('almoxarif'));
+  // Papel nulo cai no menor privilégio (menu do almoxarife), igual ao guard das rotas.
+  const currentRole = effectiveRole(role, customRole) ?? 'ALMOXARIFADO';
+  const isAlmoxarifado = currentRole === 'ALMOXARIFADO';
   const roleLabel = customRole || (role ? ROLE_LABELS[role] : '');
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -90,7 +91,7 @@ export function Layout() {
     localStorage.setItem('engenharq-theme', theme);
   }, [theme]);
 
-  const visibleItems = NAVIGATION.filter(item => item.roles.includes(isAlmoxarifado ? 'ALMOXARIFADO' : role || 'SITE_MANAGER'));
+  const visibleItems = NAVIGATION.filter(item => item.roles.includes(currentRole));
   const groups = (isAlmoxarifado ? ALMOXARIFADO_GROUPS : MANAGEMENT_GROUPS)
     .map(group => ({ label: group.label, items: visibleItems.filter(item => group.items.includes(item.name)) }))
     .filter(group => group.items.length > 0);

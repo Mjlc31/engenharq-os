@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Worker, ConstructionSite } from '../types';
 import Papa from 'papaparse';
+import { applyCpfMask, isValidCPF } from '../lib/validators';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function useWorkers() {
@@ -124,7 +125,7 @@ export function useWorkers() {
 
                 return {
                   full_name: row['Nome Completo (*)'] || row['Nome Completo'] || row['Nome'] || row['full_name'],
-                  cpf: row['CPF (*)'] || row['CPF'] || row['cpf'],
+                  cpf: String(row['CPF (*)'] || row['CPF'] || row['cpf'] || '').trim(),
                   registration_number: row['Matrícula (*)'] || row['Matrícula'] || row['Matricula'] || row['registration_number'],
                   email: row['Email'] || row['email'] || null,
                   initial_role: row['Função'] || row['initial_role'] || null,
@@ -144,6 +145,13 @@ export function useWorkers() {
             if (newWorkers.length === 0) {
               throw new Error('Nenhum dado válido encontrado no CSV. Verifique se as colunas Nome Completo, CPF e Matrícula estão preenchidas.');
             }
+
+            const invalidCpfs = newWorkers.filter((w) => !isValidCPF(w.cpf)).map((w) => `${w.full_name} (${w.cpf})`);
+            if (invalidCpfs.length > 0) {
+              throw new Error(`CPF inválido em ${invalidCpfs.length} linha(s): ${invalidCpfs.slice(0, 5).join(', ')}. Corrija a planilha e importe novamente.`);
+            }
+            // Mesmo formato do WorkerForm (com máscara) para a deduplicação por CPF funcionar
+            newWorkers.forEach((w) => { w.cpf = applyCpfMask(w.cpf); });
 
             const cpfsArray = newWorkers.map((w) => w.cpf);
 

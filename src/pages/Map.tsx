@@ -4,9 +4,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { supabase } from '../lib/supabase';
+import { Link } from 'react-router-dom';
 import { HardHat, MapPin, Plus, X, AlertCircle, Users, Package, Activity, Navigation2, Filter } from 'lucide-react';
-import { ConstructionSite, EpiAssignment, EpiCatalog, Worker } from '../types';
-import { useToast } from '../components/ui/Toast';
+import { ConstructionSite, EpiAssignment, Worker } from '../types';
 
 // Fix for default marker icons in leaflet with bundlers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,10 +53,8 @@ function MapBounds({ sites }: { sites: any[] }) {
 }
 
 export function MapTracking() {
-  const { toast } = useToast();
   const [sites, setSites] = useState<ConstructionSite[]>([]);
   const [assignments, setAssignments] = useState<EpiAssignment[]>([]);
-  const [availableEpis, setAvailableEpis] = useState<EpiCatalog[]>([]);
   const [allWorkers, setAllWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,34 +63,25 @@ export function MapTracking() {
   // Panel State
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEpi, setSelectedEpi] = useState('');
-  const [selectedWorker, setSelectedWorker] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadMapData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Fetch sites and active assignments, plus workers and epis for the modal
-      const [sitesData, assignmentsData, episData, workersData] = await Promise.all([
+      const [sitesData, assignmentsData, workersData] = await Promise.all([
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
           .select(`*, catalog:epi_catalog!catalog_id(*), epi:epi_catalog!catalog_id(*), worker:workers(*)`)
           .is('returned_at', null),
-        supabase.from('epi_catalog').select('*').eq('status', 'ACTIVE'),
         supabase.from('workers').select('*, site:construction_sites(*)')
       ]);
 
       if (sitesData.error) throw sitesData.error;
       if (assignmentsData.error) throw assignmentsData.error;
-      if (episData.error) throw episData.error;
       if (workersData.error) throw workersData.error;
       
       setSites(sitesData.data as ConstructionSite[]);
       setAssignments(assignmentsData.data as EpiAssignment[]);
-      setAvailableEpis(episData.data as EpiCatalog[]);
       setAllWorkers(workersData.data as Worker[]);
     } catch (err: any) {
       console.error('Error loading map data:', err);
@@ -143,38 +132,6 @@ export function MapTracking() {
     return Array.from(cats);
   }, [assignments]);
 
-  const handleAssignFromMap = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedEpi || !selectedWorker) return;
-    setIsSubmitting(true);
-
-    try {
-      const expectedReturn = new Date();
-      expectedReturn.setDate(expectedReturn.getDate() + 180);
-
-      const { error: assignError } = await supabase.from('epi_assignments').insert([
-        { catalog_id: selectedEpi, worker_id: selectedWorker, expected_return_date: expectedReturn.toISOString(), condition_on_delivery: 'GOOD' }
-      ]);
-      
-      // O banco debita a obra do colaborador e grava o Kardex (trigger trg_epi_assignment_stock)
-      if (assignError) throw assignError;
-
-      toast({ type: 'success', title: 'Sucesso', message: 'EPI alocado com sucesso!' });
-
-      // Reload Data
-      setIsModalOpen(false);
-      setSelectedEpi('');
-      setSelectedWorker('');
-      await loadMapData();
-      
-    } catch (err) {
-      console.error(err);
-      toast({ type: 'error', title: 'Erro', message: 'Erro ao alocar EPI. Tente novamente.' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const selectedSiteInfo = useMemo(() => {
     return siteData.find(s => s.id === selectedSiteId);
   }, [siteData, selectedSiteId]);
@@ -186,13 +143,13 @@ export function MapTracking() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Mapa Operacional</h1>
           <p className="text-muted mt-1">Visão em tempo real das obras e distribuição de equipamentos.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-none">
             <Filter className="w-4 h-4 text-muted" />
             <select aria-label="Filtrar por equipamento" 
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
-              className="bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+              className="min-w-0 w-full sm:w-auto bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
             >
               <option value="ALL">Todos os Equipamentos</option>
               {categories.map(cat => (
@@ -200,12 +157,13 @@ export function MapTracking() {
               ))}
             </select>
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm"
+          {/* Entrega só pelo Balcão: lá a assinatura do colaborador é obrigatória (NR-6) */}
+          <Link
+            to="/scanner"
+            className="bg-primary-dark hover:bg-primary-darker text-white px-4 py-2 rounded-md font-bold text-sm transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" /> Alocar EPI
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -363,85 +321,17 @@ export function MapTracking() {
             </div>
             
             <div className="p-4 border-t border-border bg-background">
-               <button 
-                 onClick={() => {
-                   setSelectedSiteId(null);
-                   setIsModalOpen(true);
-                 }}
+               <Link
+                 to="/scanner"
                  className="w-full bg-surface-hover hover:bg-border text-foreground font-medium py-2 rounded-lg text-sm transition-colors border border-border flex items-center justify-center gap-2"
                >
                  <Plus className="w-4 h-4" /> Adicionar EPI nesta obra
-               </button>
+               </Link>
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal / Pop up de cadastro de EPI no Mapa */}
-      {isModalOpen && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-surface border border-border rounded-xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-            <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
-              <h3 className="font-bold text-foreground">Registrar Entrega de EPI</h3>
-              <button aria-label="Fechar" onClick={() => setIsModalOpen(false)} className="text-muted hover:text-red-500">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAssignFromMap} className="p-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-wider">Selecionar Colaborador / Obra</label>
-                <select aria-label="Selecionar Colaborador / Obra" 
-                  required
-                  value={selectedWorker}
-                  onChange={e => setSelectedWorker(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="">-- Escolha um colaborador --</option>
-                  {allWorkers.map(w => (
-                    <option key={w.id} value={w.id}>
-                      {w.full_name} • {w.site?.name || 'Não alocado'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-wider">Selecionar EPI Disponível</label>
-                <select aria-label="Selecionar EPI Disponível" 
-                  required
-                  value={selectedEpi}
-                  onChange={e => setSelectedEpi(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="">-- Escolha um equipamento --</option>
-                  {availableEpis.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.category}) - C.A: {e.ca_number || 'N/A'} - Estoque: {e.current_stock}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-4 mt-2 border-t border-border flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-zinc-800 text-zinc-300 hover:bg-zinc-700 py-3 rounded-lg font-bold text-sm transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 bg-primary-dark text-white hover:bg-primary-darker py-3 rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Salvando...' : 'Confirmar Alocação'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

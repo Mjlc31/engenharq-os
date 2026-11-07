@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
+import { effectiveRole, GOVERNANCE_ROLES, MANAGEMENT_ROLES } from './services/rbacService';
+import type { UserRole } from './types';
 
 const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -23,18 +25,16 @@ const Aso = React.lazy(() => import('./pages/Aso').then(m => ({ default: m.Aso }
 const AlmoxarifadoKds = React.lazy(() => import('./pages/AlmoxarifadoKds').then(m => ({ default: m.AlmoxarifadoKds })));
 const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
-// Almoxarifado Restricted Route Guard
-const AlmoxarifadoRestrictedRoute = ({ children }: { children: React.ReactNode }) => {
+// Guarda por papel, fail-closed: papel nulo ou fora da lista não entra.
+const RoleRoute = ({ allow, children }: { allow: UserRole[]; children: React.ReactNode }) => {
   const { role, customRole } = useAuth();
-  if (role === 'ADMIN') {
-    return <>{children}</>;
-  }
-  const isAlmoxarifado = role === 'ALMOXARIFADO' || (customRole && customRole.toLowerCase().includes('almoxarif'));
-  if (isAlmoxarifado) {
-    return <Navigate to="/almoxarifado-kds" replace />;
-  }
-  return <>{children}</>;
+  const current = effectiveRole(role, customRole);
+  if (current && allow.includes(current)) return <>{children}</>;
+  return <Navigate to={current && MANAGEMENT_ROLES.includes(current) ? '/' : '/almoxarifado-kds'} replace />;
 };
+
+const Mgmt = ({ children }: { children: React.ReactNode }) => <RoleRoute allow={MANAGEMENT_ROLES}>{children}</RoleRoute>;
+const Gov = ({ children }: { children: React.ReactNode }) => <RoleRoute allow={GOVERNANCE_ROLES}>{children}</RoleRoute>;
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -56,23 +56,23 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<AlmoxarifadoRestrictedRoute><Dashboard /></AlmoxarifadoRestrictedRoute>} />
+              <Route index element={<Mgmt><Dashboard /></Mgmt>} />
               <Route path="almoxarifado-kds" element={<AlmoxarifadoKds />} />
               <Route path="scanner" element={<Scanner />} />
               <Route path="assets" element={<Assets />} />
-              <Route path="workers" element={<AlmoxarifadoRestrictedRoute><Workers /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="workers/:id" element={<AlmoxarifadoRestrictedRoute><WorkerProfile /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="sites" element={<AlmoxarifadoRestrictedRoute><Sites /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="map" element={<AlmoxarifadoRestrictedRoute><MapTracking /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="tags" element={<AlmoxarifadoRestrictedRoute><PrintTags /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="print-tags" element={<AlmoxarifadoRestrictedRoute><PrintTags /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="audit" element={<AlmoxarifadoRestrictedRoute><Audit /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="settings" element={<AlmoxarifadoRestrictedRoute><Settings /></AlmoxarifadoRestrictedRoute>} />
+              <Route path="workers" element={<Mgmt><Workers /></Mgmt>} />
+              <Route path="workers/:id" element={<Mgmt><WorkerProfile /></Mgmt>} />
+              <Route path="sites" element={<Mgmt><Sites /></Mgmt>} />
+              <Route path="map" element={<Mgmt><MapTracking /></Mgmt>} />
+              <Route path="tags" element={<Mgmt><PrintTags /></Mgmt>} />
+              <Route path="print-tags" element={<Mgmt><PrintTags /></Mgmt>} />
+              <Route path="audit" element={<Gov><Audit /></Gov>} />
+              <Route path="settings" element={<Gov><Settings /></Gov>} />
               <Route path="operations" element={<Operations />} />
-              <Route path="reports" element={<AlmoxarifadoRestrictedRoute><Reports /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="ficha-epi" element={<AlmoxarifadoRestrictedRoute><FichaEpi /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="trainings" element={<AlmoxarifadoRestrictedRoute><Trainings /></AlmoxarifadoRestrictedRoute>} />
-              <Route path="aso" element={<AlmoxarifadoRestrictedRoute><Aso /></AlmoxarifadoRestrictedRoute>} />
+              <Route path="reports" element={<Mgmt><Reports /></Mgmt>} />
+              <Route path="ficha-epi" element={<Mgmt><FichaEpi /></Mgmt>} />
+              <Route path="trainings" element={<Mgmt><Trainings /></Mgmt>} />
+              <Route path="aso" element={<Mgmt><Aso /></Mgmt>} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -270,7 +270,11 @@ export function CatalogTab({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!catName || !catCategory) return;
+    // NR-6: EPI só pode ser fornecido com CA válido
+    if (!catName.trim() || !catCategory || !catCaNumber.trim() || !catCaValidity) {
+      toast({ type: 'error', title: 'Campos obrigatórios', message: 'Informe nome, categoria, número e validade do CA (NR-6).' });
+      return;
+    }
     
     const payload: Partial<EpiCatalog> = {
       name: catName,
@@ -279,8 +283,8 @@ export function CatalogTab({
       status: catStatus,
       description: catDescription || null,
       brand: catBrand || null,
-      ca_number: catCaNumber || null,
-      ca_validity: catCaValidity || null,
+      ca_number: catCaNumber.trim(),
+      ca_validity: catCaValidity,
       lifespan_days: catLifespanDays !== '' ? Number(catLifespanDays) : null,
       minimum_stock: catMinStock !== '' ? Number(catMinStock) : null,
       unit_price: catUnitPrice !== '' ? Number(catUnitPrice) : 0,
@@ -468,10 +472,10 @@ export function CatalogTab({
         <div className="flex flex-col lg:flex-row gap-3 justify-between items-stretch lg:items-center">
           
           {/* Seletor de Obra em Destaque */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-background border-2 border-primary/40 hover:border-primary rounded-lg px-3 py-1.5 transition-colors">
+          <div className="flex flex-wrap items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 bg-background border-2 border-primary/40 hover:border-primary rounded-lg px-3 py-1.5 transition-colors min-w-0 max-w-full">
               <Building2 className="w-5 h-5 text-primary shrink-0" />
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="text-[11px] uppercase font-bold text-muted tracking-wider">Estoque por Obra:</span>
                 <select aria-label="Estoque por obra"
                   value={selectedSiteId}
@@ -479,7 +483,7 @@ export function CatalogTab({
                     setSelectedSiteId(e.target.value);
                     setCatalogCurrentPage(1);
                   }}
-                  className="bg-transparent text-sm font-bold text-foreground focus:outline-none cursor-pointer pr-1"
+                  className="min-w-0 max-w-full bg-transparent text-sm font-bold text-foreground focus:outline-none cursor-pointer pr-1"
                 >
                   <option value="ALL">🏢 Visão Consolidada (Todas as Obras / Geral)</option>
                   {sites.map(s => (
@@ -889,9 +893,10 @@ export function CatalogTab({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Número do CA</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Número do CA *</label>
                   <input aria-label="Número do CA" 
                     type="text" 
+                    required
                     placeholder="Ex: 12345" 
                     value={catCaNumber} 
                     onChange={e => setCatCaNumber(e.target.value)} 
@@ -899,9 +904,10 @@ export function CatalogTab({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Validade do CA</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Validade do CA *</label>
                   <input aria-label="Validade do CA" 
                     type="date" 
+                    required
                     value={catCaValidity} 
                     onChange={e => setCatCaValidity(e.target.value)} 
                     className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary" 

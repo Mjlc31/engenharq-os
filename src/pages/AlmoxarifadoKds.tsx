@@ -220,12 +220,14 @@ export function AlmoxarifadoKds() {
   // Confirmar Entrega (com Stored Procedure ACID completa)
   const handleConfirmDelivery = async () => {
     if (!deliveryModalOrder) return;
+    // NR-6: sem assinatura do recebedor não há prova de entrega
+    if (!signatureRef.current || signatureRef.current.isEmpty()) {
+      toast({ type: 'error', title: 'Assinatura obrigatória', message: 'O colaborador precisa assinar antes de confirmar a entrega.' });
+      return;
+    }
+    const signatureUrl = signatureRef.current.toDataURL('image/png');
     setDelivering(true);
     try {
-      let signatureUrl: string | null = null;
-      if (signatureRef.current && !signatureRef.current.isEmpty()) {
-        signatureUrl = signatureRef.current.toDataURL('image/png');
-      }
 
       const deliveredBy = user?.email || 'Almoxarife';
 
@@ -234,7 +236,7 @@ export function AlmoxarifadoKds() {
       const { error: rpcError } = await (supabase.rpc as any)('complete_almoxarifado_order', {
         p_order_id: deliveryModalOrder.id,
         p_delivered_by: deliveredBy,
-        p_signature_url: signatureUrl || undefined,
+        p_signature_url: signatureUrl,
         p_selfie_url: undefined
       });
       if (rpcError) throw rpcError;
@@ -437,13 +439,13 @@ export function AlmoxarifadoKds() {
         </div>
 
         {/* Center: Live Clock & Obra Selector */}
-        <div className="flex items-center gap-3">
-          <div className="bg-surface border border-border rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xs">
+        <div className="flex flex-wrap items-center gap-3 min-w-0 max-w-full">
+          <div className="bg-surface border border-border rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xs min-w-0 max-w-full">
             <span className="text-xs text-muted font-medium">Obra:</span>
             <select aria-label="Filtrar por obra"
               value={selectedSiteId}
               onChange={e => setSelectedSiteId(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
+              className="min-w-0 max-w-full bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
             >
               <option value="ALL" className="bg-surface text-foreground">Todas as Obras (Geral)</option>
               {sites.map(s => (
