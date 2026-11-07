@@ -7,10 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// A foto de referência vem do cadastro do colaborador no banco, nunca do cliente
 const biometricsSchema = z.object({
   audit_selfie: z.string().min(1, "Missing selfie data"),
-  reference_photo_url: z.string().optional().nullable(),
+  worker_id: z.string().uuid("Invalid worker_id"),
 });
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -27,30 +31,32 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { audit_selfie, reference_photo_url } = parsed.data;
+    const { audit_selfie, worker_id } = parsed.data;
     const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 
-    if (!apiKey || !reference_photo_url || reference_photo_url === 'mock_reference_path') {
-      console.log("Using Mock Biometrics Match");
-      const isSuccess = Math.random() > 0.2; 
-      const matchScore = isSuccess ? 95.4 + Math.random() * 4 : 45.0 + Math.random() * 20;
-      
-      await new Promise(r => setTimeout(r, 1500));
-      return new Response(JSON.stringify({
-          match: matchScore > 85,
-          score: matchScore,
-          liveness: true
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Sem chave não há verificação: falha fechado em vez de sortear um resultado
+    if (!apiKey) {
+      return json({ error: "Biometric verification unavailable", match: false, score: 0, liveness: false }, 503);
     }
 
-    // SSRF Protection
+    // Lê o cadastro com o token de quem chamou: a RLS só deixa usuário ativo ler colaboradores
+    const workerRes = await fetch(`${supabaseUrl}/rest/v1/workers?id=eq.${worker_id}&select=reference_photo_url`, {
+      headers: {
+        apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+        Authorization: req.headers.get('Authorization') ?? '',
+      },
+    });
+    const [worker] = workerRes.ok ? await workerRes.json() : [];
+    const reference_photo_url: string | null = worker?.reference_photo_url ?? null;
+    if (!reference_photo_url) {
+      return json({ error: "Worker has no reference photo", match: false, score: 0, liveness: false }, 422);
+    }
+
+    // Só busca imagens do storage deste projeto (evita usar a função como proxy para outros endereços)
     const parsedUrl = new URL(reference_photo_url);
-    const forbiddenHostnames = ['localhost', '127.0.0.1', '169.254.169.254', '0.0.0.0', '::1'];
-    if (parsedUrl.protocol !== 'https:' || forbiddenHostnames.includes(parsedUrl.hostname) || parsedUrl.hostname.endsWith('.internal')) {
-      return new Response(JSON.stringify({ error: "Invalid reference photo URL" }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (parsedUrl.origin !== new URL(supabaseUrl).origin || !parsedUrl.pathname.startsWith('/storage/v1/object/')) {
+      return json({ error: "Invalid reference photo URL" }, 400);
     }
 
     const refResponse = await fetch(reference_photo_url);

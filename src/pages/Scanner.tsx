@@ -165,7 +165,7 @@ export function Scanner() {
       const mime = customContentType || blob.type || (path.endsWith('.pdf') ? 'application/pdf' : 'image/png');
       const { error: uploadError } = await supabase.storage.from(bucket).upload(path, blob, {
         contentType: mime,
-        upsert: true
+        upsert: false // evidência legal: o banco recusa sobrescrita; o caminho já é único por timestamp
       });
       if (uploadError) {
          if (uploadError.message === 'Failed to fetch') throw new Error('Falha de conexão ao salvar arquivo.');

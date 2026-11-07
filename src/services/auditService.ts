@@ -42,6 +42,9 @@ const BADGE_COLORS: Record<string, string> = {
   'Medida Disciplinar': 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
 };
 
+// Autor e IP não são gravados nessas tabelas; mostrar isso em vez de inventar um valor
+const NOT_RECORDED = 'Não registrado';
+
 function getInitials(name: string): string {
   if (!name) return 'EQ';
   const parts = name.trim().split(/\s+/);
@@ -88,14 +91,14 @@ export const auditService = {
         logs.push({
           id: `assign-${a.id}`,
           timestamp: a.assigned_at,
-          userName: 'Administrador Sistema',
-          userInitials: 'AS',
+          userName: NOT_RECORDED,
+          userInitials: '—',
           userColor: 'bg-emerald-500 text-emerald-950',
           type: 'Entrega',
           typeBadgeColor: BADGE_COLORS['Entrega'],
           module: 'Entregas',
           description: `Registrada entrega de ${epiName} para ${workerName}`,
-          ipAddress: '192.168.1.100',
+          ipAddress: NOT_RECORDED,
           details: { workerName, epiName, assignedAt: a.assigned_at }
         });
 
@@ -104,8 +107,8 @@ export const auditService = {
           logs.push({
             id: `return-${a.id}`,
             timestamp: a.returned_at,
-            userName: 'Administrador Sistema',
-            userInitials: 'AS',
+            userName: NOT_RECORDED,
+            userInitials: '—',
             userColor: isLoss ? 'bg-rose-500 text-rose-950' : 'bg-emerald-500 text-emerald-950',
             type: isLoss ? 'Extravio' : 'Devolução',
             typeBadgeColor: isLoss ? BADGE_COLORS['Extravio'] : BADGE_COLORS['Devolução'],
@@ -113,7 +116,7 @@ export const auditService = {
             description: isLoss
               ? `Extravio/Perda registrada de ${epiName} do colaborador ${workerName}`
               : `Devolução registrada de ${epiName} do colaborador ${workerName}`,
-            ipAddress: '192.168.1.100',
+            ipAddress: NOT_RECORDED,
             details: { workerName, epiName, returnedAt: a.returned_at, condition: a.condition_on_return }
           });
         }
@@ -129,14 +132,14 @@ export const auditService = {
         logs.push({
           id: `train-${t.id}`,
           timestamp: t.completed_at,
-          userName: t.instructor_name || 'Instrutor SST',
+          userName: t.instructor_name || NOT_RECORDED,
           userInitials: getInitials(t.instructor_name || 'IS'),
           userColor: 'bg-amber-500 text-amber-950',
           type: 'Treinamento',
           typeBadgeColor: BADGE_COLORS['Treinamento'],
           module: 'SST',
           description: `Conclusão do treinamento ${nr} (${title}) para o colaborador ${workerName}`,
-          ipAddress: '192.168.1.105',
+          ipAddress: NOT_RECORDED,
           details: { workerName, nr, title, instructor: t.instructor_name }
         });
       });
@@ -148,14 +151,14 @@ export const auditService = {
         logs.push({
           id: `aso-${aso.id}`,
           timestamp: aso.issued_at,
-          userName: 'Médico do Trabalho',
-          userInitials: 'MT',
+          userName: aso.doctor_name || NOT_RECORDED,
+          userInitials: getInitials(aso.doctor_name || '—'),
           userColor: 'bg-teal-500 text-teal-950',
           type: 'ASO',
           typeBadgeColor: BADGE_COLORS['ASO'],
           module: 'SST',
           description: `Emissão de ASO (${aso.type}) para ${workerName} por ${aso.doctor_name || 'Médico Coordenador'}`,
-          ipAddress: '192.168.1.110',
+          ipAddress: NOT_RECORDED,
           details: { workerName, type: aso.type, doctor: aso.doctor_name }
         });
       });
@@ -167,47 +170,18 @@ export const auditService = {
         logs.push({
           id: `disc-${d.id}`,
           timestamp: d.applied_at,
-          userName: d.applied_by || 'Técnico de Segurança',
-          userInitials: 'TS',
+          userName: d.applied_by || NOT_RECORDED,
+          userInitials: getInitials(d.applied_by || '—'),
           userColor: 'bg-rose-500 text-rose-950',
           type: 'Medida Disciplinar',
           typeBadgeColor: BADGE_COLORS['Medida Disciplinar'],
           module: 'Colaboradores',
           description: `${d.title || 'Medida disciplinar'} aplicada para ${workerName}`,
-          ipAddress: '192.168.1.101',
+          ipAddress: NOT_RECORDED,
           details: { workerName, title: d.title, type: d.type }
         });
       });
 
-      // 5. Se houver poucos logs, acrescenta registros fundamentais de login e auditoria conforme Imagem 2
-      const baselineMock: AuditLogItem[] = [
-        {
-          id: 'mock-1',
-          timestamp: new Date().toISOString(),
-          userName: 'Administrador Sistema',
-          userInitials: 'AS',
-          userColor: 'bg-emerald-500 text-emerald-950',
-          type: 'Login',
-          typeBadgeColor: BADGE_COLORS['Login'],
-          module: 'Auth',
-          description: 'Usuário realizou login no sistema via autenticação Supabase',
-          ipAddress: '192.168.1.100'
-        },
-        {
-          id: 'mock-2',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          userName: 'Técnico de Segurança',
-          userInitials: 'TS',
-          userColor: 'bg-rose-500 text-rose-950',
-          type: 'Emissão PDF',
-          typeBadgeColor: BADGE_COLORS['Emissão PDF'],
-          module: 'Relatórios',
-          description: 'Gerada Ficha de EPI (NR-6) oficial com assinaturas digitais',
-          ipAddress: '192.168.1.101'
-        }
-      ];
-
-      logs.push(...baselineMock);
 
     } catch (err) {
       console.error('Erro ao montar logs de auditoria:', err);
