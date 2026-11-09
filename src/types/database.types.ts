@@ -14,8 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          changed_fields: Json
+          id: number
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_fields: Json
+          id?: never
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          changed_fields?: Json
+          id?: never
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       almoxarifado_orders: {
         Row: {
+          cancelled_by_id: string | null
+          delivered_by_id: string | null
+          requested_by_id: string | null
           cancellation_reason: string | null
           cancelled_by: string | null
           created_at: string
@@ -35,6 +68,9 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          cancelled_by_id?: string | null
+          delivered_by_id?: string | null
+          requested_by_id?: string | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
           created_at?: string
@@ -54,6 +90,9 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          cancelled_by_id?: string | null
+          delivered_by_id?: string | null
+          requested_by_id?: string | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
           created_at?: string

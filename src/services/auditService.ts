@@ -12,7 +12,9 @@ export type AuditActionType =
   | 'ASO'
   | 'Descarte'
   | 'Transferência'
-  | 'Medida Disciplinar';
+  | 'Medida Disciplinar'
+  | 'Anulação'
+  | 'Alteração';
 
 export interface AuditLogItem {
   id: string;
@@ -39,8 +41,31 @@ const BADGE_COLORS: Record<string, string> = {
   'ASO': 'bg-teal-500/10 text-teal-500 border border-teal-500/20',
   'Descarte': 'bg-orange-500/10 text-orange-500 border border-orange-500/20',
   'Transferência': 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20',
-  'Medida Disciplinar': 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+  'Medida Disciplinar': 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+  'Anulação': 'bg-zinc-500/10 text-zinc-300 border border-zinc-500/20',
+  'Alteração': 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
 };
+
+const TABLE_LABELS: Record<string, string> = {
+  workers: 'Colaborador',
+  epi_catalog: 'EPI do catálogo',
+  construction_sites: 'Obra',
+  users: 'Usuário do sistema',
+  training_catalog: 'Treinamento do catálogo',
+  system_settings: 'Configurações'
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  name: 'nome', full_name: 'nome', ca_number: 'CA', ca_validity: 'validade do CA', status: 'status',
+  role: 'perfil', custom_role: 'cargo', permissions: 'permissões', deleted_at: 'desativação/exclusão',
+  current_site_id: 'obra', cpf: 'CPF', unit_price: 'preço', lifespan_days: 'vida útil',
+  minimum_stock: 'estoque mínimo', aso_date: 'data do ASO', apt_for_height: 'aptidão em altura',
+  apt_for_confined_space: 'aptidão em espaço confinado', current_role: 'cargo',
+  epi_declaration_text: 'texto da declaração', epi_terms_text: 'termos da ficha', epi_legal_base_text: 'base legal'
+};
+
+// Junções do PostgREST chegam como objeto ou lista de um item
+const nameOf = (rel: any): string | undefined => (Array.isArray(rel) ? rel[0]?.full_name : rel?.full_name) || undefined;
 
 // Autor e IP não são gravados nessas tabelas; mostrar isso em vez de inventar um valor
 const NOT_RECORDED = 'Não registrado';
@@ -57,27 +82,32 @@ export const auditService = {
     const logs: AuditLogItem[] = [];
 
     try {
-      const [assignmentsRes, trainingsRes, asosRes, discRes] = await Promise.allSettled([
+      const [assignmentsRes, trainingsRes, asosRes, discRes, changesRes] = await Promise.allSettled([
         supabase
           .from('epi_assignments')
-          .select('id, assigned_at, returned_at, condition_on_return, catalog:epi_catalog!catalog_id(name), worker:workers!worker_id(full_name)')
+          .select('id, assigned_at, returned_at, condition_on_return, created_at, creator:users!created_by(full_name), catalog:epi_catalog!catalog_id(name), worker:workers!worker_id(full_name)')
           .order('assigned_at', { ascending: false })
           .limit(100),
         supabase
           .from('worker_trainings')
-          .select('id, completed_at, instructor_name, training:training_catalog!training_id(title, nr_code), worker:workers!worker_id(full_name)')
+          .select('id, completed_at, instructor_name, voided_at, void_reason, voider:users!voided_by(full_name), training:training_catalog!training_id(title, nr_code), worker:workers!worker_id(full_name)')
           .order('completed_at', { ascending: false })
           .limit(50),
         supabase
           .from('worker_asos')
-          .select('id, issued_at, type, doctor_name, worker:workers!worker_id(full_name)')
+          .select('id, issued_at, type, doctor_name, voided_at, void_reason, voider:users!voided_by(full_name), worker:workers!worker_id(full_name)')
           .order('issued_at', { ascending: false })
           .limit(50),
         supabase
           .from('disciplinary_records')
-          .select('id, applied_at, type, title, applied_by, worker:workers!worker_id(full_name)')
+          .select('id, applied_at, type, title, applied_by, voided_at, void_reason, voider:users!voided_by(full_name), applier:users!applied_by_id(full_name), worker:workers!worker_id(full_name)')
           .order('applied_at', { ascending: false })
-          .limit(50)
+          .limit(50),
+        supabase
+          .from('audit_log')
+          .select('id, table_name, action, changed_fields, changed_at, author:users!changed_by(full_name)')
+          .order('changed_at', { ascending: false })
+          .limit(100)
       ]);
 
       const getData = (res: PromiseSettledResult<any>) => res.status === 'fulfilled' ? res.value.data || [] : [];
@@ -88,18 +118,19 @@ export const auditService = {
         const workerName = Array.isArray(a.worker) ? a.worker[0]?.full_name : a.worker?.full_name || 'Colaborador';
         const epiName = Array.isArray(a.catalog) ? a.catalog[0]?.name : a.catalog?.name || 'EPI';
 
+        const creator = nameOf(a.creator);
         logs.push({
           id: `assign-${a.id}`,
           timestamp: a.assigned_at,
-          userName: NOT_RECORDED,
-          userInitials: '—',
+          userName: creator || NOT_RECORDED,
+          userInitials: creator ? getInitials(creator) : '—',
           userColor: 'bg-emerald-500 text-emerald-950',
           type: 'Entrega',
           typeBadgeColor: BADGE_COLORS['Entrega'],
           module: 'Entregas',
           description: `Registrada entrega de ${epiName} para ${workerName}`,
           ipAddress: NOT_RECORDED,
-          details: { workerName, epiName, assignedAt: a.assigned_at }
+          details: { workerName, epiName, assignedAt: a.assigned_at, lancadoEm: a.created_at || 'antes do controle (06/11/2026)' }
         });
 
         if (a.returned_at) {
@@ -170,8 +201,8 @@ export const auditService = {
         logs.push({
           id: `disc-${d.id}`,
           timestamp: d.applied_at,
-          userName: d.applied_by || NOT_RECORDED,
-          userInitials: getInitials(d.applied_by || '—'),
+          userName: nameOf(d.applier) || d.applied_by || NOT_RECORDED,
+          userInitials: getInitials(nameOf(d.applier) || d.applied_by || '—'),
           userColor: 'bg-rose-500 text-rose-950',
           type: 'Medida Disciplinar',
           typeBadgeColor: BADGE_COLORS['Medida Disciplinar'],
@@ -182,6 +213,50 @@ export const auditService = {
         });
       });
 
+      // 5. Anulações (ASO, treinamento, medida): o registro original continua acima; aqui o ato de anular
+      const pushVoid = (r: any, what: string) => {
+        if (!r.voided_at) return;
+        const by = nameOf(r.voider);
+        logs.push({
+          id: `void-${r.id}`,
+          timestamp: r.voided_at,
+          userName: by || NOT_RECORDED,
+          userInitials: by ? getInitials(by) : '—',
+          userColor: 'bg-zinc-500 text-zinc-950',
+          type: 'Anulação',
+          typeBadgeColor: BADGE_COLORS['Anulação'],
+          module: 'Compliance',
+          description: `${what} de ${nameOf(r.worker) || 'colaborador'} anulado(a). Motivo: ${r.void_reason}`,
+          ipAddress: NOT_RECORDED,
+          details: { motivo: r.void_reason }
+        });
+      };
+      trainings.forEach((t: any) => pushVoid(t, 'Treinamento'));
+      asos.forEach((a: any) => pushVoid(a, 'ASO'));
+      disc.forEach((d: any) => pushVoid(d, 'Medida disciplinar'));
+
+      // 6. Alterações de cadastro (trilha gravada pelo banco)
+      getData(changesRes).forEach((c: any) => {
+        const by = nameOf(c.author);
+        const table = TABLE_LABELS[c.table_name] || c.table_name;
+        const fields = Object.keys(c.changed_fields || {});
+        const label = c.changed_fields?.full_name?.para ?? c.changed_fields?.name?.para;
+        logs.push({
+          id: `change-${c.id}`,
+          timestamp: c.changed_at,
+          userName: by || 'Sistema',
+          userInitials: by ? getInitials(by) : 'SI',
+          userColor: 'bg-violet-500 text-violet-950',
+          type: 'Alteração',
+          typeBadgeColor: BADGE_COLORS['Alteração'],
+          module: table,
+          description: c.action === 'INSERT'
+            ? `${table} cadastrado(a)${c.changed_fields?.full_name || c.changed_fields?.name ? `: ${c.changed_fields.full_name || c.changed_fields.name}` : ''}`
+            : `${table} alterado(a)${label ? ` (${label})` : ''}: ${fields.map(f => FIELD_LABELS[f] || f).join(', ')}`,
+          ipAddress: NOT_RECORDED,
+          details: c.changed_fields
+        });
+      });
 
     } catch (err) {
       console.error('Erro ao montar logs de auditoria:', err);
