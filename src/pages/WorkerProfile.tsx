@@ -286,7 +286,8 @@ export function WorkerProfile() {
     setSaving(true);
 
     try {
-      const { site, roles, created_at, ...updateData } = formData as Omit<Worker, 'id'> & { id?: string }; // remove nested relations and read-only before update
+      // Fora do update: relações, campos de leitura e os que o banco calcula (department é coluna gerada e recusa qualquer valor)
+      const { site, roles, created_at, updated_at, department, ...updateData } = formData as Omit<Worker, 'id'> & { id?: string; updated_at?: string; department?: string | null };
       
       const { error: updateError } = await supabase
         .from('workers')
