@@ -31,6 +31,7 @@ export const sstService = {
     let query = supabase
       .from('worker_trainings')
       .select('*, training:training_catalog(*), worker:workers(full_name, registration_number, cpf, current_role)')
+      .is('voided_at', null)
       .order('completed_at', { ascending: false });
 
     if (workerId) {
@@ -73,6 +74,7 @@ export const sstService = {
     let query = supabase
       .from('worker_asos')
       .select('*, worker:workers(full_name, registration_number, cpf, current_role)')
+      .is('voided_at', null)
       .order('issued_at', { ascending: false });
 
     if (workerId) {

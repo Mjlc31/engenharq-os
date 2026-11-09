@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { VoidRecordButton } from '../components/ui/VoidRecordButton';
 import { Modal } from '../components/ui/Modal';
 import { TrainingCatalog, Worker, WorkerTraining } from '../types';
 import { sstService } from '../services/sstService';
@@ -282,7 +283,15 @@ export function Trainings() {
                           <div className="text-xs text-muted">{t.training?.title} ({t.training?.workload_hours}h)</div>
                         </td>
                         <td className="p-4 text-xs font-medium text-foreground">
-                          {t.instructor_name}
+                          <div>{t.instructor_name}</div>
+                          <div className="mt-1.5">
+                            <VoidRecordButton
+                              table="worker_trainings"
+                              id={t.id}
+                              description={`Treinamento ${t.training?.nr_code ?? ''} de ${t.worker?.full_name ?? 'colaborador'} (${new Date(t.completed_at).toLocaleDateString()})`}
+                              onVoided={loadData}
+                            />
+                          </div>
                         </td>
                         <td className="p-4 text-xs text-muted">
                           {new Date(t.completed_at).toLocaleDateString()}

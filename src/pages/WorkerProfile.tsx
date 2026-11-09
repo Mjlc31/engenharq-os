@@ -3,6 +3,7 @@ import { Modal } from '../components/ui/Modal';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { uploadSignature } from '../lib/storage';
+import { VoidRecordButton } from '../components/ui/VoidRecordButton';
 import { Worker, WorkerRole, ConstructionSite, EpiAssignment, DisciplinaryType, AsoType } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { ArrowLeft, Save, AlertCircle, Plus, Briefcase, Camera, UserCircle, Download, PenTool, Archive, HardHat, ShieldAlert, ShieldCheck, AlertTriangle, FileText, X, GraduationCap, HeartPulse, Clock } from 'lucide-react';
@@ -984,6 +985,12 @@ export function WorkerProfile() {
                         >
                           <Download className="w-3.5 h-3.5" /> Baixar Termo (PDF)
                         </button>
+                        <VoidRecordButton
+                          table="disciplinary_records"
+                          id={record.id}
+                          description={`"${record.title}" de ${worker.full_name}`}
+                          onVoided={loadData}
+                        />
                       </div>
                     </div>
                   );

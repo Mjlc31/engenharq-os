@@ -81,8 +81,8 @@ export function useDashboard() {
           .order('assigned_at', { ascending: false })
           .limit(300),
         // shortcut: traz o histórico inteiro e filtra o mais recente no cliente; passa do limite de 1000 linhas do PostgREST com volume real, então mover para uma view/RPC.
-        supabase.from('worker_asos').select('worker_id, valid_until'),
-        supabase.from('worker_trainings').select('worker_id, training_id, valid_until')
+        supabase.from('worker_asos').select('worker_id, valid_until').is('voided_at', null),
+        supabase.from('worker_trainings').select('worker_id, training_id, valid_until').is('voided_at', null)
       ]);
 
       const getData = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.data || [] : [];

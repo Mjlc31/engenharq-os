@@ -359,7 +359,7 @@ export function ReportsManagementGrid() {
         const { data, error } = await supabase.from('disciplinary_records').select(`
           created_at, title, type,
           worker:workers(full_name, registration_number, cpf, work_sector)
-        `).order('created_at', { ascending: false });
+        `).is('voided_at', null).order('created_at', { ascending: false });
         if (error) throw error;
 
         const columns = [

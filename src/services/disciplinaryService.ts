@@ -6,6 +6,7 @@ export const disciplinaryService = {
     let query = supabase
       .from('disciplinary_records')
       .select('*, worker:workers(full_name, registration_number, cpf, current_role)')
+      .is('voided_at', null)
       .order('applied_at', { ascending: false });
 
     if (workerId) {

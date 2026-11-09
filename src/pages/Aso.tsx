@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { VoidRecordButton } from '../components/ui/VoidRecordButton';
 import { Modal } from '../components/ui/Modal';
 import { Worker, WorkerAso, AsoType } from '../types';
 import { sstService } from '../services/sstService';
@@ -234,7 +235,15 @@ export function Aso() {
                     )}
                   </td>
                   <td className="p-4 text-xs text-muted">
-                    {a.doctor_name || 'Não informado'}
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{a.doctor_name || 'Não informado'}</span>
+                      <VoidRecordButton
+                        table="worker_asos"
+                        id={a.id}
+                        description={`ASO ${a.type} de ${a.worker?.full_name ?? 'colaborador'} (${new Date(a.issued_at).toLocaleDateString()})`}
+                        onVoided={loadData}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

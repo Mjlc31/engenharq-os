@@ -202,6 +202,9 @@ export type Database = {
       }
       disciplinary_records: {
         Row: {
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
           applied_at: string
           applied_by: string | null
           applied_by_id: string | null
@@ -214,6 +217,9 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           applied_at?: string
           applied_by?: string | null
           applied_by_id?: string | null
@@ -226,6 +232,9 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           applied_at?: string
           applied_by?: string | null
           applied_by_id?: string | null
@@ -249,6 +258,8 @@ export type Database = {
       }
       epi_assignments: {
         Row: {
+          created_at: string | null
+          created_by: string | null
           assigned_at: string
           audit_selfie_url: string | null
           biometric_match_score: number | null
@@ -275,6 +286,8 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          created_at?: string | null
+          created_by?: string | null
           assigned_at?: string
           audit_selfie_url?: string | null
           biometric_match_score?: number | null
@@ -301,6 +314,8 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          created_at?: string | null
+          created_by?: string | null
           assigned_at?: string
           audit_selfie_url?: string | null
           biometric_match_score?: number | null
@@ -758,6 +773,9 @@ export type Database = {
       }
       worker_asos: {
         Row: {
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
           created_at: string | null
           doctor_name: string | null
           document_url: string | null
@@ -771,6 +789,9 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           created_at?: string | null
           doctor_name?: string | null
           document_url?: string | null
@@ -784,6 +805,9 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           created_at?: string | null
           doctor_name?: string | null
           document_url?: string | null
@@ -878,6 +902,9 @@ export type Database = {
       }
       worker_trainings: {
         Row: {
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
           completed_at: string
           created_at: string | null
           id: string
@@ -889,6 +916,9 @@ export type Database = {
           worker_id: string
         }
         Insert: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           completed_at: string
           created_at?: string | null
           id?: string
@@ -900,6 +930,9 @@ export type Database = {
           worker_id: string
         }
         Update: {
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
           completed_at?: string
           created_at?: string | null
           id?: string
