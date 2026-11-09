@@ -300,7 +300,8 @@ export function WorkerProfile() {
       await loadData();
     } catch (err: unknown) {
       console.error('Erro ao atualizar perfil:', err);
-      toast({ type: 'error', title: 'Erro', message: 'Falha ao atualizar perfil.' });
+      const reason = (err as { message?: string })?.message;
+      toast({ type: 'error', title: 'Erro', message: reason ? `Falha ao atualizar perfil: ${reason}` : 'Falha ao atualizar perfil.' });
     } finally {
       setSaving(false);
     }
