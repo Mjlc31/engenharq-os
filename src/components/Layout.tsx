@@ -5,7 +5,7 @@ import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Prin
 import { cn } from '../lib/utils';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import type { UserRole } from '../types';
-import { ALL_ROLES, effectiveRole, GOVERNANCE_ROLES, MANAGEMENT_ROLES, ROLE_LABELS } from '../services/rbacService';
+import { ALL_ROLES, GOVERNANCE_ROLES, MANAGEMENT_ROLES, ROLE_LABELS } from '../services/rbacService';
 
 type NavEntry = { name: string; href: string; icon: React.ElementType; roles: UserRole[] };
 
@@ -56,7 +56,7 @@ export function Layout() {
   const { signOut, user, role, customRole } = useAuth();
   const { isOnline } = useOfflineQueue();
   // Papel nulo cai no menor privilégio (menu do almoxarife), igual ao guard das rotas.
-  const currentRole = effectiveRole(role, customRole) ?? 'ALMOXARIFADO';
+  const currentRole = role ?? 'ALMOXARIFADO';
   const isAlmoxarifado = currentRole === 'ALMOXARIFADO';
   const roleLabel = customRole || (role ? ROLE_LABELS[role] : '');
   const location = useLocation();

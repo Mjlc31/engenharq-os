@@ -35,13 +35,6 @@ export const MANAGEMENT_ROLES: UserRole[] = ['ADMIN', 'SAFETY_ENGINEER', 'SITE_M
 export const GOVERNANCE_ROLES: UserRole[] = ['ADMIN', 'SAFETY_ENGINEER'];
 export const ALL_ROLES: UserRole[] = [...MANAGEMENT_ROLES, 'ALMOXARIFADO'];
 
-/** Papel usado nas telas: cargo customizado de almoxarife rebaixa para ALMOXARIFADO (exceto ADMIN). Nulo = sem acesso. */
-export function effectiveRole(role: UserRole | null, customRole: string | null): UserRole | null {
-  if (role === 'ADMIN') return role;
-  if (role === 'ALMOXARIFADO' || customRole?.toLowerCase().includes('almoxarif')) return 'ALMOXARIFADO';
-  return role;
-}
-
 export const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: 'Administrador',
   SAFETY_ENGINEER: 'Engenheiro SST',

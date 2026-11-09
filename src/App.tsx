@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/ui/Toast';
-import { effectiveRole, GOVERNANCE_ROLES, MANAGEMENT_ROLES } from './services/rbacService';
+import { GOVERNANCE_ROLES, MANAGEMENT_ROLES } from './services/rbacService';
 import type { UserRole } from './types';
 
 const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -28,8 +28,8 @@ const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ defaul
 
 // Guarda por papel, fail-closed: papel nulo ou fora da lista não entra.
 const RoleRoute = ({ allow, children }: { allow: UserRole[]; children: React.ReactNode }) => {
-  const { role, customRole } = useAuth();
-  const current = effectiveRole(role, customRole);
+  // O perfil do banco decide o acesso; o cargo (custom_role) é só o nome exibido.
+  const { role: current } = useAuth();
   if (current && allow.includes(current)) return <>{children}</>;
   return <Navigate to={current && MANAGEMENT_ROLES.includes(current) ? '/' : '/almoxarifado-kds'} replace />;
 };
