@@ -14,7 +14,7 @@ export function useScanner() {
     try {
       const isId = searchTerm.startsWith('WK-');
       const cleanTerm = searchTerm.replace('WK-', '');
-      let query = supabase.from('workers').select('*, site:construction_sites(name, latitude, longitude)');
+      let query = supabase.from('workers').select('*, site:construction_sites(name, latitude, longitude)').is('deleted_at', null);
       
       if (isId) {
         query = query.eq('id', cleanTerm);
@@ -48,7 +48,7 @@ export function useScanner() {
     try {
       const isId = searchTerm.startsWith('EPI-');
       const cleanTerm = searchTerm.replace('EPI-', '');
-      let query = supabase.from('epi_catalog').select('*');
+      let query = supabase.from('epi_catalog').select('*').is('deleted_at', null).eq('status', 'ACTIVE');
       
       if (isId) {
         query = query.eq('id', cleanTerm);

@@ -432,7 +432,7 @@ export function AlmoxarifadoKds() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
           {/* Subir Estoque / Entrada NF */}
           <button
             onClick={() => setIsStockEntryModalOpen(true)}

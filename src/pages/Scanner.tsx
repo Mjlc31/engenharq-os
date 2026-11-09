@@ -101,11 +101,14 @@ export function Scanner() {
 
   useEffect(() => {
     const loadCatalog = async () => {
-      const { data } = await supabase.from('epi_catalog').select('*').order('name');
-      if (data) setCatalog(data);
+      // Só EPI ativo e não excluído pode ser entregue (NR-6: rastreabilidade do que sai)
+      const { data, error: catalogError } = await supabase
+        .from('epi_catalog').select('*').is('deleted_at', null).eq('status', 'ACTIVE').order('name');
+      if (catalogError) { setError('Falha ao carregar o catálogo de EPIs.'); return; }
+      setCatalog(data || []);
     };
     loadCatalog();
-  }, []);
+  }, [setError]);
 
   const onScanSuccess = async (decodedText: string) => {
     if (loading) return;
