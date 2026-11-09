@@ -247,6 +247,17 @@ export function AlmoxarifadoKds() {
       return;
     }
 
+    // A baixa sai do estoque de uma obra: sem obra, o pedido não pode ser entregue depois
+    const siteId = selectedWorker.current_site_id || (selectedSiteId !== 'ALL' ? selectedSiteId : null);
+    if (!siteId) {
+      toast({
+        type: 'warning',
+        title: 'Escolha a obra',
+        message: 'Este colaborador não está alocado em nenhuma obra. Selecione a obra no campo "Obra" do topo ou aloque o colaborador numa obra no cadastro.'
+      });
+      return;
+    }
+
     setCreatingOrder(true);
     try {
       const itemsPayload: AlmoxarifadoOrderItem[] = selectedItems.map(si => ({
@@ -259,7 +270,6 @@ export function AlmoxarifadoKds() {
       }));
 
       const now = new Date().toISOString();
-      const siteId = selectedWorker.current_site_id || (selectedSiteId !== 'ALL' ? selectedSiteId : null);
 
       const { data, error } = await supabase
         .from('almoxarifado_orders')

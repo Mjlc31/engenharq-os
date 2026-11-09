@@ -217,7 +217,7 @@ export function Scanner() {
         setStep('SUCCESS');
       }
     } catch (err: unknown) {
-      setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Erro ao confirmar: ${(err as { message?: string })?.message ?? String(err)}`);
     } finally {
       setLoading(false);
     }

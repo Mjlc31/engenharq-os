@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { cleanDigits, applyCpfMask } from '../lib/validators';
 import { Worker, EpiInventory } from '../types';
 
 export function useScanner() {
@@ -19,7 +20,9 @@ export function useScanner() {
       if (isId) {
         query = query.eq('id', cleanTerm);
       } else {
-        query = query.or(`cpf.eq.${cleanTerm},registration_number.eq.${cleanTerm}`);
+        // CPF pode estar gravado com ou sem pontuação; procura nas duas formas
+        const digits = cleanDigits(cleanTerm);
+        query = query.or(`cpf.eq."${cleanTerm}",cpf.eq."${digits}",cpf.eq."${applyCpfMask(digits)}",registration_number.eq."${cleanTerm}"`);
       }
       
       const { data, error: fetchError } = await query.single();
@@ -116,7 +119,7 @@ export function useScanner() {
 
       return true;
     } catch (err: unknown) {
-      setError(`Erro ao confirmar: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Erro ao confirmar: ${(err as { message?: string })?.message ?? String(err)}`);
       return false;
     } finally {
       setLoading(false);
