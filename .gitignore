@@ -12,6 +12,8 @@ gh.zip
 gh_ext/
 
 # Diagnostic scratch files & test outputs
+.playwright-mcp/
+.claude/
 *.pdf
 !public/ficha_epi_template.pdf
 *.png
