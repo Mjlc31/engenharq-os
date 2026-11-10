@@ -24,6 +24,15 @@ export interface MonthlyDeliveryStat {
   count: number;
 }
 
+export interface AlmoxarifadoDashboardStats {
+  ordersToday: number;
+  itemsExpeditedToday: number;
+  pendingInQueue: number;
+  avgSlaFormatted: string;
+  signatureComplianceRate: number;
+  topEpis: { name: string; count: number; percentage: number }[];
+}
+
 export interface DashboardStats {
   activeWorkers: number;
   inactiveWorkers: number;
@@ -64,7 +73,8 @@ export function useDashboard() {
         workersReq,
         allAssignmentsReq,
         asosReq,
-        trainingsReq
+        trainingsReq,
+        almoxOrdersReq
       ] = await Promise.allSettled([
         supabase
           .from('epi_catalog')
@@ -82,7 +92,13 @@ export function useDashboard() {
           .limit(300),
         // shortcut: traz o histórico inteiro e filtra o mais recente no cliente; passa do limite de 1000 linhas do PostgREST com volume real, então mover para uma view/RPC.
         supabase.from('worker_asos').select('worker_id, valid_until').is('voided_at', null),
-        supabase.from('worker_trainings').select('worker_id, training_id, valid_until').is('voided_at', null)
+        supabase.from('worker_trainings').select('worker_id, training_id, valid_until').is('voided_at', null),
+        supabase
+          .from('almoxarifado_orders')
+          .select('id, order_number, status, items, requested_at, delivered_at, signature_url')
+          .is('deleted_at', null)
+          .order('requested_at', { ascending: false })
+          .limit(200)
       ]);
 
       const getData = (req: PromiseSettledResult<any>) => req.status === 'fulfilled' ? req.value.data || [] : [];
@@ -234,13 +250,80 @@ export function useDashboard() {
         avgRetentionDays
       };
 
+      // Estatísticas do Almoxarifado / KDS Fast Food
+      const rawAlmoxOrders = getData(almoxOrdersReq);
+      const pendingInQueue = rawAlmoxOrders.filter((o: any) => o.status === 'PREPARING').length;
+      const deliveredOrders = rawAlmoxOrders.filter((o: any) => o.status === 'DELIVERED');
+
+      const deliveredToday = deliveredOrders.filter((o: any) => {
+        if (!o.delivered_at) return false;
+        const d = new Date(o.delivered_at);
+        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+
+      const ordersToday = deliveredToday.length;
+      const itemsExpeditedToday = deliveredToday.reduce((acc: number, o: any) => {
+        const itList = Array.isArray(o.items) ? o.items : [];
+        return acc + itList.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
+      }, 0);
+
+      const targetForSla = deliveredToday.length > 0 ? deliveredToday : deliveredOrders.slice(0, 20);
+      let avgSlaSec = 0;
+      if (targetForSla.length > 0) {
+        const totalSec = targetForSla.reduce((acc: number, o: any) => {
+          const reqTime = new Date(o.requested_at).getTime();
+          const delTime = new Date(o.delivered_at).getTime();
+          const diff = Math.max(0, (delTime - reqTime) / 1000);
+          return acc + diff;
+        }, 0);
+        avgSlaSec = Math.round(totalSec / targetForSla.length);
+      }
+      const avgSlaM = Math.floor(avgSlaSec / 60);
+      const avgSlaS = Math.floor(avgSlaSec % 60);
+      const avgSlaFormatted = `${avgSlaM}m ${String(avgSlaS).padStart(2, '0')}s`;
+
+      const signedCount = deliveredOrders.filter((o: any) => !!o.signature_url).length;
+      const signatureComplianceRate = deliveredOrders.length > 0
+        ? Math.round((signedCount / deliveredOrders.length) * 100)
+        : 100;
+
+      const epiCounts = new Map<string, number>();
+      deliveredOrders.forEach((o: any) => {
+        const itList = Array.isArray(o.items) ? o.items : [];
+        itList.forEach((it: any) => {
+          const name = it.name || 'EPI';
+          const qty = Number(it.quantity) || 1;
+          epiCounts.set(name, (epiCounts.get(name) || 0) + qty);
+        });
+      });
+
+      const sortedEpis = Array.from(epiCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+      const topTotal = sortedEpis.reduce((sum, item) => sum + item.count, 0);
+      const topEpis = sortedEpis.slice(0, 5).map(e => ({
+        name: e.name,
+        count: e.count,
+        percentage: topTotal > 0 ? Math.round((e.count / topTotal) * 100) : 0
+      }));
+
+      const almoxarifadoStats: AlmoxarifadoDashboardStats = {
+        ordersToday,
+        itemsExpeditedToday,
+        pendingInQueue,
+        avgSlaFormatted,
+        signatureComplianceRate,
+        topEpis
+      };
+
       return {
         stats,
         categoryDistribution,
         monthlyDeliveries,
         recentDeliveries,
         compliance,
-        complianceUnavailable
+        complianceUnavailable,
+        almoxarifadoStats
       };
     }
   });

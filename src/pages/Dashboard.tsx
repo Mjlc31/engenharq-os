@@ -10,6 +10,7 @@ import { CategoryDistributionWidget } from '../components/features/dashboard/Cat
 import { MonthlyDeliveriesWidget } from '../components/features/dashboard/MonthlyDeliveriesWidget';
 import { RecentDeliveriesWidget } from '../components/features/dashboard/RecentDeliveriesWidget';
 import { ActionRequiredWidget } from '../components/features/dashboard/ActionRequiredWidget';
+import { AlmoxarifadoWidget } from '../components/features/dashboard/AlmoxarifadoWidget';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -81,6 +82,9 @@ export function Dashboard() {
       <ActionRequiredWidget compliance={data?.compliance} unavailable={data?.complianceUnavailable} loading={loading} />
 
       <KpiGridWidget stats={stats} loading={loading} />
+
+      {/* Módulo Almoxarifado & Balcão de EPIs */}
+      <AlmoxarifadoWidget stats={data?.almoxarifadoStats} loading={loading} />
 
       {/* Painel Médio: EPIs por Categoria & Entregas por Mês */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

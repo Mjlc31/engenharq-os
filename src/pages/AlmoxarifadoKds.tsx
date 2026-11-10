@@ -11,11 +11,12 @@ import {
   Tv, ExternalLink, Volume2, VolumeX, Plus, CheckCircle2,
   Clock, HardHat, User, AlertCircle, RefreshCw, X, Search, 
   Bell, FileCheck, ArrowRight, ShieldCheck, Check, History,
-  SlidersHorizontal, PackagePlus, Trash2
+  SlidersHorizontal, PackagePlus, Trash2, BarChart3
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { AlmoxarifadoHistoryTab } from '../components/features/almoxarifado/AlmoxarifadoHistoryTab';
 import { AlmoxarifadoKardexTab } from '../components/features/almoxarifado/AlmoxarifadoKardexTab';
+import { AlmoxarifadoMetricsTab } from '../components/features/almoxarifado/AlmoxarifadoMetricsTab';
 import { AlmoxarifadoStockEntryModal } from '../components/features/almoxarifado/AlmoxarifadoStockEntryModal';
 import { AlmoxarifadoCancelOrderModal } from '../components/features/almoxarifado/AlmoxarifadoCancelOrderModal';
 
@@ -30,7 +31,7 @@ export function AlmoxarifadoKds() {
     (customRole && (customRole.toLowerCase().includes('gerente') || customRole.toLowerCase().includes('coordenador') || customRole.toLowerCase().includes('admin') || customRole.toLowerCase().includes('almoxarife') || customRole.toLowerCase().includes('estoquista')));
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'tv' | 'history' | 'kardex'>('tv');
+  const [activeTab, setActiveTab] = useState<'tv' | 'history' | 'kardex' | 'metrics'>('tv');
 
   // Orders State
   const [orders, setOrders] = useState<AlmoxarifadoOrder[]>([]);
@@ -537,6 +538,18 @@ export function AlmoxarifadoKds() {
             <span>3. Extrato & Movimentações de Estoque</span>
             {activeTab === 'kardex' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
           </button>
+
+          <button
+            onClick={() => setActiveTab('metrics')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 font-semibold text-xs uppercase tracking-wider transition-all relative cursor-pointer",
+              activeTab === 'metrics' ? "text-primary" : "text-muted hover:text-foreground"
+            )}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>4. Indicadores & Desempenho</span>
+            {activeTab === 'metrics' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-dark" />}
+          </button>
         </div>
 
       {/* ================= TAB 1: FILA DO BALCÃO (AO VIVO) ================= */}
@@ -885,6 +898,16 @@ export function AlmoxarifadoKds() {
       {/* ================= TAB 3: EXTRATO & MOVIMENTAÇÕES DE ESTOQUE ================= */}
       {activeTab === 'kardex' && (
         <AlmoxarifadoKardexTab
+          sites={sites}
+          selectedSiteId={selectedSiteId}
+          onSelectSiteId={setSelectedSiteId}
+        />
+      )}
+
+      {/* ================= TAB 4: INDICADORES & DESEMPENHO ================= */}
+      {activeTab === 'metrics' && (
+        <AlmoxarifadoMetricsTab
+          orders={orders}
           sites={sites}
           selectedSiteId={selectedSiteId}
           onSelectSiteId={setSelectedSiteId}

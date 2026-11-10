@@ -267,6 +267,9 @@ export interface AlmoxarifadoOrder {
   selfie_url?: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
+  cancelled_by?: string | null;
+  cancellation_reason?: string | null;
   worker?: Worker;
   site?: ConstructionSite;
 }
