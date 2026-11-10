@@ -1398,7 +1398,7 @@ export function CatalogTab({
               <Trash2 className="w-5 h-5 text-red-500" /> Confirmar Exclusão
             </h3>
             <p className="text-sm text-muted mb-6">
-              Deseja realmente excluir o EPI <strong className="text-foreground">{deleteConfirmCatalog.name}</strong> do catálogo NR-6? Esta ação removerá o modelo permanentemente.
+              Deseja realmente excluir o EPI <strong className="text-foreground">{deleteConfirmCatalog.name}</strong> do catálogo NR-6? Ele sai das listas, mas o histórico de entregas e o Kardex continuam guardados. Só é possível excluir sem saldo nas obras e sem cautelas ativas.
             </p>
             <div className="flex gap-3 justify-end">
               <button

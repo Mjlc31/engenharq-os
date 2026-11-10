@@ -70,7 +70,7 @@ export function ReportsManagementGrid() {
   const fetchReportData = async (reportKey: string): Promise<{ columns: any[]; data: any[]; title: string; subtitle: string }> => {
     switch (reportKey) {
       case 'workers': {
-        let query = supabase.from('workers').select('full_name, registration_number, cpf, work_sector, current_role, admission_date, current_site_id, status');
+        let query = supabase.from('workers').select('full_name, registration_number, cpf, work_sector, current_role, admission_date, current_site_id, status').is('deleted_at', null);
         if (siteFilter) query = query.eq('current_site_id', siteFilter);
         if (sectorFilter) query = query.eq('work_sector', sectorFilter);
 
@@ -105,7 +105,7 @@ export function ReportsManagementGrid() {
       }
 
       case 'epis': {
-        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, brand, model, ca_number, current_stock, minimum_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, brand, model, ca_number, current_stock, minimum_stock').is('deleted_at', null);
         if (error) throw error;
         const columns = [
           { key: 'Codigo', label: 'Código' },
@@ -142,7 +142,7 @@ export function ReportsManagementGrid() {
           assigned_at, returned_at,
           worker:workers(full_name, work_sector, current_site_id),
           catalog:epi_catalog!catalog_id(name, code, ca_number)
-        `).order('assigned_at', { ascending: false });
+        `).is('deleted_at', null).order('assigned_at', { ascending: false });
         if (error) throw error;
 
         let list = data || [];
@@ -192,7 +192,7 @@ export function ReportsManagementGrid() {
           assigned_at, returned_at, condition_on_return,
           worker:workers(full_name, work_sector, current_site_id),
           catalog:epi_catalog!catalog_id(name, code)
-        `).not('returned_at', 'is', null).order('returned_at', { ascending: false });
+        `).not('returned_at', 'is', null).is('deleted_at', null).order('returned_at', { ascending: false });
         if (error) throw error;
 
         let list = data || [];
@@ -236,7 +236,7 @@ export function ReportsManagementGrid() {
       }
 
       case 'stock': {
-        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, unit_price, current_stock, minimum_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, category, unit_price, current_stock, minimum_stock').is('deleted_at', null);
         if (error) throw error;
         const columns = [
           { key: 'Codigo', label: 'Código' },
@@ -273,7 +273,7 @@ export function ReportsManagementGrid() {
       }
 
       case 'expiring': {
-        const { data, error } = await supabase.from('epi_catalog').select('code, name, ca_number, ca_validity, current_stock');
+        const { data, error } = await supabase.from('epi_catalog').select('code, name, ca_number, ca_validity, current_stock').is('deleted_at', null);
         if (error) throw error;
         const today = startOfDay(new Date());
         const limit = addDays(today, 60); // Next 60 days
@@ -319,7 +319,7 @@ export function ReportsManagementGrid() {
           assigned_at,
           worker:workers(full_name, work_sector),
           catalog:epi_catalog!catalog_id(name, code, ca_number, recommended_lifespan_days)
-        `).is('returned_at', null);
+        `).is('returned_at', null).is('deleted_at', null);
         if (error) throw error;
 
         const today = new Date();
@@ -356,33 +356,43 @@ export function ReportsManagementGrid() {
       }
 
       case 'lost': {
-        const { data, error } = await supabase.from('disciplinary_records').select(`
-          created_at, title, type,
-          worker:workers(full_name, registration_number, cpf, work_sector)
-        `).is('voided_at', null).order('created_at', { ascending: false });
+        // Extravio = cautela devolvida com condição LOST (Operações > Extravios); advertências ficam nas Medidas Disciplinares
+        const { data, error } = await supabase.from('epi_assignments').select(`
+          assigned_at, returned_at,
+          worker:workers(full_name, registration_number, work_sector, current_site_id),
+          catalog:epi_catalog!catalog_id(name, ca_number)
+        `).eq('condition_on_return', 'LOST').is('deleted_at', null).order('returned_at', { ascending: false });
         if (error) throw error;
+
+        let list = data || [];
+        if (siteFilter) list = list.filter((a) => a.worker?.current_site_id === siteFilter);
+        if (sectorFilter) list = list.filter((a) => a.worker?.work_sector === sectorFilter);
+        if (startDate) list = list.filter((a) => a.returned_at && !isBefore(parseISO(a.returned_at), startOfDay(parseISO(startDate))));
+        if (endDate) list = list.filter((a) => a.returned_at && !isAfter(parseISO(a.returned_at), endOfDay(parseISO(endDate))));
 
         const columns = [
           { key: 'Colaborador', label: 'Colaborador' },
           { key: 'Matricula', label: 'Matrícula' },
           { key: 'Setor', label: 'Setor' },
-          { key: 'Tipo_Ocorrencia', label: 'Tipo de Ocorrência' },
-          { key: 'Descricao', label: 'Descrição' },
-          { key: 'Data_Registro', label: 'Data Registro', align: 'center' as const }
+          { key: 'EPI', label: 'EPI Extraviado' },
+          { key: 'CA', label: 'CA', align: 'center' as const },
+          { key: 'Data_Entrega', label: 'Data Entrega', align: 'center' as const },
+          { key: 'Data_Extravio', label: 'Data Extravio', align: 'center' as const }
         ];
 
-        const formatted = (data || []).map((d: any) => ({
-          Colaborador: d.worker?.full_name || 'N/A',
-          Matricula: d.worker?.registration_number || 'N/A',
-          Setor: d.worker?.work_sector || 'N/A',
-          Tipo_Ocorrencia: d.type === 'ORIENTACAO_SEGURANCA' ? 'Orientação' : d.type === 'ADVERTENCIA_ESCRITA' ? 'Advertência Escrita' : 'Advertência Verbal',
-          Descricao: d.title || 'Extravio de EPI / Ocorrência',
-          Data_Registro: d.created_at ? format(new Date(d.created_at), 'dd/MM/yyyy') : '-'
+        const formatted = list.map((a) => ({
+          Colaborador: a.worker?.full_name || 'N/A',
+          Matricula: a.worker?.registration_number || 'N/A',
+          Setor: a.worker?.work_sector || 'N/A',
+          EPI: a.catalog?.name || 'N/A',
+          CA: a.catalog?.ca_number || 'S/N',
+          Data_Entrega: a.assigned_at ? format(new Date(a.assigned_at), 'dd/MM/yyyy') : '-',
+          Data_Extravio: a.returned_at ? format(new Date(a.returned_at), 'dd/MM/yyyy') : '-'
         }));
 
         return {
           title: 'Relatório de Extravios',
-          subtitle: 'Histórico de ocorrências disciplinares e extravios de equipamentos',
+          subtitle: 'EPIs extraviados ou perdidos sob responsabilidade do colaborador (base para CLT Art. 462)',
           columns,
           data: formatted
         };

@@ -134,7 +134,7 @@ export const auditService = {
         });
 
         if (a.returned_at) {
-          const isLoss = a.condition_on_return === 'DAMAGED';
+          const isLoss = a.condition_on_return === 'LOST';
           logs.push({
             id: `return-${a.id}`,
             timestamp: a.returned_at,

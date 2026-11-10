@@ -72,8 +72,9 @@ export function MapTracking() {
         supabase.from('construction_sites').select('*'),
         supabase.from('epi_assignments')
           .select(`*, catalog:epi_catalog!catalog_id(*), epi:epi_catalog!catalog_id(*), worker:workers(*)`)
-          .is('returned_at', null),
-        supabase.from('workers').select('*, site:construction_sites(*)')
+          .is('returned_at', null)
+          .is('deleted_at', null),
+        supabase.from('workers').select('*, site:construction_sites(*)').is('deleted_at', null)
       ]);
 
       if (sitesData.error) throw sitesData.error;

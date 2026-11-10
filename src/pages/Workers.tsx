@@ -287,7 +287,7 @@ export function Workers() {
         <Modal onClose={() => setDeleteConfirmId(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-2">Confirmar Exclusão</h3>
-            <p className="text-sm text-muted mb-6">Tem certeza que deseja excluir este trabalhador? Essa ação não pode ser desfeita.</p>
+            <p className="text-sm text-muted mb-6">Tem certeza que deseja excluir este colaborador? Ele sai das listas, mas o histórico (fichas, entregas, ASO) continua guardado. Colaborador com EPI em posse precisa devolver ou registrar o extravio antes.</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-muted hover:text-foreground">Cancelar</button>
               <button onClick={async () => {

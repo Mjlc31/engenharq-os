@@ -15,8 +15,8 @@ export function PrintTags() {
     async function loadData() {
       setLoading(true);
       const [workersRes, episRes] = await Promise.all([
-        supabase.from('workers').select('*'),
-        supabase.from('epi_catalog').select('*')
+        supabase.from('workers').select('*').is('deleted_at', null),
+        supabase.from('epi_catalog').select('*').is('deleted_at', null)
       ]);
       
       if (workersRes.data) setWorkers(workersRes.data as any);

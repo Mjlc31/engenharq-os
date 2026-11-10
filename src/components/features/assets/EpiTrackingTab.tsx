@@ -123,6 +123,7 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
             image_url
           )
         `)
+        .is('deleted_at', null)
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;

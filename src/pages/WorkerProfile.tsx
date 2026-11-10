@@ -84,7 +84,7 @@ export function WorkerProfile() {
         supabase.from('workers').select('*, site:construction_sites(*)').eq('id', id).single(),
         supabase.from('worker_roles_history').select('*').eq('worker_id', id).order('start_date', { ascending: false }),
         supabase.from('construction_sites').select('*').order('name'),
-        supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).order('assigned_at', { ascending: false }),
+        supabase.from('epi_assignments').select('*, catalog:epi_catalog!catalog_id(*)').eq('worker_id', id).is('deleted_at', null).order('assigned_at', { ascending: false }),
         disciplinaryService.fetchRecords(id).catch(() => []),
         sstService.fetchWorkerTrainings(id).catch(() => []),
         sstService.fetchWorkerAsos(id).catch(() => []),

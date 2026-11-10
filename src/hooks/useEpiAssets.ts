@@ -177,7 +177,7 @@ export function useEpiAssets() {
       await queryClient.invalidateQueries({ queryKey: ['epi-assets'] });
     } catch (err: unknown) {
       console.error('Erro ao excluir catálogo:', err);
-      throw new Error('Falha ao excluir o modelo. Pode estar em uso.');
+      throw new Error((err as { message?: string })?.message || 'Falha ao excluir o modelo.');
     }
   };
 

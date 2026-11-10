@@ -63,6 +63,7 @@ export function Reports() {
       const { data, error } = await supabase
         .from('epi_assignments')
         .select('*, catalog:epi_catalog!catalog_id(*)')
+        .is('deleted_at', null)
         .eq('worker_id', workerId)
         .order('assigned_at', { ascending: false });
 

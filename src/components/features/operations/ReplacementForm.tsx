@@ -27,7 +27,8 @@ export function ReplacementForm({ workers, catalogs, epis, setIsSignatureModalOp
         catalog:epi_catalog!catalog_id(name)
       `)
       .eq('worker_id', selectedWorkerId)
-      .is('returned_at', null);
+      .is('returned_at', null)
+      .is('deleted_at', null);
       
     if (error) {
       toast({ type: 'error', title: 'Erro', message: error.message });

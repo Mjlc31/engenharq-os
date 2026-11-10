@@ -87,6 +87,7 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
         const { data, error } = await supabase
           .from('epi_assignments')
           .select('*, catalog:epi_catalog!catalog_id(*)')
+          .is('deleted_at', null)
           .eq('worker_id', selectedWorkerId)
           .order('assigned_at', { ascending: false });
 

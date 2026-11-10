@@ -36,7 +36,8 @@ export function Operations() {
       const { data, error } = await supabase
         .from('epi_assignments')
         .select('id, catalog_id, quantity')
-        .is('returned_at', null);
+        .is('returned_at', null)
+        .is('deleted_at', null);
       if (error) throw error;
       return data || [];
     }
@@ -158,7 +159,7 @@ export function Operations() {
       
       const { error } = await supabase.from('epi_assignments').update({
         returned_at: new Date().toISOString(),
-        condition_on_return: 'DAMAGED',
+        condition_on_return: 'LOST',
         return_signature_url: signatureUrl,
         audit_selfie_url: photoUrl
       }).eq('id', pendingLoss.assignmentId);
