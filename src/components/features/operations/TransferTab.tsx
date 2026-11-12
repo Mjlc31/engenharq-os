@@ -6,6 +6,7 @@ import { useAuth } from '../../../components/AuthProvider';
 import { useToast } from '../../../components/ui/Toast';
 import { ArrowRight, CheckCircle2, Clock, Send, Shield, AlertCircle, X } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { TableRowsSkeleton } from '../../ui/Skeleton';
 
 interface TransferTabProps {
   catalogs: EpiCatalog[];
@@ -293,11 +294,15 @@ export function TransferTab({ catalogs }: TransferTabProps) {
                 })}
 
                 {transfers.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-muted">
-                      {loading ? 'Carregando transferências...' : 'Nenhuma transferência registrada.'}
-                    </td>
-                  </tr>
+                  loading ? (
+                    <TableRowsSkeleton rows={4} columns={7} />
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-muted">
+                        Nenhuma transferência registrada.
+                      </td>
+                    </tr>
+                  )
                 )}
               </tbody>
             </table>

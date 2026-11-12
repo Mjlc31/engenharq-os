@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, Users, Search, Filter } from 'lucide-react';
 import { EpiInventory, Worker } from '../types';
+import { TagGridSkeleton } from '../components/ui/Skeleton';
 
 export function PrintTags() {
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -105,9 +106,7 @@ export function PrintTags() {
         `}</style>
         
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-zinc-500 font-medium">Carregando dados para etiquetas...</p>
-          </div>
+          <TagGridSkeleton count={8} />
         ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-zinc-400">
             <Filter className="w-8 h-8 mb-2 opacity-50" />

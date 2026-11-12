@@ -49,7 +49,7 @@ export function AlmoxarifadoStockEntryModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCatalogId) {
-      toast({ type: 'warning', title: 'Atenção', message: 'Selecione o EPI para dar entrada.' });
+      toast({ type: 'warning', title: 'Atenção', message: 'Selecione o item para dar entrada.' });
       return;
     }
     if (!quantity || Number(quantity) <= 0) {
@@ -132,18 +132,18 @@ export function AlmoxarifadoStockEntryModal({
             </select>
           </div>
 
-          {/* Seleção de EPI */}
+          {/* Seleção de Item */}
           <div className="space-y-1">
-            <label className="font-semibold text-muted uppercase tracking-wider block">2. Selecione o Equipamento (EPI) *</label>
+            <label className="font-semibold text-muted uppercase tracking-wider block">2. Selecione o Item / Material / EPI *</label>
             {selectedCatalog ? (
               <div className="p-3 bg-primary/5 rounded-xl border border-primary/30 flex items-center justify-between">
                 <div>
                   <p className="font-bold text-foreground text-sm">{selectedCatalog.name}</p>
                   <p className="text-[11px] text-muted">
-                    CA: {selectedCatalog.ca_number || 'S/N'} • Categoria: {selectedCatalog.category}
+                    {selectedCatalog.item_type === 'MATERIAL' ? 'Material (Sem CA)' : `CA: ${selectedCatalog.ca_number || 'S/N'}`} • Categoria: {selectedCatalog.category}
                   </p>
                   <p className="text-[11px] text-muted font-mono mt-0.5">
-                    Estoque Geral Atual: <strong className="text-foreground">{selectedCatalog.current_stock || 0} un</strong>
+                    Estoque Geral Atual: <strong className="text-foreground">{selectedCatalog.current_stock || 0} {selectedCatalog.unit || 'un'}</strong>
                   </p>
                 </div>
                 <button
@@ -158,9 +158,9 @@ export function AlmoxarifadoStockEntryModal({
               <div>
                 <div className="relative mb-2">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
-                  <input aria-label="Filtrar EPI por nome, CA ou categoria"
+                  <input aria-label="Filtrar item por nome, CA ou categoria"
                     type="text"
-                    placeholder="Filtrar EPI por nome, CA ou categoria..."
+                    placeholder="Filtrar item por nome, CA ou categoria..."
                     value={catalogSearch}
                     onChange={e => setCatalogSearch(e.target.value)}
                     className="w-full bg-background border border-border rounded-xl pl-9 pr-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
@@ -180,7 +180,9 @@ export function AlmoxarifadoStockEntryModal({
                     >
                       <div className="min-w-0 pr-2">
                         <span className="font-semibold text-foreground block truncate">{epi.name}</span>
-                        <span className="text-muted text-[11px]">CA: {epi.ca_number || 'S/N'} • {epi.category}</span>
+                        <span className="text-muted text-[11px]">
+                          {epi.item_type === 'MATERIAL' ? 'Material de Construção' : `CA: ${epi.ca_number || 'S/N'}`} • {epi.category}
+                        </span>
                       </div>
                       <span className="text-primary font-bold text-xs shrink-0">Selecionar →</span>
                     </div>
@@ -193,7 +195,9 @@ export function AlmoxarifadoStockEntryModal({
           {/* Quantidade e Valor */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-semibold text-muted uppercase tracking-wider block">Quantidade Recebida *</label>
+              <label className="font-semibold text-muted uppercase tracking-wider block">
+                Quantidade Recebida ({selectedCatalog?.unit || 'un'}) *
+              </label>
               <input aria-label="Quantidade Recebida"
                 type="number"
                 min="1"

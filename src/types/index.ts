@@ -84,11 +84,43 @@ export interface Worker {
   deleted_at?: string | null;
 }
 
+export type CatalogItemType = 'EPI' | 'MATERIAL' | 'FERRAMENTA';
+
+export const MATERIAL_CATEGORIES = [
+  'Cimento e Argamassas',
+  'Tintas, Solventes e Vernizes',
+  'Pisos, Revestimentos e Porcelanatos',
+  'Telhas, Calhas e Coberturas',
+  'Alvenaria, Blocos e Tijolos',
+  'Hidráulica, Tubos e Conexões',
+  'Elétrica, Fios e Iluminação',
+  'Ferragens, Aço e Vergalhões',
+  'Madeiramento e Compensados',
+  'Ferramentas Manuais e Elétricas',
+  'Insumos Gerais e Consumíveis'
+];
+
+export const COMMON_UNITS = [
+  { value: 'un', label: 'Unidade (un)' },
+  { value: 'sc', label: 'Saco (sc)' },
+  { value: 'lata', label: 'Lata (lata)' },
+  { value: 'gl', label: 'Galão (gl)' },
+  { value: 'm2', label: 'Metro Quadrado (m²)' },
+  { value: 'm', label: 'Metro Linear (m)' },
+  { value: 'kg', label: 'Quilograma (kg)' },
+  { value: 'l', label: 'Litro (L)' },
+  { value: 'cx', label: 'Caixa (cx)' },
+  { value: 'br', label: 'Barra (br)' },
+  { value: 'mil', label: 'Milheiro (mil)' }
+];
+
 export interface EpiCatalog {
   id: string;
   code?: string | null;
   name: string;
   category: string;
+  item_type?: CatalogItemType;
+  unit?: string | null;
   model?: string | null;
   description?: string | null;
   brand?: string | null;

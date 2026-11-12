@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
-import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse, History, Tv } from 'lucide-react';
+import { ShieldCheck, HardHat, Users, MapPin, LogOut, Menu, X, ScanBarcode, Printer, FileBarChart, Building2, Settings, ClipboardList, Activity, Sun, Moon, GraduationCap, HeartPulse, History, Tv, Boxes } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import type { UserRole } from '../types';
@@ -15,7 +15,7 @@ const NAVIGATION: NavEntry[] = [
   { name: 'Painel TV Fast Food', href: '/almoxarifado-kds', icon: Tv, roles: ALL_ROLES },
   { name: 'Almoxarifado (Scan)', href: '/scanner', icon: ScanBarcode, roles: ALL_ROLES },
   { name: 'Mapa de Ativos', href: '/map', icon: MapPin, roles: MANAGEMENT_ROLES },
-  { name: 'Estoque (NR-6)', href: '/assets', icon: HardHat, roles: ALL_ROLES },
+  { name: 'Estoque & Materiais', href: '/assets', icon: Boxes, roles: ALL_ROLES },
   { name: 'Colaboradores', href: '/workers', icon: Users, roles: MANAGEMENT_ROLES },
   { name: 'Painel de Operações', href: '/operations', icon: Activity, roles: ALL_ROLES },
   { name: 'Treinamentos (NR)', href: '/trainings', icon: GraduationCap, roles: MANAGEMENT_ROLES },
@@ -31,7 +31,7 @@ const NAVIGATION: NavEntry[] = [
 
 const MANAGEMENT_GROUPS: { label: string; items: string[] }[] = [
   { label: 'Principal', items: ['Dashboard Central', 'Painel TV Fast Food'] },
-  { label: 'Cadastros', items: ['Empresa / Obras', 'Colaboradores', 'Estoque (NR-6)'] },
+  { label: 'Cadastros', items: ['Empresa / Obras', 'Colaboradores', 'Estoque & Materiais'] },
   { label: 'Operações', items: ['Almoxarifado (Scan)', 'Mapa de Ativos', 'Painel de Operações'] },
   { label: 'Saúde e Segurança (SST)', items: ['Treinamentos (NR)', 'Controle de ASO'] },
   { label: 'Relatórios', items: ['Painel de Relatórios', 'Ficha de EPI', 'Imprimir QR Codes'] },
@@ -39,7 +39,7 @@ const MANAGEMENT_GROUPS: { label: string; items: string[] }[] = [
 ];
 
 const ALMOXARIFADO_GROUPS = [
-  { label: 'Módulo Almoxarifado', items: ['Painel TV Fast Food', 'Almoxarifado (Scan)', 'Estoque (NR-6)', 'Painel de Operações'] },
+  { label: 'Módulo Almoxarifado', items: ['Painel TV Fast Food', 'Almoxarifado (Scan)', 'Estoque & Materiais', 'Painel de Operações'] },
 ];
 
 const navItemClass = ({ isActive }: { isActive: boolean }) => cn(

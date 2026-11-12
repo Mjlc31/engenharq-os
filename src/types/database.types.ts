@@ -413,6 +413,7 @@ export type Database = {
           discarded_at: string | null
           id: string
           image_url: string | null
+          item_type: string
           lifespan_days: number | null
           min_stock: number | null
           minimum_stock: number | null
@@ -422,6 +423,7 @@ export type Database = {
           recommended_lifespan_days: number | null
           status: string | null
           tracking_code: string | null
+          unit: string
           unit_price: number
           updated_at: string | null
         }
@@ -440,6 +442,7 @@ export type Database = {
           discarded_at?: string | null
           id?: string
           image_url?: string | null
+          item_type?: string
           lifespan_days?: number | null
           min_stock?: number | null
           minimum_stock?: number | null
@@ -449,6 +452,7 @@ export type Database = {
           recommended_lifespan_days?: number | null
           status?: string | null
           tracking_code?: string | null
+          unit?: string
           unit_price?: number
           updated_at?: string | null
         }
@@ -467,6 +471,7 @@ export type Database = {
           discarded_at?: string | null
           id?: string
           image_url?: string | null
+          item_type?: string
           lifespan_days?: number | null
           min_stock?: number | null
           minimum_stock?: number | null
@@ -476,6 +481,7 @@ export type Database = {
           recommended_lifespan_days?: number | null
           status?: string | null
           tracking_code?: string | null
+          unit?: string
           unit_price?: number
           updated_at?: string | null
         }

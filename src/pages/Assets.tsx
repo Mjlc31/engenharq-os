@@ -22,8 +22,8 @@ export function Assets() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de EPIs</h1>
-          <p className="text-muted mt-1">Controle de estoque por canteiro de obras e rastreamento de EPIs em uso.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de Estoque & Materiais</h1>
+          <p className="text-muted mt-1">Controle de estoque por canteiro de obras: materiais de construção, insumos e equipamentos (NR-6).</p>
         </div>
 
         {/* Tab Controls */}
@@ -48,7 +48,7 @@ export function Assets() {
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            EPIs em Uso & Rastreamento
+            EPIs em Uso & Cautelas
           </button>
         </div>
       </div>

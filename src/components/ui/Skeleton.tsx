@@ -9,7 +9,7 @@ export function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-zinc-800", className)}
+      className={cn("animate-pulse rounded-md bg-surface-hover/80 border border-border/30", className)}
       {...props}
     />
   );
@@ -71,5 +71,38 @@ export function TableRowSkeleton({ columns = 4 }: { columns?: number }) {
         </td>
       ))}
     </tr>
+  );
+}
+
+export function TableRowsSkeleton({ rows = 5, columns = 5 }: { rows?: number; columns?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, r) => (
+        <tr key={r} className="border-b border-border/40 hover:bg-surface-hover/20 transition-colors">
+          {Array.from({ length: columns }).map((_, c) => (
+            <td key={c} className="p-4">
+              <Skeleton className="h-4 w-full max-w-[130px]" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export function TagGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-surface border border-border rounded-xl p-4 flex gap-4 items-center">
+          <Skeleton className="w-20 h-20 rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

@@ -211,6 +211,9 @@ export function AlmoxarifadoKds() {
       if (rpcError) throw rpcError;
 
       if (soundEnabled) playKdsChime();
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate([50, 50, 100]); } catch {}
+      }
       toast({
         type: 'success',
         title: 'Entrega Concluída!',
@@ -287,6 +290,9 @@ export function AlmoxarifadoKds() {
       if (error) throw error;
 
       if (soundEnabled) playKdsChime();
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try { navigator.vibrate([50, 50, 100]); } catch {}
+      }
       toast({
         type: 'success',
         title: 'Pedido Registrado',
@@ -1105,16 +1111,16 @@ export function AlmoxarifadoKds() {
                 )}
               </div>
 
-              {/* 2. Seleção de EPIs */}
+              {/* 2. Seleção de Itens / EPIs */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted uppercase tracking-wider">
-                  2. Adicionar EPIs ao Pedido:
+                  2. Adicionar Itens / EPIs ao Pedido:
                 </label>
                 <div className="relative mb-2">
                   <Search className="w-4 h-4 absolute left-3 top-3 text-muted" />
-                  <input aria-label="Filtrar catálogo de EPIs"
+                  <input aria-label="Filtrar catálogo de itens e EPIs"
                     type="text"
-                    placeholder="Filtrar catálogo de EPIs..."
+                    placeholder="Filtrar catálogo (EPIs, cimento, tinta, etc.)..."
                     value={epiSearch}
                     onChange={e => setEpiSearch(e.target.value)}
                     className="w-full bg-background border border-border rounded-xl pl-9 pr-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40"
@@ -1129,7 +1135,9 @@ export function AlmoxarifadoKds() {
                     >
                       <div className="min-w-0 pr-2">
                         <span className="font-semibold text-foreground block truncate">{epi.name}</span>
-                        <span className="text-muted text-[11px]">CA: {epi.ca_number || 'S/N'} • Categoria: {epi.category}</span>
+                        <span className="text-muted text-[11px]">
+                          {epi.item_type === 'MATERIAL' ? 'Material de Construção' : `CA: ${epi.ca_number || 'S/N'}`} • Categoria: {epi.category}
+                        </span>
                       </div>
                       <button
                         type="button"
@@ -1161,17 +1169,18 @@ export function AlmoxarifadoKds() {
                     <div key={idx} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-surface border border-border text-xs">
                       <div className="truncate flex-1">
                         <span className="font-medium text-foreground">{item.catalog.name}</span>
+                        <span className="text-muted text-[11px] ml-1.5 font-mono">({item.catalog.unit || 'un'})</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <input aria-label="Tamanho"
+                        <input aria-label="Especificação ou tamanho"
                           type="text"
-                          placeholder="Tam (Ex: G, 42)"
+                          placeholder={item.catalog.item_type === 'MATERIAL' ? "Obs / Tipo" : "Tam (Ex: G, 42)"}
                           value={item.size}
                           onChange={e => {
                             const val = e.target.value;
                             setSelectedItems(prev => prev.map((p, i) => i === idx ? { ...p, size: val } : p));
                           }}
-                          className="w-20 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-none focus:border-primary"
+                          className="w-24 bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground focus:outline-none focus:border-primary"
                         />
                         <div className="flex items-center gap-1">
                           <button

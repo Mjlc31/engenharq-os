@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../../ui/Modal';
 import { ConstructionSite } from '../../../types';
-import { X, Upload, UserCircle2 } from 'lucide-react';
+import { X, Upload, UserCircle2, Check, AlertCircle } from 'lucide-react';
 import { uploadImage } from '../../../lib/storage';
 import { useToast } from '../../ui/Toast';
 import { isValidCPF, applyCpfMask } from '../../../lib/validators';
@@ -120,8 +120,40 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-muted mb-1">CPF *</label>
-              <input aria-label="CPF" required type="text" value={cpf} onChange={e => setCpf(applyCpfMask(e.target.value))} className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground" placeholder="000.000.000-00" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-muted">CPF *</label>
+                {cpf.length === 14 && (
+                  isValidCPF(cpf) ? (
+                    <span className="text-[11px] font-medium text-emerald-500 flex items-center gap-1 animate-in fade-in">
+                      <Check className="w-3 h-3" /> CPF válido
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-red-500 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3 h-3" /> CPF inválido
+                    </span>
+                  )
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  aria-label="CPF"
+                  required
+                  type="text"
+                  value={cpf}
+                  onChange={e => setCpf(applyCpfMask(e.target.value))}
+                  className={`w-full bg-background border rounded-md px-3 py-2 text-foreground transition-colors ${
+                    cpf.length === 14
+                      ? isValidCPF(cpf)
+                        ? 'border-emerald-500/60 focus:border-emerald-500'
+                        : 'border-red-500/60 focus:border-red-500'
+                      : 'border-border focus:border-primary'
+                  }`}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              {cpf.length === 14 && !isValidCPF(cpf) && (
+                <p className="text-[11px] text-red-400 mt-1">Verifique os números digitados e os dígitos verificadores.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-muted mb-1">Matrícula *</label>
@@ -236,11 +268,31 @@ export function WorkerForm({ sites, onClose, onSave }: WorkerFormProps) {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-border flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-surface hover:bg-surface-hover text-foreground rounded-md border border-border transition-colors">Cancelar</button>
-            <button type="submit" disabled={isSubmitting || !fullName || !cpf || !registration} className="px-6 py-2 bg-primary-dark text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity">
-              {isSubmitting ? 'Salvando...' : 'Salvar Funcionário'}
-            </button>
+          <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
+            {(!fullName.trim() || !cpf || !registration.trim() || !isValidCPF(cpf)) ? (
+              <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-md w-full sm:w-auto">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>
+                  {!fullName.trim()
+                    ? 'Preencha o Nome Completo'
+                    : !registration.trim()
+                    ? 'Informe a Matrícula'
+                    : !cpf
+                    ? 'Informe o CPF'
+                    : 'Digite um CPF válido'}
+                </span>
+              </div>
+            ) : (
+              <div className="text-xs text-emerald-500 flex items-center gap-1.5 hidden sm:flex">
+                <Check className="w-4 h-4" /> Dados obrigatórios preenchidos
+              </div>
+            )}
+            <div className="flex gap-3 justify-end w-full sm:w-auto ml-auto">
+              <button type="button" onClick={onClose} className="px-4 py-2 bg-surface hover:bg-surface-hover text-foreground rounded-md border border-border transition-colors">Cancelar</button>
+              <button type="submit" disabled={isSubmitting || !fullName.trim() || !cpf || !registration.trim() || !isValidCPF(cpf)} className="px-6 py-2 bg-primary-dark text-primary-foreground rounded-md disabled:opacity-50 hover:opacity-90 font-medium transition-opacity">
+                {isSubmitting ? 'Salvando...' : 'Salvar Funcionário'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

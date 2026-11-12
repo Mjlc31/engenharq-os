@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { Download, Search, Clock, Eye, X, ChevronLeft, ChevronRight, ShieldCheck, Activity } from 'lucide-react';
 import { auditService, AuditLogItem } from '../services/auditService';
+import { TableRowsSkeleton, Skeleton } from '../components/ui/Skeleton';
 
 export function Audit() {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -131,7 +132,64 @@ export function Audit() {
 
       {/* Tabela de Auditoria matching Imagem 2 */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm flex flex-col">
-        <div className="overflow-x-auto">
+        {/* Mobile Touch Cards View (< md) */}
+        <div className="md:hidden divide-y divide-border">
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))
+          ) : paginatedLogs.length === 0 ? (
+            <div className="p-8 text-center text-muted text-xs">
+              Nenhum registro de auditoria encontrado com os filtros aplicados.
+            </div>
+          ) : (
+            paginatedLogs.map((log) => {
+              const d = new Date(log.timestamp);
+              const dateStr = d.toLocaleDateString('pt-BR');
+              const timeStr = d.toLocaleTimeString('pt-BR');
+
+              return (
+                <div key={log.id} className="p-4 space-y-2.5 hover:bg-surface-hover/20 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.typeBadgeColor}`}>
+                      {log.type}
+                    </span>
+                    <span className="text-[11px] font-mono text-muted flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-primary" /> {dateStr} {timeStr}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground line-clamp-2">{log.description}</p>
+                      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted truncate">
+                        <span className="truncate">{log.userName}</span>
+                        <span>•</span>
+                        <span className="font-mono text-primary/80">{log.module}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setInspectingItem(log)}
+                      className="p-2 text-muted hover:text-foreground bg-surface-hover rounded-lg shrink-0 transition-colors"
+                      aria-label="Ver detalhes da ação"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead className="bg-surface-hover text-muted uppercase font-bold text-[11px] tracking-wider border-b border-border">
               <tr>
@@ -146,11 +204,7 @@ export function Audit() {
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted">
-                    Carregando registros de auditoria...
-                  </td>
-                </tr>
+                <TableRowsSkeleton rows={itemsPerPage > 10 ? 10 : itemsPerPage} columns={7} />
               ) : paginatedLogs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-muted">

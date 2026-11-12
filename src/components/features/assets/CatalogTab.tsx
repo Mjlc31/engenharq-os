@@ -17,10 +17,14 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   PackageCheck,
-  Loader2
+  Loader2,
+  Boxes,
+  HardHat,
+  Package,
+  Wrench
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { EpiCatalog, ConstructionSite, SiteInventory } from '../../../types';
+import { EpiCatalog, ConstructionSite, SiteInventory, CatalogItemType, MATERIAL_CATEGORIES, COMMON_UNITS } from '../../../types';
 import { useAuth } from '../../../components/AuthProvider';
 import { uploadImage } from '../../../lib/storage';
 import { supabase } from '../../../lib/supabase';
@@ -73,6 +77,7 @@ export function CatalogTab({
   // Search and Filters
   const [search, setSearch] = useState('');
   const [catalogCategoryFilter, setCatalogCategoryFilter] = useState('Todas as categorias');
+  const [itemTypeFilter, setItemTypeFilter] = useState<'ALL' | 'EPI' | 'MATERIAL' | 'FERRAMENTA'>('ALL');
   const [situacao, setSituacao] = useSituacaoParam<Situacao>(SITUACOES, 'todos');
   const [selectedSiteId, setSelectedSiteId] = useState<string>('ALL');
   const [onlyWithStockInSite, setOnlyWithStockInSite] = useState(false);
@@ -84,6 +89,9 @@ export function CatalogTab({
   const [editingCatalog, setEditingCatalog] = useState<EpiCatalog | null>(null);
 
   // Form State
+  const [catItemType, setCatItemType] = useState<CatalogItemType>('EPI');
+  const [catUnit, setCatUnit] = useState<string>('un');
+  const [catCustomUnit, setCatCustomUnit] = useState<string>('');
   const [catName, setCatName] = useState('');
   const [catCategory, setCatCategory] = useState(NR6_CATEGORIES[0]);
   const [catModel, setCatModel] = useState('');
@@ -171,10 +179,26 @@ export function CatalogTab({
     return sites.find(s => s.id === selectedSiteId) || null;
   }, [selectedSiteId, sites]);
 
+  // Contagem por tipo de item
+  const typeCounts = useMemo(() => {
+    let materials = 0;
+    let epis = 0;
+    let ferramentas = 0;
+    catalogs.forEach(c => {
+      const t = c.item_type || (c.ca_number ? 'EPI' : 'MATERIAL');
+      if (t === 'MATERIAL') materials++;
+      else if (t === 'FERRAMENTA') ferramentas++;
+      else epis++;
+    });
+    return { all: catalogs.length, materials, epis, ferramentas };
+  }, [catalogs]);
+
   // Mesma regra do Dashboard (estoque central do catálogo, não o da obra).
   const situacaoMatch = useMemo(() => {
     const today = new Date();
     const caPending = (c: EpiCatalog) => {
+      // Materiais de construção civil não possuem CA e não geram pendência de CA
+      if (c.item_type === 'MATERIAL') return false;
       const v = classifyValidity(c.ca_validity, today);
       return v === 'expired' || v === 'expiring';
     };
@@ -190,13 +214,18 @@ export function CatalogTab({
   // Filtered Catalogs
   const filteredCatalogs = useMemo(() => {
     return catalogs.filter(c => {
+      if (itemTypeFilter !== 'ALL') {
+        const itemT = c.item_type || (c.ca_number ? 'EPI' : 'MATERIAL');
+        if (itemT !== itemTypeFilter) return false;
+      }
       if (situacao !== 'todos' && !situacaoMatch[situacao](c)) return false;
       const searchL = search.toLowerCase();
       const matchesSearch = c.name.toLowerCase().includes(searchL) || 
                             (c.brand && c.brand.toLowerCase().includes(searchL)) ||
                             (c.model && c.model.toLowerCase().includes(searchL)) ||
                             (c.code && c.code.toLowerCase().includes(searchL)) ||
-                            (c.ca_number && c.ca_number.toLowerCase().includes(searchL));
+                            (c.ca_number && c.ca_number.toLowerCase().includes(searchL)) ||
+                            (c.unit && c.unit.toLowerCase().includes(searchL));
       const matchesCategory = catalogCategoryFilter === 'Todas as categorias' || c.category === catalogCategoryFilter;
 
       let matchesSite = true;
@@ -209,7 +238,7 @@ export function CatalogTab({
 
       return matchesSearch && matchesCategory && matchesSite;
     });
-  }, [catalogs, search, catalogCategoryFilter, selectedSiteId, onlyWithStockInSite, siteInventoryMap, situacao, situacaoMatch]);
+  }, [catalogs, itemTypeFilter, search, catalogCategoryFilter, selectedSiteId, onlyWithStockInSite, siteInventoryMap, situacao, situacaoMatch]);
 
   const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalogs.length / catalogItemsPerPage));
   const paginatedCatalogs = filteredCatalogs.slice(
@@ -220,6 +249,9 @@ export function CatalogTab({
   const resetForm = () => {
     setIsAddingCatalog(false);
     setEditingCatalog(null);
+    setCatItemType('EPI');
+    setCatUnit('un');
+    setCatCustomUnit('');
     setCatName('');
     setCatCategory(NR6_CATEGORIES[0]);
     setCatModel('');
@@ -247,6 +279,11 @@ export function CatalogTab({
 
   const handleEdit = (cat: EpiCatalog) => {
     setEditingCatalog(cat);
+    const itemT = cat.item_type || (cat.ca_number ? 'EPI' : 'MATERIAL');
+    setCatItemType(itemT);
+    const currentU = cat.unit || 'un';
+    setCatUnit(currentU);
+    setCatCustomUnit(COMMON_UNITS.some(u => u.value === currentU) ? '' : currentU);
     setCatName(cat.name);
     setCatCategory(cat.category);
     setCatModel(cat.model || '');
@@ -271,22 +308,34 @@ export function CatalogTab({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // NR-6: EPI só pode ser fornecido com CA válido
-    if (!catName.trim() || !catCategory || !catCaNumber.trim() || !catCaValidity) {
-      toast({ type: 'error', title: 'Campos obrigatórios', message: 'Informe nome, categoria, número e validade do CA (NR-6).' });
-      return;
+    const finalUnit = catCustomUnit.trim() ? catCustomUnit.trim() : catUnit;
+
+    if (catItemType === 'EPI') {
+      // NR-6: EPI só pode ser fornecido com CA válido
+      if (!catName.trim() || !catCategory || !catCaNumber.trim() || !catCaValidity) {
+        toast({ type: 'error', title: 'Campos obrigatórios', message: 'Informe nome, categoria, número e validade do CA (NR-6).' });
+        return;
+      }
+    } else {
+      // Material de construção civil / insumo não possui CA
+      if (!catName.trim() || !catCategory) {
+        toast({ type: 'error', title: 'Campos obrigatórios', message: 'Informe o nome e a categoria do material.' });
+        return;
+      }
     }
     
     const payload: Partial<EpiCatalog> = {
       name: catName,
       category: catCategory,
+      item_type: catItemType,
+      unit: finalUnit || 'un',
       model: catModel || null,
       status: catStatus,
       description: catDescription || null,
       brand: catBrand || null,
-      ca_number: catCaNumber.trim(),
-      ca_validity: catCaValidity,
-      lifespan_days: catLifespanDays !== '' ? Number(catLifespanDays) : null,
+      ca_number: catItemType === 'EPI' ? catCaNumber.trim() : null,
+      ca_validity: catItemType === 'EPI' ? catCaValidity : null,
+      lifespan_days: catItemType === 'EPI' && catLifespanDays !== '' ? Number(catLifespanDays) : null,
       minimum_stock: catMinStock !== '' ? Number(catMinStock) : null,
       unit_price: catUnitPrice !== '' ? Number(catUnitPrice) : 0,
       image_url: catImageUrl || null,
@@ -305,12 +354,14 @@ export function CatalogTab({
       toast({ 
         type: 'success', 
         title: 'Sucesso', 
-        message: editingCatalog ? 'EPI e saldo atualizados com sucesso!' : 'EPI cadastrado com sucesso com estoque inicial!' 
+        message: editingCatalog 
+          ? (catItemType === 'EPI' ? 'EPI e saldo atualizados com sucesso!' : 'Material e saldo atualizados com sucesso!')
+          : (catItemType === 'EPI' ? 'EPI cadastrado com sucesso com estoque inicial!' : 'Material de construção cadastrado com sucesso!')
       });
       resetForm();
       if (onRefresh) onRefresh();
     } catch(err: any) {
-      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar catálogo.' });
+      toast({ type: 'error', title: 'Erro', message: err.message || 'Falha ao salvar item no catálogo.' });
     } finally {
       setIsSavingCatalog(false);
     }
@@ -447,16 +498,18 @@ export function CatalogTab({
 
   const handleDownloadTemplateXlsx = () => {
     const headers = [
-      ['Nome', 'Categoria', 'Modelo', 'Marca', 'CA', 'Validade_CA', 'Vida_Util_Dias', 'Estoque_Inicial', 'Estoque_Minimo', 'Valor_Unitario'],
-      ['Capacete com Carneira', 'Proteção da Cabeça', 'Classe B', 'Delta Plus', '8304', '2027-12-31', 180, 50, 10, 28.50],
-      ['Óculos de Proteção Incolor', 'Proteção dos Olhos e Face', 'Spectra', '3M', '15640', '2028-05-15', 90, 100, 20, 12.00],
-      ['Luva de Vaqueta Mista', 'Proteção dos Membros Superiores', 'Cano Curto', 'Volk', '32456', '2026-11-20', 60, 80, 15, 18.90]
+      ['Tipo', 'Nome', 'Categoria', 'Unidade', 'Modelo', 'Marca', 'CA', 'Validade_CA', 'Vida_Util_Dias', 'Estoque_Inicial', 'Estoque_Minimo', 'Valor_Unitario'],
+      ['MATERIAL', 'Cimento CP II-E-32 50kg', 'Cimento e Argamassas', 'sc', 'CP II-E-32', 'Votoran', '', '', '', 100, 20, 36.90],
+      ['MATERIAL', 'Tinta Acrílica Fosca Branco Neve 18L', 'Tintas, Solventes e Vernizes', 'lata', 'Rende Muito', 'Coral', '', '', '', 25, 5, 289.00],
+      ['MATERIAL', 'Telha Cerâmica Romana', 'Telhas, Calhas e Coberturas', 'mil', 'Romana Resinada', 'Cerâmica Real', '', '', '', 5, 1, 1950.00],
+      ['EPI', 'Capacete com Carneira', 'Proteção da Cabeça', 'un', 'Classe B', 'Delta Plus', '8304', '2027-12-31', 180, 50, 10, 28.50],
+      ['EPI', 'Óculos de Proteção Incolor', 'Proteção dos Olhos e Face', 'un', 'Spectra', '3M', '15640', '2028-05-15', 90, 100, 20, 12.00]
     ];
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(headers);
-    XLSX.utils.book_append_sheet(wb, ws, 'Modelos_EPI');
-    XLSX.writeFile(wb, 'modelo_importacao_epis.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelos_Estoque');
+    XLSX.writeFile(wb, 'modelo_importacao_estoque_materiais.xlsx');
   };
 
   // Cálculo reativo do valor total do lote no modal
@@ -539,20 +592,60 @@ export function CatalogTab({
 
             <button 
               onClick={openNewCatalogModal}
-              className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-lg flex items-center gap-2 text-sm shadow-md hover:opacity-90 transition-opacity"
+              className="bg-primary-dark text-primary-foreground font-semibold py-2 px-4 rounded-lg flex items-center gap-2 text-sm shadow-md hover:opacity-90 transition-opacity cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> + Novo EPI
+              <Plus className="w-4 h-4" /> + Novo Item
             </button>
           </div>
         </div>
 
+        {/* Filtro Rápido por Tipo de Item: Todos | Materiais | EPIs */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
+          <span className="text-xs font-semibold text-muted uppercase tracking-wider mr-1">Tipo de Item:</span>
+          <button
+            type="button"
+            onClick={() => { setItemTypeFilter('ALL'); setCatalogCurrentPage(1); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              itemTypeFilter === 'ALL'
+                ? 'bg-primary text-white border-primary shadow-xs'
+                : 'bg-background border-border text-muted hover:text-foreground hover:bg-surface-hover'
+            }`}
+          >
+            Todos os Itens ({typeCounts.all})
+          </button>
+          <button
+            type="button"
+            onClick={() => { setItemTypeFilter('MATERIAL'); setCatalogCurrentPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              itemTypeFilter === 'MATERIAL'
+                ? 'bg-primary text-white border-primary shadow-xs'
+                : 'bg-background border-border text-muted hover:text-foreground hover:bg-surface-hover'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5" />
+            <span>Materiais de Construção ({typeCounts.materials})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setItemTypeFilter('EPI'); setCatalogCurrentPage(1); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
+              itemTypeFilter === 'EPI'
+                ? 'bg-primary text-white border-primary shadow-xs'
+                : 'bg-background border-border text-muted hover:text-foreground hover:bg-surface-hover'
+            }`}
+          >
+            <HardHat className="w-3.5 h-3.5" />
+            <span>EPIs - NR-6 ({typeCounts.epis})</span>
+          </button>
+        </div>
+
         <StatusFilter
-          label="Filtrar por situação do EPI"
+          label="Filtrar por situação do item"
           value={situacao}
           onChange={value => { setSituacao(value); setCatalogCurrentPage(1); }}
           options={[
             { value: 'todos', label: 'Todas as situações', count: catalogs.length },
-            { value: 'ca', label: 'CA vencido ou a vencer', count: situacaoMatch.caCount },
+            { value: 'ca', label: 'CA vencido ou a vencer (EPIs)', count: situacaoMatch.caCount },
             { value: 'estoque', label: 'Esgotado ou abaixo do mínimo', count: situacaoMatch.estoqueCount },
           ]}
         />
@@ -612,7 +705,7 @@ export function CatalogTab({
           <table className="w-full whitespace-nowrap text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-surface-hover/50 text-[11px] uppercase tracking-wider text-muted">
-                <th className="p-4 font-semibold">EPI / Modelo</th>
+                <th className="p-4 font-semibold">Item / Modelo</th>
                 <th className="p-4 font-semibold">Categoria</th>
                 <th className="p-4 font-semibold">CA / Validade</th>
                 <th className="p-4 font-semibold text-right">Valor Unitário</th>
@@ -629,6 +722,7 @@ export function CatalogTab({
               {paginatedCatalogs.map(cat => {
                 const unitPrice = cat.unit_price || 0;
                 const generalStock = cat.current_stock || 0;
+                const isMaterial = cat.item_type === 'MATERIAL';
                 
                 // Saldo específico da obra selecionada (ou geral)
                 const siteSpecificStock = selectedSiteId !== 'ALL' 
@@ -649,11 +743,26 @@ export function CatalogTab({
                            <img src={cat.image_url} alt={cat.name} className="w-10 h-10 rounded-md object-cover border border-border" />
                         ) : (
                            <div className="w-10 h-10 rounded-md bg-surface-hover border border-border flex items-center justify-center">
-                             <Shield className="w-5 h-5 text-muted" />
+                             {isMaterial ? (
+                               <Boxes className="w-5 h-5 text-amber-400" />
+                             ) : (
+                               <HardHat className="w-5 h-5 text-muted" />
+                             )}
                            </div>
                         )}
                         <div>
-                          <div className="font-bold text-foreground">{cat.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-foreground">{cat.name}</span>
+                            {isMaterial ? (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                Material
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                EPI
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted">
                             {cat.brand || 'Sem marca'} {cat.model ? `• ${cat.model}` : ''}
                             {cat.code && <span className="ml-2 font-mono text-[11px] bg-background px-1.5 py-0.5 rounded border border-border">{cat.code}</span>}
@@ -663,7 +772,7 @@ export function CatalogTab({
                             <div className="flex flex-wrap gap-1 mt-1">
                               {distributions.slice(0, 3).map(dist => (
                                 <span key={dist.siteId} className="text-[11px] bg-primary/10 text-primary font-medium px-1.5 py-0.2 rounded border border-primary/20">
-                                  {dist.siteName}: <strong>{dist.quantity}</strong>
+                                  {dist.siteName}: <strong>{dist.quantity} {cat.unit || 'un'}</strong>
                                 </span>
                               ))}
                               {distributions.length > 3 && (
@@ -676,10 +785,18 @@ export function CatalogTab({
                     </td>
                     <td className="p-4 text-foreground text-xs">{cat.category}</td>
                     <td className="p-4">
-                      <div className="font-medium text-foreground">CA: {cat.ca_number || 'S/N'}</div>
-                      <div className="mt-1">
-                        <ValidityBadge date={cat.ca_validity} />
-                      </div>
+                      {isMaterial ? (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-surface-hover text-muted border border-border">
+                          <span>Material (Sem CA)</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="font-medium text-foreground">CA: {cat.ca_number || 'S/N'}</div>
+                          <div className="mt-1">
+                            <ValidityBadge date={cat.ca_validity} />
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td className="p-4 text-right font-mono font-medium text-foreground">
                       R$ {unitPrice.toFixed(2)}
@@ -687,15 +804,15 @@ export function CatalogTab({
                     <td className="p-4 text-center">
                       <div className="flex flex-col items-center">
                         <span className={`font-bold text-base font-mono ${isUnderMinimum ? 'text-red-500' : 'text-emerald-500'}`}>
-                          {displayStock} un
+                          {displayStock} {cat.unit || 'un'}
                         </span>
                         {selectedSiteId !== 'ALL' ? (
                           <span className="text-[11px] text-muted font-mono">
-                            Empresa: {generalStock} un
+                            Empresa: {generalStock} {cat.unit || 'un'}
                           </span>
                         ) : (
                           cat.minimum_stock !== null && cat.minimum_stock !== undefined && (
-                            <span className="text-[11px] text-muted font-mono">Mín: {cat.minimum_stock}</span>
+                            <span className="text-[11px] text-muted font-mono">Mín: {cat.minimum_stock} {cat.unit || 'un'}</span>
                           )
                         )}
                       </div>
@@ -826,95 +943,193 @@ export function CatalogTab({
         )}
       </div>
 
-      {/* Modal: + Novo EPI / Editar EPI com Estoque Inicial e Obra */}
+      {/* Modal: + Novo Item / Editar Item com Estoque Inicial e Obra */}
       {isAddingCatalog && (
         <Modal onClose={resetForm} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-bold text-foreground">
-                  {editingCatalog ? 'Editar EPI' : 'Cadastrar Novo EPI'}
+                  {editingCatalog 
+                    ? (catItemType === 'EPI' ? 'Editar EPI' : 'Editar Material de Construção') 
+                    : 'Cadastrar Novo Item no Estoque'}
                 </h2>
                 <p className="text-xs text-muted mt-0.5">
-                  Preencha os dados técnicos, CA, valor unitário e o saldo em estoque.
+                  Preencha os dados cadastrais, unidade de medida, valores e saldo em estoque.
                 </p>
               </div>
-              <button aria-label="Fechar" onClick={resetForm} className="text-muted hover:text-foreground">
+              <button aria-label="Fechar" onClick={resetForm} className="text-muted hover:text-foreground cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
             
             <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Seletor de Tipo de Item */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+                  Tipo de Cadastro
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-background border border-border rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatItemType('EPI');
+                      if (MATERIAL_CATEGORIES.includes(catCategory)) {
+                        setCatCategory(NR6_CATEGORIES[0]);
+                      }
+                      setCatUnit('un');
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      catItemType === 'EPI'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-muted hover:text-foreground'
+                    }`}
+                  >
+                    <HardHat className="w-4 h-4" />
+                    <span>EPI (Equipamento NR-6)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatItemType('MATERIAL');
+                      if (NR6_CATEGORIES.includes(catCategory)) {
+                        setCatCategory(MATERIAL_CATEGORIES[0]);
+                      }
+                      if (catUnit === 'un') setCatUnit('sc');
+                    }}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      catItemType === 'MATERIAL'
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'text-muted hover:text-foreground'
+                    }`}
+                  >
+                    <Boxes className="w-4 h-4" />
+                    <span>Material de Construção / Insumo</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Nome / Descrição Curta *</label>
                   <input aria-label="Nome / Descrição Curta" 
                     required 
                     type="text" 
-                    placeholder="Ex: Capacete de Segurança com Carneira" 
+                    placeholder={catItemType === 'EPI' ? "Ex: Capacete de Segurança com Carneira" : "Ex: Cimento CP II-E-32 50kg, Tinta Acrílica"} 
                     value={catName} 
                     onChange={e => setCatName(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary" 
+                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Categoria (NR-6) *</label>
-                  <select aria-label="Categoria (NR-6)" 
+                  <label className="block text-sm font-medium text-muted mb-1">
+                    {catItemType === 'EPI' ? 'Categoria (NR-6) *' : 'Categoria do Material *'}
+                  </label>
+                  <select aria-label="Categoria" 
                     value={catCategory} 
                     onChange={e => setCatCategory(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm"
                   >
-                    {NR6_CATEGORIES.map(nr => <option key={nr} value={nr}>{nr}</option>)}
+                    {catItemType === 'EPI' ? (
+                      NR6_CATEGORIES.map(nr => <option key={nr} value={nr}>{nr}</option>)
+                    ) : (
+                      MATERIAL_CATEGORIES.map(mat => <option key={mat} value={mat}>{mat}</option>)
+                    )}
                   </select>
                 </div>
               </div>
+
+              {/* Unidade de Medida (Destaque para Materiais) */}
+              {catItemType === 'MATERIAL' && (
+                <div className="p-3 bg-surface-hover/30 border border-border rounded-lg space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted">
+                    Unidade de Medida do Material *
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <select
+                      aria-label="Unidade de medida"
+                      value={catUnit}
+                      onChange={e => {
+                        setCatUnit(e.target.value);
+                        if (e.target.value !== 'custom') setCatCustomUnit('');
+                      }}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm"
+                    >
+                      {COMMON_UNITS.map(u => (
+                        <option key={u.value} value={u.value}>{u.label}</option>
+                      ))}
+                      <option value="custom">Outra unidade...</option>
+                    </select>
+
+                    {catUnit === 'custom' && (
+                      <input
+                        aria-label="Unidade customizada"
+                        type="text"
+                        placeholder="Ex: par, rolo, pacote"
+                        value={catCustomUnit}
+                        onChange={e => setCatCustomUnit(e.target.value)}
+                        className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm font-mono"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-muted mb-1">Marca / Fabricante</label>
                   <input aria-label="Marca / Fabricante" 
                     type="text" 
-                    placeholder="Ex: 3M, Volk, Delta Plus" 
+                    placeholder={catItemType === 'EPI' ? "Ex: 3M, Volk, Delta Plus" : "Ex: Votoran, Coral, Tigre, Gerdau"} 
                     value={catBrand} 
                     onChange={e => setCatBrand(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary" 
+                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Modelo</label>
+                  <label className="block text-sm font-medium text-muted mb-1">Modelo / Tipo</label>
                   <input aria-label="Modelo" 
                     type="text" 
-                    placeholder="Ex: H-700, Cano Longo" 
+                    placeholder={catItemType === 'EPI' ? "Ex: H-700, Cano Longo" : "Ex: CP II-32, Fosco, PVC Soldável"} 
                     value={catModel} 
                     onChange={e => setCatModel(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary" 
+                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm" 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Número do CA *</label>
-                  <input aria-label="Número do CA" 
-                    type="text" 
-                    required
-                    placeholder="Ex: 12345" 
-                    value={catCaNumber} 
-                    onChange={e => setCatCaNumber(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono" 
-                  />
+              {/* CA e Validade de CA (Exclusivo para EPIs) */}
+              {catItemType === 'EPI' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-1">Número do CA *</label>
+                    <input aria-label="Número do CA" 
+                      type="text" 
+                      required
+                      placeholder="Ex: 12345" 
+                      value={catCaNumber} 
+                      onChange={e => setCatCaNumber(e.target.value)} 
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono text-sm" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted mb-1">Validade do CA *</label>
+                    <input aria-label="Validade do CA" 
+                      type="date" 
+                      required
+                      value={catCaValidity} 
+                      onChange={e => setCatCaValidity(e.target.value)} 
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary text-sm" 
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted mb-1">Validade do CA *</label>
-                  <input aria-label="Validade do CA" 
-                    type="date" 
-                    required
-                    value={catCaValidity} 
-                    onChange={e => setCatCaValidity(e.target.value)} 
-                    className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary" 
-                  />
+              ) : (
+                <div className="p-3 bg-surface-hover/30 border border-border rounded-lg flex items-center gap-2.5 text-xs text-muted">
+                  <Boxes className="w-4 h-4 text-primary shrink-0" />
+                  <span>Materiais de construção e insumos civis não possuem Certificado de Aprovação (CA) ou exigência de validade da NR-6.</span>
                 </div>
-              </div>
+              )}
 
               {/* Seção Financeira e Estoque (Sempre Visível) */}
               <div className="p-4 bg-surface-hover/40 border border-border rounded-lg space-y-4">
@@ -923,14 +1138,16 @@ export function CatalogTab({
                     Controle de Estoque e Valores
                   </h4>
                   <span className="text-[11px] text-muted">
-                    {editingCatalog ? 'Edição de Saldo do EPI' : 'Lote Inicial de Cadastro'}
+                    {editingCatalog ? 'Edição de Saldo do Item' : 'Lote Inicial de Cadastro'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Valor Unitário */}
                   <div>
-                    <label className="block text-sm font-medium text-muted mb-1">Valor Unitário (R$)</label>
+                    <label className="block text-sm font-medium text-muted mb-1">
+                      Valor Unitário (R$ / {catCustomUnit.trim() || catUnit || 'un'})
+                    </label>
                     <input aria-label="Valor Unitário (R$)" 
                       type="number" 
                       step="0.01" 
@@ -938,22 +1155,24 @@ export function CatalogTab({
                       placeholder="0.00" 
                       value={catUnitPrice} 
                       onChange={e => setCatUnitPrice(e.target.value !== '' ? Number(e.target.value) : '')} 
-                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono" 
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono text-sm" 
                     />
                   </div>
 
                   {/* Estoque Inicial / Saldo Atual (SEMPRE PRESENTE) */}
                   <div>
                     <label className="block text-sm font-medium text-foreground font-semibold mb-1">
-                      {editingCatalog ? 'Saldo em Estoque (Qtd)' : 'Estoque Inicial (Qtd) *'}
+                      {editingCatalog 
+                        ? `Saldo em Estoque (${catCustomUnit.trim() || catUnit || 'Qtd'})` 
+                        : `Estoque Inicial (${catCustomUnit.trim() || catUnit || 'Qtd'}) *`}
                     </label>
-                    <input aria-label={editingCatalog ? 'Saldo em Estoque (Qtd)' : 'Estoque Inicial (Qtd)'} 
+                    <input aria-label={editingCatalog ? 'Saldo em Estoque' : 'Estoque Inicial'} 
                       type="number" 
                       min="0"
                       placeholder="0" 
                       value={catInitialStock} 
                       onChange={e => setCatInitialStock(e.target.value !== '' ? Number(e.target.value) : '')} 
-                      className="w-full bg-background border-2 border-primary/40 focus:border-primary rounded-md px-3 py-2 text-foreground focus:outline-none font-mono font-bold" 
+                      className="w-full bg-background border-2 border-primary/40 focus:border-primary rounded-md px-3 py-2 text-foreground focus:outline-none font-mono font-bold text-sm" 
                     />
                     <span className="text-[11px] text-muted mt-1 block">
                       {editingCatalog ? 'Quantidade física em inventário' : 'Saldo para entrada inicial'}
@@ -962,14 +1181,16 @@ export function CatalogTab({
 
                   {/* Estoque Mínimo */}
                   <div>
-                    <label className="block text-sm font-medium text-muted mb-1">Estoque Mínimo (Alerta)</label>
+                    <label className="block text-sm font-medium text-muted mb-1">
+                      Estoque Mínimo ({catCustomUnit.trim() || catUnit || 'Alerta'})
+                    </label>
                     <input aria-label="Estoque Mínimo (Alerta)" 
                       type="number" 
                       min="0"
                       placeholder="0" 
                       value={catMinStock} 
                       onChange={e => setCatMinStock(e.target.value !== '' ? Number(e.target.value) : '')} 
-                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono" 
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-foreground focus:outline-none focus:border-primary font-mono text-sm" 
                     />
                   </div>
                 </div>
@@ -1059,9 +1280,13 @@ export function CatalogTab({
                 <button 
                   type="submit" 
                   disabled={!catName || !catCategory || isSavingCatalog} 
-                  className="px-4 py-2 bg-primary-dark text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50 transition-opacity"
+                  className="px-4 py-2 bg-primary-dark text-primary-foreground rounded-md text-sm font-semibold disabled:opacity-50 transition-opacity cursor-pointer"
                 >
-                  {isSavingCatalog ? 'Salvando...' : editingCatalog ? 'Atualizar EPI' : 'Salvar EPI com Estoque'}
+                  {isSavingCatalog 
+                    ? 'Salvando...' 
+                    : editingCatalog 
+                      ? (catItemType === 'EPI' ? 'Atualizar EPI' : 'Atualizar Material') 
+                      : (catItemType === 'EPI' ? 'Salvar EPI com Estoque' : 'Salvar Material com Estoque')}
                 </button>
               </div>
             </form>
@@ -1079,13 +1304,15 @@ export function CatalogTab({
           <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-foreground mb-1">Registrar Chegada / Compra</h3>
             <p className="text-xs text-muted mb-4">
-              {stockItem.name} • Estoque Atual da Empresa: <strong className="text-foreground">{stockItem.current_stock || 0} un</strong>
+              {stockItem.name} • Estoque Atual da Empresa: <strong className="text-foreground">{stockItem.current_stock || 0} {stockItem.unit || 'un'}</strong>
             </p>
             
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">Quantidade *</label>
+                  <label className="block text-xs font-medium text-muted mb-1">
+                    Quantidade ({stockItem.unit || 'un'}) *
+                  </label>
                   <input aria-label="Quantidade" 
                     type="number" 
                     min="1" 
@@ -1195,7 +1422,7 @@ export function CatalogTab({
               <h3 className="text-lg font-bold text-foreground">Ajustar Saldo na Obra</h3>
             </div>
             <p className="text-xs text-muted">
-              Item: <strong className="text-foreground">{adjustingCatalog.name}</strong> • Total da Empresa: {adjustingCatalog.current_stock || 0} un
+              Item: <strong className="text-foreground">{adjustingCatalog.name}</strong> • Total da Empresa: {adjustingCatalog.current_stock || 0} {adjustingCatalog.unit || 'un'}
             </p>
 
             <div className="space-y-3">
@@ -1221,7 +1448,7 @@ export function CatalogTab({
 
               <div>
                 <label className="block text-xs font-medium text-foreground font-semibold mb-1">
-                  Novo Saldo na Obra (Quantidade Física) *
+                  Novo Saldo na Obra ({adjustingCatalog.unit || 'un'}) *
                 </label>
                 <input aria-label="Novo Saldo na Obra (Quantidade Física)"
                   type="number"

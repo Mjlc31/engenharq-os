@@ -3,7 +3,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import Webcam from 'react-webcam';
 import { supabase } from '../lib/supabase';
 import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
-import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw, PenTool } from 'lucide-react';
+import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw, PenTool, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
@@ -214,6 +214,9 @@ export function Scanner() {
       const success = await confirmAssignment(worker.id, epis, photoUrl, undefined, null);
       
       if (success) {
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          try { navigator.vibrate([40, 60, 40]); } catch {}
+        }
         setStep('SUCCESS');
       }
     } catch (err: unknown) {
@@ -615,10 +618,21 @@ export function Scanner() {
               <SignaturePad ref={signaturePadRef} onClear={() => signaturePadRef.current?.clear()} />
             )}
             
+            {evidenceMode === 'photo' && !capturedPhoto && (
+              <div className="flex items-center justify-center gap-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 py-2 px-3 rounded-lg animate-in fade-in">
+                <span>📷 Capture uma foto da entrega com o EPI em mãos para habilitar a confirmação legal NR-6</span>
+              </div>
+            )}
+            {evidenceMode === 'signature' && (
+              <div className="flex items-center justify-center gap-2 text-xs text-muted">
+                <span>✍️ Colete a rubrica no quadro acima para assinar a cautela oficial</span>
+              </div>
+            )}
+            
             <button
               onClick={handleConfirmPhoto}
               disabled={loading || (evidenceMode === 'photo' && !capturedPhoto)}
-              className="w-full bg-primary-dark hover:bg-primary-darker text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary-dark hover:bg-primary-darker text-background font-bold py-4 rounded-lg transition-colors text-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
             >
               {loading ? 'Processando NR-6...' : 'Confirmar Entrega'}
             </button>
@@ -627,17 +641,23 @@ export function Scanner() {
 
         {step === 'SUCCESS' && (
           <div className="text-center py-12 space-y-6 animate-in zoom-in">
-            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping opacity-60" />
+              <div className="relative w-24 h-24 bg-emerald-500/15 border-2 border-emerald-500/40 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <ShieldCheck className="w-12 h-12 text-emerald-500 animate-in zoom-in-75 duration-300" />
+              </div>
             </div>
             <h2 className="text-2xl font-bold text-foreground">Entrega Registrada</h2>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-semibold uppercase tracking-wider">
+              <Check className="w-3.5 h-3.5" /> Conformidade NR-6 Garantida
+            </div>
             <p className="text-muted max-w-sm mx-auto">
               A Ficha de EPI foi gerada digitalmente com a evidência fotográfica e vinculada ao banco de dados em conformidade com a NR-6.
             </p>
-            <div className="pt-8">
+            <div className="pt-6">
               <button
                 onClick={resetFlow}
-                className="bg-surface-hover border border-border hover:bg-border text-foreground font-medium py-3 px-8 rounded-lg transition-colors"
+                className="bg-primary hover:bg-primary-dark text-white font-medium py-3 px-8 rounded-lg transition-colors shadow-sm"
               >
                 Próximo Atendimento
               </button>

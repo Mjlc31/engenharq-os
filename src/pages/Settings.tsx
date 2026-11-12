@@ -6,6 +6,7 @@ import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMI
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { SystemSettingsForm } from '../components/features/settings/SystemSettingsForm';
+import { TableRowsSkeleton } from '../components/ui/Skeleton';
 
 export const PRESET_FUNCTIONS: { label: string; defaultRole: UserRole }[] = [
   { label: 'Almoxarife / Estoquista', defaultRole: 'ALMOXARIFADO' },
@@ -310,9 +311,21 @@ export function Settings() {
 
             <div className="p-0">
               {loading ? (
-                <div className="p-12 text-center text-muted flex items-center justify-center gap-2 text-sm">
-                  <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                  Carregando usuários e permissões...
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs whitespace-nowrap">
+                    <thead className="bg-surface-hover text-muted uppercase font-semibold">
+                      <tr>
+                        <th className="p-4">Usuário</th>
+                        <th className="p-4">Cargo / Função</th>
+                        <th className="p-4">Nível de Acesso (RBAC)</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      <TableRowsSkeleton rows={4} columns={5} />
+                    </tbody>
+                  </table>
                 </div>
               ) : filteredUsers.length === 0 ? (
                 <div className="p-12 text-center text-muted text-sm">

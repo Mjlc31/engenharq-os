@@ -10,6 +10,7 @@ import { Worker } from '../types';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../components/AuthProvider';
 import { format } from 'date-fns';
+import { TableRowsSkeleton } from '../components/ui/Skeleton';
 
 export function Workers() {
   const navigate = useNavigate();
@@ -176,9 +177,7 @@ export function Workers() {
             </thead>
             <tbody className="text-sm">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted">Carregando funcionários...</td>
-                </tr>
+                <TableRowsSkeleton rows={itemsPerPage > 10 ? 10 : itemsPerPage} columns={8} />
               ) : paginatedWorkers.length > 0 ? (
                 paginatedWorkers.map(worker => (
                   <tr key={worker.id} className="border-b border-border hover:bg-surface-hover/30 transition-colors">

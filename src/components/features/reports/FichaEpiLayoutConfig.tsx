@@ -92,7 +92,9 @@ export function FichaEpiLayoutConfig({ initialWorkerId, defaultTab = 'generate' 
           .order('assigned_at', { ascending: false });
 
         if (error) throw error;
-        setWorkerAssignments(data || []);
+        // NR-6: Apenas equipamentos de proteção individual (ignora cimento, tinta e outros materiais de construção civil)
+        const onlyEpis = (data || []).filter((a: any) => a.catalog?.item_type !== 'MATERIAL');
+        setWorkerAssignments(onlyEpis);
       } catch (err: any) {
         toast({ type: 'error', title: 'Erro ao carregar EPIs', message: err.message });
       } finally {

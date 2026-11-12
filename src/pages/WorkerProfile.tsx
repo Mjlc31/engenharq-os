@@ -13,6 +13,7 @@ import { sstService } from '../services/sstService';
 import { SignaturePadModal } from '../components/ui/SignaturePadModal';
 import { format } from 'date-fns';
 import { isValidCPF, applyCpfMask } from '../lib/validators';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export function WorkerProfile() {
   const { id } = useParams<{ id: string }>();
@@ -99,7 +100,7 @@ export function WorkerProfile() {
       setFormData(workerRes.data as Worker);
       setRoles(rolesRes.data as WorkerRole[]);
       setSites(sitesRes.data as ConstructionSite[]);
-      setEpiAssignments(epiRes.data || []);
+      setEpiAssignments((epiRes.data as unknown as EpiAssignment[]) || []);
       setDisciplinaryRecords(discRes || []);
       setTrainings(trainingsRes || []);
       setAsos(asosRes || []);
@@ -368,9 +369,36 @@ export function WorkerProfile() {
 
   if (loading) {
     return (
-      <div className="flex-1 p-8 text-center text-muted flex items-center justify-center gap-2">
-        <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-        <span>Carregando perfil...</span>
+      <div className="space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="w-10 h-10 rounded-md" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-64" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-24 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-surface border border-border rounded-xl p-6 space-y-4">
+            <Skeleton className="w-24 h-24 rounded-full mx-auto" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+            <Skeleton className="h-3 w-1/2 mx-auto" />
+          </div>
+          <div className="md:col-span-2 bg-surface border border-border rounded-xl p-6 space-y-4">
+            <Skeleton className="h-5 w-48" />
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
