@@ -32,7 +32,7 @@ import { useToast } from '../../../components/ui/Toast';
 import { ValidityBadge } from '../../../components/ui/ValidityBadge';
 import { StatusFilter } from '../../ui/StatusFilter';
 import { useSituacaoParam } from '../../../hooks/useSituacaoParam';
-import { classifyValidity, stockLevel } from '../../../lib/compliance';
+import { caPending as caPendingStatus, stockLevel } from '../../../lib/compliance';
 
 const SITUACOES = ['todos', 'ca', 'estoque'] as const;
 type Situacao = typeof SITUACOES[number];
@@ -196,12 +196,7 @@ export function CatalogTab({
   // Mesma regra do Dashboard (estoque central do catálogo, não o da obra).
   const situacaoMatch = useMemo(() => {
     const today = new Date();
-    const caPending = (c: EpiCatalog) => {
-      // Materiais de construção civil não possuem CA e não geram pendência de CA
-      if (c.item_type === 'MATERIAL') return false;
-      const v = classifyValidity(c.ca_validity, today);
-      return v === 'expired' || v === 'expiring';
-    };
+    const caPending = (c: EpiCatalog) => caPendingStatus(c, today) !== null;
     const stockPending = (c: EpiCatalog) => stockLevel(c) !== 'ok';
     return {
       ca: caPending,
@@ -645,7 +640,7 @@ export function CatalogTab({
           onChange={value => { setSituacao(value); setCatalogCurrentPage(1); }}
           options={[
             { value: 'todos', label: 'Todas as situações', count: catalogs.length },
-            { value: 'ca', label: 'CA vencido ou a vencer (EPIs)', count: situacaoMatch.caCount },
+            { value: 'ca', label: 'CA vencido, a vencer ou faltando (EPIs)', count: situacaoMatch.caCount },
             { value: 'estoque', label: 'Esgotado ou abaixo do mínimo', count: situacaoMatch.estoqueCount },
           ]}
         />

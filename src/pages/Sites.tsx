@@ -181,9 +181,7 @@ export function Sites() {
       end_date: siteEnd || null,
       address: siteAddress,
       status: siteStatus,
-      image_url: siteImage,
-      latitude: null,
-      longitude: null
+      image_url: siteImage
     };
 
     try {

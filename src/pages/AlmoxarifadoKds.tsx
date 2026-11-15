@@ -212,7 +212,7 @@ export function AlmoxarifadoKds() {
 
       if (soundEnabled) playKdsChime();
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        try { navigator.vibrate([50, 50, 100]); } catch {}
+        try { navigator.vibrate([50, 50, 100]); } catch { /* vibração é opcional */ }
       }
       toast({
         type: 'success',
@@ -291,7 +291,7 @@ export function AlmoxarifadoKds() {
 
       if (soundEnabled) playKdsChime();
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        try { navigator.vibrate([50, 50, 100]); } catch {}
+        try { navigator.vibrate([50, 50, 100]); } catch { /* vibração é opcional */ }
       }
       toast({
         type: 'success',
@@ -317,25 +317,6 @@ export function AlmoxarifadoKds() {
       });
     } finally {
       setCreatingOrder(false);
-    }
-  };
-
-  // Cancelar Pedido
-  const handleCancelOrder = async (orderId: string) => {
-    if (!confirm('Deseja realmente cancelar esta solicitação da fila?')) return;
-    try {
-      // Cancelamento só pela RPC (registra autor e motivo); o banco recusa update direto para CANCELLED
-      const { error } = await supabase.rpc('cancel_or_delete_almoxarifado_order', {
-        p_order_id: orderId,
-        p_cancelled_by: user?.email || 'Almoxarife',
-        p_reason: 'Cancelado na fila do KDS'
-      });
-      if (error) throw error;
-
-      toast({ type: 'info', title: 'Pedido Cancelado', message: 'A solicitação foi removida da fila.' });
-      await loadOrders();
-    } catch (err: any) {
-      toast({ type: 'error', title: 'Erro', message: err.message });
     }
   };
 
@@ -767,7 +748,7 @@ export function AlmoxarifadoKds() {
                           </button>
 
                           <button aria-label="Cancelar solicitação"
-                            onClick={() => handleCancelOrder(order.id)}
+                            onClick={() => setOrderToDelete(order)}
                             className="p-2 rounded-xl bg-surface hover:bg-red-500/15 hover:text-red-400 text-muted border border-border transition-colors cursor-pointer"
                             title="Cancelar Solicitação"
                           >

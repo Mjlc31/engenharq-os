@@ -5,7 +5,7 @@ export const EXPIRING_WINDOW_DAYS = 30;
 export type Validity = 'expired' | 'expiring' | 'ok';
 export type StockLevel = 'out' | 'low' | 'ok';
 
-type CatalogLike = { name: string; ca_validity?: string | null; current_stock?: number | null; min_stock?: number | null; minimum_stock?: number | null };
+type CatalogLike = { name: string; item_type?: string | null; ca_number?: string | null; ca_validity?: string | null; current_stock?: number | null; min_stock?: number | null; minimum_stock?: number | null };
 type Dated = { valid_until: string | null };
 
 export interface ComplianceInput {
@@ -17,7 +17,7 @@ export interface ComplianceInput {
 }
 
 export interface ComplianceSummary {
-  ca: { expired: number; expiring: number; names: string[] };
+  ca: { expired: number; expiring: number; missing: number; names: string[] };
   aso: { expired: number; expiring: number; missing: number };
   trainings: { expired: number; expiring: number };
   stock: { out: number; low: number; names: string[] };
@@ -37,6 +37,14 @@ export function classifyValidity(date: string | null | undefined, today: Date): 
   if (days < 0) return 'expired';
   if (days <= EXPIRING_WINDOW_DAYS) return 'expiring';
   return 'ok';
+}
+
+// CA só vale para EPI (material e ferramenta não têm). EPI sem número ou sem validade é pendência.
+export function caPending(item: CatalogLike, today: Date): 'expired' | 'expiring' | 'missing' | null {
+  if ((item.item_type ?? 'EPI') !== 'EPI') return null;
+  if (!item.ca_number || !item.ca_validity) return 'missing';
+  const v = classifyValidity(item.ca_validity, today);
+  return v === 'ok' ? null : v;
 }
 
 // Só o registro mais recente vale: um ASO antigo vencido não conta se já existe um novo.
@@ -72,11 +80,11 @@ export function activeWorkerIds(workers: { id: string; status?: string | null }[
 export function computeCompliance({ today, catalogs, workers, asos, trainings }: ComplianceInput): ComplianceSummary {
   const activeIds = activeWorkerIds(workers);
 
-  const ca = { expired: 0, expiring: 0, names: [] as string[] };
+  const ca = { expired: 0, expiring: 0, missing: 0, names: [] as string[] };
   const stock = { out: 0, low: 0, names: [] as string[] };
   for (const item of catalogs) {
-    const v = classifyValidity(item.ca_validity, today);
-    if (v === 'expired' || v === 'expiring') {
+    const v = caPending(item, today);
+    if (v) {
       ca[v] += 1;
       ca.names.push(item.name);
     }

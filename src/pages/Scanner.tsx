@@ -4,7 +4,7 @@ import Webcam from 'react-webcam';
 import { supabase } from '../lib/supabase';
 import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
 import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw, PenTool, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Worker, EpiInventory } from '../types';
 import { MapContainer, TileLayer, Marker as LeafletMarker } from 'react-leaflet';
 import { useScanner } from '../hooks/useScanner';
@@ -215,7 +215,7 @@ export function Scanner() {
       
       if (success) {
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try { navigator.vibrate([40, 60, 40]); } catch {}
+          try { navigator.vibrate([40, 60, 40]); } catch { /* vibração é opcional */ }
         }
         setStep('SUCCESS');
       }

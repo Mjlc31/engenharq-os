@@ -46,11 +46,11 @@ function buildCells(c: ComplianceSummary, u: NonNullable<ActionRequiredWidgetPro
   return [
     {
       title: 'CA dos EPIs',
-      href: withSituacao('/assets', c.ca.expired + c.ca.expiring > 0 && 'ca'),
-      critical: c.ca.expired,
+      href: withSituacao('/assets', c.ca.expired + c.ca.expiring + c.ca.missing > 0 && 'ca'),
+      critical: c.ca.expired + c.ca.missing,
       warning: c.ca.expiring,
-      parts: expiry(c.ca.expired, c.ca.expiring),
-      okText: 'Nenhum CA vencido ou a vencer',
+      parts: expiry(c.ca.expired, c.ca.expiring, c.ca.missing > 0 ? [`${c.ca.missing} sem CA`] : []),
+      okText: 'Nenhum CA vencido, a vencer ou faltando',
       names: c.ca.names,
       unavailable: u.catalog,
     },

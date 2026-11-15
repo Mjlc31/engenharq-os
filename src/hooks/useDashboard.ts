@@ -78,7 +78,7 @@ export function useDashboard() {
       ] = await Promise.allSettled([
         supabase
           .from('epi_catalog')
-          .select('id, name, category, current_stock, min_stock, minimum_stock, ca_number, ca_validity, status')
+          .select('id, name, category, current_stock, min_stock, minimum_stock, ca_number, ca_validity, status, item_type')
           .is('deleted_at', null),
         supabase
           .from('workers')
