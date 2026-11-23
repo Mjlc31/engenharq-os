@@ -85,7 +85,7 @@ export const auditService = {
       const [assignmentsRes, trainingsRes, asosRes, discRes, changesRes] = await Promise.allSettled([
         supabase
           .from('epi_assignments')
-          .select('id, assigned_at, returned_at, condition_on_return, created_at, creator:users!created_by(full_name), catalog:epi_catalog!catalog_id(name), worker:workers!worker_id(full_name)')
+          .select('id, assigned_at, returned_at, condition_on_return, created_at, creator:users!created_by(full_name), returner:users!returned_by(full_name), catalog:epi_catalog!catalog_id(name), worker:workers!worker_id(full_name)')
           .order('assigned_at', { ascending: false })
           .limit(100),
         supabase
@@ -135,11 +135,12 @@ export const auditService = {
 
         if (a.returned_at) {
           const isLoss = a.condition_on_return === 'LOST';
+          const returner = nameOf(a.returner);
           logs.push({
             id: `return-${a.id}`,
             timestamp: a.returned_at,
-            userName: NOT_RECORDED,
-            userInitials: '—',
+            userName: returner || NOT_RECORDED,
+            userInitials: returner ? getInitials(returner) : '—',
             userColor: isLoss ? 'bg-rose-500 text-rose-950' : 'bg-emerald-500 text-emerald-950',
             type: isLoss ? 'Extravio' : 'Devolução',
             typeBadgeColor: isLoss ? BADGE_COLORS['Extravio'] : BADGE_COLORS['Devolução'],
