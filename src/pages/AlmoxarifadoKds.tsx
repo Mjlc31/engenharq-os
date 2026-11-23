@@ -21,6 +21,8 @@ import { AlmoxarifadoStockEntryModal } from '../components/features/almoxarifado
 import { AlmoxarifadoCancelOrderModal } from '../components/features/almoxarifado/AlmoxarifadoCancelOrderModal';
 
 import { KDS_TV_CALL_EVENT, KDS_TV_CHANNEL, playKdsChime } from '../lib/kdsTv';
+import { transfersService } from '../services/transfersService';
+import { siteStockMap } from '../lib/compliance';
 
 export function AlmoxarifadoKds() {
   const queryClient = useQueryClient();
@@ -252,7 +254,7 @@ export function AlmoxarifadoKds() {
     }
 
     // A baixa sai do estoque de uma obra: sem obra, o pedido não pode ser entregue depois
-    const siteId = selectedWorker.current_site_id || (selectedSiteId !== 'ALL' ? selectedSiteId : null);
+    const siteId = orderSiteId;
     if (!siteId) {
       toast({
         type: 'warning',
@@ -366,6 +368,18 @@ export function AlmoxarifadoKds() {
   });
 
   // EPIs filtrados no modal
+  // Obra do pedido (a mesma usada ao lançar): só itens com saldo nela podem entrar
+  const orderSiteId = selectedWorker?.current_site_id || (selectedSiteId !== 'ALL' ? selectedSiteId : null);
+  const [orderSiteStock, setOrderSiteStock] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!isNewOrderModalOpen || !orderSiteId) { setOrderSiteStock({}); return; }
+    let active = true;
+    transfersService.fetchSiteInventory(orderSiteId)
+      .then(rows => { if (active) setOrderSiteStock(siteStockMap(rows)); })
+      .catch(() => toast({ type: 'error', title: 'Erro', message: 'Falha ao carregar o saldo da obra do pedido.' }));
+    return () => { active = false; };
+  }, [isNewOrderModalOpen, orderSiteId, toast]);
+
   const filteredCatalog = catalogList.filter(c => {
     if (!epiSearch.trim()) return true;
     const q = epiSearch.toLowerCase();
@@ -1118,10 +1132,13 @@ export function AlmoxarifadoKds() {
                         <span className="font-semibold text-foreground block truncate">{epi.name}</span>
                         <span className="text-muted text-[11px]">
                           {epi.item_type === 'MATERIAL' ? 'Material de Construção' : `CA: ${epi.ca_number || 'S/N'}`} • Categoria: {epi.category}
+                          {orderSiteId && <> • Saldo na obra: <strong className={(orderSiteStock[epi.id] ?? 0) > 0 ? 'text-emerald-400' : 'text-red-400'}>{orderSiteStock[epi.id] ?? 0}</strong></>}
                         </span>
                       </div>
                       <button
                         type="button"
+                        disabled={!orderSiteId || (orderSiteStock[epi.id] ?? 0) <= (selectedItems.find(p => p.catalog.id === epi.id)?.quantity ?? 0)}
+                        title={!orderSiteId ? 'Escolha o colaborador ou a obra do pedido' : undefined}
                         onClick={() => {
                           setSelectedItems(prev => {
                             const exists = prev.find(p => p.catalog.id === epi.id);
@@ -1131,7 +1148,7 @@ export function AlmoxarifadoKds() {
                             return [...prev, { catalog: epi, quantity: 1, size: '' }];
                           });
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary-dark hover:text-white text-primary font-semibold border border-primary/20 transition-all text-xs shrink-0 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary-dark hover:text-white text-primary font-semibold border border-primary/20 transition-all text-xs shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                       >
                         + Adicionar
                       </button>

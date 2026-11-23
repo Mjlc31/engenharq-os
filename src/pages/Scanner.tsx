@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import Webcam from 'react-webcam';
+import { transfersService } from '../services/transfersService';
+import { siteStockMap } from '../lib/compliance';
 import { supabase } from '../lib/supabase';
 import { generateEpiReceiptPDF } from '../lib/pdfGenerator';
 import { User, Package, CheckCircle2, AlertCircle, X, Camera, Check, ScanFace, MapPin, RefreshCw, PenTool, ShieldCheck } from 'lucide-react';
@@ -31,6 +33,8 @@ export function Scanner() {
   const [catalog, setCatalog] = useState<any[]>([]);
   const [worker, setWorker] = useState<Worker | null>(null);
   const [epis, setEpis] = useState<any[]>([]);
+  const [siteStock, setSiteStock] = useState<Record<string, number>>({});
+  const stockOf = (catalogId: string) => siteStock[catalogId] ?? 0;
   const { 
     loading, 
     error, 
@@ -118,10 +122,20 @@ export function Scanner() {
     if (step === 'SCAN_WORKER') {
       const searchTerm = decodedText.replace('CPF:', '').replace('MAT:', '').trim();
       const w = await fetchWorker(searchTerm);
-      if (w) {
-        setWorker(w);
-        setStep('SCAN_EPI');
+      if (!w) return;
+      if (!w.current_site_id) {
+        setError('Colaborador sem obra definida: atualize o cadastro antes de entregar');
+        return;
       }
+      try {
+        // A entrega debita a obra do colaborador: o saldo mostrado é o dela
+        setSiteStock(siteStockMap(await transfersService.fetchSiteInventory(w.current_site_id)));
+      } catch {
+        setError('Falha ao carregar o estoque da obra do colaborador.');
+        return;
+      }
+      setWorker(w);
+      setStep('SCAN_EPI');
     }
   };
 
@@ -203,10 +217,12 @@ export function Scanner() {
       const pdfBlob = await generateEpiReceiptPDF(worker, epis, evidenceUrlToUpload);
       
       const timestamp = new Date().getTime();
+      // A câmera entrega JPEG e a assinatura PNG: nome e tipo seguem o formato real
+      const evidenceExt = evidenceUrlToUpload.startsWith('data:image/jpeg') ? 'jpg' : 'png';
       
       // Upload files to storage (parallel)
       const [photoUrl, ] = await Promise.all([
-        uploadToStorage(evidenceUrlToUpload, 'epi-receipts', `evidences/${worker.id}_${timestamp}.png`, 'image/png'),
+        uploadToStorage(evidenceUrlToUpload, 'epi-receipts', `evidences/${worker.id}_${timestamp}.${evidenceExt}`),
         uploadToStorage(pdfBlob, 'epi-receipts', `pdfs/${worker.id}_${timestamp}.pdf`, 'application/pdf')
       ]);
       
@@ -229,6 +245,7 @@ export function Scanner() {
   const resetFlow = () => {
     setWorker(null);
     setEpis([]);
+    setSiteStock({});
     setCapturedPhoto(null);
     setError('');
     setStep('SCAN_WORKER');
@@ -405,7 +422,7 @@ export function Scanner() {
                   )
                   .map(item => {
                   const isAdded = epis.some(e => e.id === item.id);
-                  const isOutOfStock = item.current_stock <= 0;
+                  const isOutOfStock = stockOf(item.id) <= 0;
                   return (
                     <button
                       key={item.id}
@@ -423,7 +440,7 @@ export function Scanner() {
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-xs text-muted font-mono bg-background px-2 py-0.5 rounded">CA: {item.ca_number || 'N/A'}</span>
                         <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                          {item.current_stock} un
+                          {stockOf(item.id)} un
                         </span>
                       </div>
                     </button>
@@ -473,12 +490,12 @@ export function Scanner() {
                         <button
                           onClick={() => {
                             const updated = [...epis];
-                            if (updated[idx].quantity < e.current_stock) {
+                            if (updated[idx].quantity < stockOf(e.id)) {
                               updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + 1 };
                               setEpis(updated);
                             }
                           }}
-                          disabled={e.quantity >= e.current_stock}
+                          disabled={e.quantity >= stockOf(e.id)}
                           className="w-7 h-7 rounded-md bg-surface-hover border border-border flex items-center justify-center text-muted hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <span className="text-sm font-bold leading-none">+</span>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../ui/Modal';
 import { ConstructionSite, EpiCatalog, SiteTransfer } from '../../../types';
 import { transfersService } from '../../../services/transfersService';
+import { siteStockMap } from '../../../lib/compliance';
 import { useAuth } from '../../../components/AuthProvider';
 import { useToast } from '../../../components/ui/Toast';
 import { ArrowRight, CheckCircle2, Clock, Send, Shield, AlertCircle, X } from 'lucide-react';
@@ -55,8 +56,17 @@ export function TransferTab({ catalogs }: TransferTabProps) {
     loadData();
   }, []);
 
-  const selectedCatalog = catalogs.find(c => c.id === selectedCatalogId);
-  const currentCatalogStock = selectedCatalog?.current_stock || 0;
+  // O despacho debita a obra de origem: saldo e limite são os dela
+  const [originStock, setOriginStock] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!originSiteId) { setOriginStock({}); return; }
+    let active = true;
+    transfersService.fetchSiteInventory(originSiteId)
+      .then(rows => { if (active) setOriginStock(siteStockMap(rows)); })
+      .catch(() => toast({ type: 'error', title: 'Erro', message: 'Falha ao carregar o saldo da obra de origem.' }));
+    return () => { active = false; };
+  }, [originSiteId, toast]);
+  const originAvailable = originStock[selectedCatalogId] ?? 0;
 
   const handleSendTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +151,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
                 <option value="">Selecione o EPI para Transferência</option>
                 {catalogs.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {c.ca_number ? `(CA: ${c.ca_number})` : ''} • Disponível Geral: {c.current_stock || 0}
+                    {c.name} {c.ca_number ? `(CA: ${c.ca_number})` : ''}{originSiteId ? ` • Saldo na origem: ${originStock[c.id] ?? 0}` : ''}
                   </option>
                 ))}
               </select>
@@ -152,6 +162,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
               <input aria-label="Quantidade a Transferir" 
                 type="number" 
                 min="1" 
+                max={originSiteId && selectedCatalogId ? originAvailable : undefined}
                 required 
                 value={quantity} 
                 onChange={e => setQuantity(Number(e.target.value))} 
@@ -202,7 +213,7 @@ export function TransferTab({ catalogs }: TransferTabProps) {
           <div className="flex justify-end pt-2">
             <button 
               type="submit" 
-              disabled={sending || !selectedCatalogId || !originSiteId || !destinationSiteId || quantity < 1} 
+              disabled={sending || !selectedCatalogId || !originSiteId || !destinationSiteId || quantity < 1 || quantity > originAvailable} 
               className="px-6 py-2.5 bg-primary-dark text-primary-foreground font-semibold rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center gap-2 text-sm shadow-md"
             >
               <Send className="w-4 h-4" />

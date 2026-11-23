@@ -112,3 +112,10 @@ export function computeCompliance({ today, catalogs, workers, asos, trainings }:
 
   return { ca, aso, trainings: training, stock };
 }
+
+// Saldo por item numa obra (a entrega e a transferência debitam a obra, não o total do catálogo).
+export function siteStockMap(rows: { catalog_id: string; quantity: number | null }[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const r of rows) map[r.catalog_id] = (map[r.catalog_id] ?? 0) + (r.quantity ?? 0);
+  return map;
+}
