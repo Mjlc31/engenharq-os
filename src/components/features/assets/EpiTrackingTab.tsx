@@ -108,7 +108,8 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
             cpf,
             current_role,
             department,
-            current_site_id
+            current_site_id,
+            deleted_at
           ),
           catalog:epi_catalog (
             id,
@@ -127,7 +128,8 @@ export function EpiTrackingTab({ sites = [] }: EpiTrackingTabProps) {
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as any[];
+      // Cautela de colaborador excluído não conta como EPI em uso (mesma regra do Dashboard)
+      return ((data || []) as any[]).filter(a => !a.worker?.deleted_at);
     }
   });
 

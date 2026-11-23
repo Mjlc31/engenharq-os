@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { useAuth } from '../components/AuthProvider';
-import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle } from 'lucide-react';
+import { Settings as SettingsIcon, User as UserIcon, Shield, Key, Plus, Check, X, ShieldCheck, Edit3, Users, Search, Trash2, Briefcase, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { rbacService, DEFAULT_PERMISSIONS, ADMIN_PERMISSIONS, ALMOXARIFADO_PERMISSIONS, ROLE_LABELS } from '../services/rbacService';
 import { User, UserPermissions, UserRole } from '../types';
 import { useToast } from '../components/ui/Toast';
@@ -33,6 +33,9 @@ const MANAGEABLE_ROLES: Partial<Record<UserRole, UserRole[]>> = {
   SAFETY_ENGINEER: ROLE_OPTIONS.map(o => o.value)
 };
 
+// Mesma regra da RPC admin_create_user (o banco também recusa senha curta)
+const MIN_PASSWORD_LENGTH = 8;
+
 export function Settings() {
   const { session, role } = useAuth();
   const { toast } = useToast();
@@ -63,6 +66,7 @@ export function Settings() {
   const [newRole, setNewRole] = useState<UserRole>('SITE_MANAGER');
   const [newCustomRole, setNewCustomRole] = useState('');
   const [newPassword, setNewPassword] = useState('Engenharq@2026');
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
 
   const loadUsers = async () => {
@@ -160,6 +164,10 @@ export function Settings() {
     }
     if (!newCustomRole.trim()) {
       toast({ type: 'warning', title: 'Campo Obrigatório', message: 'Digite ou selecione a função / cargo do usuário.' });
+      return;
+    }
+    if (newPassword.trim().length < MIN_PASSWORD_LENGTH) {
+      toast({ type: 'warning', title: 'Senha Fraca', message: `A senha provisória precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` });
       return;
     }
 
@@ -829,13 +837,25 @@ export function Settings() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-muted">Senha Provisória</label>
-                <input aria-label="Senha Provisória"
-                  type="text"
-                  required
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  className="w-full bg-background border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
-                />
+                <div className="relative">
+                  <input aria-label="Senha Provisória"
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    className="w-full bg-background border border-border rounded pl-3 pr-10 py-2 text-sm text-foreground focus:outline-none focus:border-primary font-mono text-xs"
+                  />
+                  <button type="button"
+                    onClick={() => setShowNewPassword(v => !v)}
+                    aria-label={showNewPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-foreground"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted">Mínimo de {MIN_PASSWORD_LENGTH} caracteres.</p>
                 <p className="text-[11px] text-muted">O usuário poderá alterar a senha após o primeiro acesso.</p>
               </div>
 
