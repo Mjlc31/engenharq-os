@@ -1,6 +1,7 @@
 import { PDFDocument, rgb } from 'pdf-lib';
 import { format } from 'date-fns';
 import { supabase } from './supabase';
+import { imageFormat } from './utils';
 import jsPDF from 'jspdf';
 import { Worker, EpiAssignment } from '../types';
 
@@ -173,23 +174,21 @@ function base64ToUint8Array(base64: string): Uint8Array {
 async function safeEmbedImage(pdfDoc: PDFDocument, urlOrData: string): Promise<any | null> {
   if (!urlOrData || typeof urlOrData !== 'string') return null;
   try {
+    let bytes: Uint8Array;
     if (urlOrData.startsWith('data:image/')) {
-      const isPng = urlOrData.startsWith('data:image/png');
       const base64Data = urlOrData.split(',')[1];
       if (!base64Data) return null;
-      const bytes = base64ToUint8Array(base64Data);
-      return isPng ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-    }
-
-    const response = await fetch(urlOrData);
-    if (!response.ok) return null;
-    const imageBytes = await response.arrayBuffer();
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('png') || urlOrData.toLowerCase().endsWith('.png')) {
-      return await pdfDoc.embedPng(imageBytes);
+      bytes = base64ToUint8Array(base64Data);
     } else {
-      return await pdfDoc.embedJpg(imageBytes);
+      const response = await fetch(urlOrData);
+      if (!response.ok) return null;
+      bytes = new Uint8Array(await response.arrayBuffer());
     }
+    const format = imageFormat(bytes);
+    if (format === 'png') return await pdfDoc.embedPng(bytes);
+    if (format === 'jpg') return await pdfDoc.embedJpg(bytes);
+    console.warn('Não foi possível embutir imagem na ficha (fallback seguro): formato não suportado');
+    return null;
   } catch (err) {
     console.warn('Não foi possível embutir imagem na ficha (fallback seguro):', err);
     return null;
